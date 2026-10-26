@@ -14,8 +14,6 @@ let googleProvider: GoogleAuthProvider | null = null;
  * Trích xuất biến môi trường tự động hỗ trợ cả Vite (`import.meta.env`) và Webpack/Next.js/CRA (`process.env`)
  */
 function getEnvConfig(): FirebaseModuleConfig | null {
-  // 1. Kiểm tra Next.js / Create React App / Webpack qua process.env
-  // Lưu ý: Next.js yêu cầu truy cập trực tiếp process.env.NEXT_PUBLIC_* để bundler tự động inline biến vào trình duyệt
   try {
     if (typeof process !== 'undefined' && process.env) {
       const apiKey =
@@ -26,7 +24,6 @@ function getEnvConfig(): FirebaseModuleConfig | null {
         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
         process.env.REACT_APP_FIREBASE_PROJECT_ID ||
         (process.env as any).VITE_FIREBASE_PROJECT_ID;
-
       const databaseId =
         process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID ||
         process.env.REACT_APP_FIREBASE_DATABASE_ID ||
@@ -58,7 +55,6 @@ function getEnvConfig(): FirebaseModuleConfig | null {
     // Bỏ qua nếu không có process.env
   }
 
-  // 2. Kiểm tra Vite qua import.meta.env
   try {
     if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
       const v = (import.meta as any).env;
@@ -85,11 +81,11 @@ function getEnvConfig(): FirebaseModuleConfig | null {
  * Khởi tạo Firebase SDK thủ công hoặc từ cấu hình tùy biến
  */
 export function initFirebase(customConfig?: Partial<FirebaseModuleConfig>): {
-  app: FirebaseApp;
-  auth: Auth;
-  db: Firestore;
-  storage: FirebaseStorage;
-  googleProvider: GoogleAuthProvider;
+  app: FirebaseApp | null;
+  auth: Auth | null;
+  db: Firestore | null;
+  storage: FirebaseStorage | null;
+  googleProvider: GoogleAuthProvider | null;
 } {
   if (app && auth && db && storage && googleProvider) {
     return { app, auth, db, storage, googleProvider };
@@ -97,24 +93,29 @@ export function initFirebase(customConfig?: Partial<FirebaseModuleConfig>): {
 
   const resolvedConfig = customConfig || getEnvConfig();
 
+  // Kiểm tra an toàn: Nếu không tìm thấy cấu hình hợp lệ, bỏ qua khởi tạo thay vì làm sập ứng dụng
   if (!resolvedConfig || !resolvedConfig.apiKey || !resolvedConfig.projectId) {
     console.warn(
       '[Firebase Module] Chưa tìm thấy cấu hình Firebase đầy đủ trong biến môi trường (.env).'
     );
+    return { app: null, auth: null, db: null, storage: null, googleProvider: null };
   }
 
   try {
     if (getApps().length === 0) {
-      app = initializeApp(resolvedConfig as FirebaseModuleConfig);
+      app = initializeApp(resolvedConfig);
     } else {
       app = getApp();
     }
 
     auth = getAuth(app);
-    // Bật lưu phiên đăng nhập lâu dài trên LocalStorage trình duyệt
-    setPersistence(auth, browserLocalPersistence).catch((err) => {
-      console.warn('[Firebase Module] Cảnh báo lưu phiên setPersistence:', err);
-    });
+
+    // Đảm bảo chỉ chạy persistence trên môi trường Trình duyệt (Client-side)
+    if (typeof window !== 'undefined') {
+      setPersistence(auth, browserLocalPersistence).catch((err) => {
+        console.warn('[Firebase Module] Cảnh báo lưu phiên setPersistence:', err);
+      });
+    }
 
     const dbId = resolvedConfig?.databaseId;
     db = dbId && dbId !== '(default)' ? getFirestore(app, dbId) : getFirestore(app);
@@ -128,15 +129,17 @@ export function initFirebase(customConfig?: Partial<FirebaseModuleConfig>): {
     return { app, auth, db, storage, googleProvider };
   } catch (error) {
     console.error('[Firebase Module] Lỗi khởi tạo Firebase:', error);
-    throw error;
+    return { app: null, auth: null, db: null, storage: null, googleProvider: null };
   }
 }
 
-// Tự động khởi tạo ngay nếu đã có biến môi trường hợp lệ
-try {
-  initFirebase();
-} catch {
-  // Có thể đợi gọi initFirebase() thủ công sau nếu cần
+// Chỉ tự động kích hoạt khởi tạo trên môi trường trình duyệt thực tế
+if (typeof window !== 'undefined') {
+  try {
+    initFirebase();
+  } catch (err) {
+    console.error('[Firebase Module] Khởi tạo tự động thất bại:', err);
+  }
 }
 
 export { app, auth, db, storage, googleProvider };
