@@ -76,3 +76,15 @@ export interface TeacherDayStats {
   afternoonPeriods: number;
   classes: string[];
 }
+
+import { BaseReminderSettings } from '@/core/notifications';
+
+export interface TeachingReminderSettings extends BaseReminderSettings {
+  selectedTeacher?: string; // Tên giáo viên cần theo dõi nhắc lịch
+  notifyMorningBrief: boolean; // Báo tóm tắt lịch sáng lúc 06:45
+  morningBriefTime: string; // Mặc định '06:45'
+  notifyEveningBrief: boolean; // Báo lịch ngày mai lúc 20:00
+  eveningBriefTime: string; // Mặc định '20:00'
+  notifyBeforePeriod: boolean; // Nhắc trước giờ vào tiết
+  minutesBeforePeriod: number; // Mặc định 15 hoặc 30 phút
+}

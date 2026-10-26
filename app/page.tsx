@@ -181,9 +181,9 @@ export default function HomePage() {
       {/* 3. THU NHẬP & THÙ LAO */}
       {currentTab === 'income' && <IncomeFeature />}
 
-      {/* 4. CÀI ĐẶT & HỒ SƠ */}
+      {/* 4. CÀI ĐẶT & HỒ SƠ - Rộng full đồng bộ các màn hình */}
       {currentTab === 'settings' && (
-        <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn pb-10">
+        <div className="w-full space-y-6 animate-fadeIn pb-10">
           {/* Version badge */}
           <div className="flex items-center justify-end pb-2 border-b border-slate-200 dark:border-slate-800">
             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">

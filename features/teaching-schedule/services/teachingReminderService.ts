@@ -1,0 +1,238 @@
+// features/teaching-schedule/services/teachingReminderService.ts
+/**
+ * Dịch vụ lập lịch và kích hoạt thông báo nhắc lịch dạy học (Web Push / Local Push)
+ */
+
+import { SchoolTimetable, TimetableEntry, DayOfWeek, TeachingReminderSettings, DEFAULT_PERIOD_TIMES } from '../types';
+import { PushNotificationService, PushNotificationPayload } from '@/core/notifications';
+
+export const DEFAULT_TEACHING_REMINDER_SETTINGS: TeachingReminderSettings = {
+  enabled: false,
+  selectedTeacher: '',
+  notifyMorningBrief: true,
+  morningBriefTime: '06:45',
+  notifyEveningBrief: true,
+  eveningBriefTime: '20:00',
+  notifyBeforePeriod: true,
+  minutesBeforePeriod: 15,
+};
+
+const DAY_MAP: Record<number, DayOfWeek | null> = {
+  1: 'Hai',
+  2: 'Ba',
+  3: 'Tư',
+  4: 'Năm',
+  5: 'Sáu',
+  6: 'Bảy',
+  0: null, // Chủ nhật
+};
+
+export class TeachingReminderService {
+  private static STORAGE_KEY = 'teaching_schedule_reminder_settings';
+  private static LAST_NOTIFIED_KEY = 'teaching_reminder_last_dispatched';
+
+  /**
+   * Lưu cài đặt nhắc nhở
+   */
+  public static async saveSettings(
+    settings: TeachingReminderSettings, 
+    userId?: string
+  ): Promise<void> {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(settings));
+    }
+
+    if (userId) {
+      await PushNotificationService.saveSettings('teaching_schedule', userId, settings);
+    }
+  }
+
+  /**
+   * Lấy cài đặt nhắc nhở hiện tại
+   */
+  public static async getSettings(userId?: string): Promise<TeachingReminderSettings> {
+    let localData: TeachingReminderSettings | null = null;
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        try {
+          localData = JSON.parse(stored);
+        } catch {
+          // ignore error
+        }
+      }
+    }
+
+    if (userId) {
+      const remote = await PushNotificationService.getSettings<TeachingReminderSettings>('teaching_schedule', userId);
+      if (remote) {
+        return { ...DEFAULT_TEACHING_REMINDER_SETTINGS, ...remote };
+      }
+    }
+
+    return localData || DEFAULT_TEACHING_REMINDER_SETTINGS;
+  }
+
+  /**
+   * Lấy các tiết dạy của giáo viên theo ngày trong tuần
+   */
+  public static getTeacherEntriesForDay(
+    timetable: SchoolTimetable | null,
+    teacherName: string,
+    day: DayOfWeek
+  ): TimetableEntry[] {
+    if (!timetable || !teacherName) return [];
+    return timetable.entries
+      .filter((e) => e.teacher === teacherName && e.dayOfWeek === day)
+      .sort((a, b) => {
+        if (a.session !== b.session) {
+          return a.session === 'Sáng' ? -1 : 1;
+        }
+        return a.period - b.period;
+      });
+  }
+
+  /**
+   * Lấy giờ vào tiết chuẩn theo định dạng HH:mm
+   */
+  public static getPeriodStartTime(session: 'Sáng' | 'Chiều', period: number): string {
+    return DEFAULT_PERIOD_TIMES[session]?.[period]?.start || '07:30';
+  }
+
+  /**
+   * Tính toán và phát hiện các thông báo cần kích hoạt tại thời điểm hiện tại
+   */
+  public static checkAndTriggerReminders(
+    timetable: SchoolTimetable | null,
+    settings: TeachingReminderSettings,
+    now: Date = new Date()
+  ): { triggered: boolean; message?: string } {
+    if (!settings.enabled || !settings.selectedTeacher || !timetable) {
+      return { triggered: false };
+    }
+
+    const currentDayOfWeekIdx = now.getDay(); // 0 is Sunday, 1 is Monday...
+    const currentDayOfWeek = DAY_MAP[currentDayOfWeekIdx];
+    const todayEntries = currentDayOfWeek ? this.getTeacherEntriesForDay(timetable, settings.selectedTeacher, currentDayOfWeek) : [];
+
+    const nowHours = String(now.getHours()).padStart(2, '0');
+    const nowMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${nowHours}:${nowMinutes}`;
+    const todayDateStr = now.toISOString().split('T')[0];
+
+    // Helper kiểm tra đã gửi thông báo hay chưa
+    const hasAlreadyNotified = (key: string): boolean => {
+      if (typeof window === 'undefined') return false;
+      const history = localStorage.getItem(this.LAST_NOTIFIED_KEY);
+      if (!history) return false;
+      try {
+        const parsed = JSON.parse(history);
+        return parsed[key] === true;
+      } catch {
+        return false;
+      }
+    };
+
+    const markAsNotified = (key: string) => {
+      if (typeof window === 'undefined') return;
+      try {
+        const history = localStorage.getItem(this.LAST_NOTIFIED_KEY);
+        const parsed = history ? JSON.parse(history) : {};
+        parsed[key] = true;
+        // Clean up old dates if too big
+        localStorage.setItem(this.LAST_NOTIFIED_KEY, JSON.stringify(parsed));
+      } catch {
+        // ignore
+      }
+    };
+
+    // 1. Kiểm tra bản tin sáng (Morning Brief)
+    if (settings.notifyMorningBrief && currentTimeStr === settings.morningBriefTime) {
+      const briefKey = `morning_${settings.selectedTeacher}_${todayDateStr}`;
+      if (!hasAlreadyNotified(briefKey)) {
+        markAsNotified(briefKey);
+
+        const periodCount = todayEntries.length;
+        let body = '';
+        if (periodCount === 0) {
+          body = `Chào Thầy/Cô ${settings.selectedTeacher}! Hôm nay Thầy/Cô không có tiết dạy nào. Chúc một ngày làm việc tràn đầy năng lượng!`;
+        } else {
+          const detail = todayEntries.map(e => `${e.session} T${e.period}: ${e.className} (${e.subject})`).join(', ');
+          body = `Hôm nay Thầy/Cô có ${periodCount} tiết dạy: ${detail}. Chúc Thầy/Cô có ngày giảng dạy hiệu quả!`;
+        }
+
+        PushNotificationService.showNotification({
+          title: `🌅 Lịch dạy hôm nay: ${settings.selectedTeacher}`,
+          body,
+          tag: briefKey,
+          url: '/?tab=teaching_schedule',
+        });
+
+        return { triggered: true, message: 'Đã gửi bản tin lịch dạy sáng' };
+      }
+    }
+
+    // 2. Kiểm tra bản tin tối (Evening Brief) - báo lịch ngày mai
+    if (settings.notifyEveningBrief && currentTimeStr === settings.eveningBriefTime) {
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const tomorrowDayOfWeek = DAY_MAP[tomorrow.getDay()];
+      const tomorrowEntries = tomorrowDayOfWeek ? this.getTeacherEntriesForDay(timetable, settings.selectedTeacher, tomorrowDayOfWeek) : [];
+      const eveningKey = `evening_${settings.selectedTeacher}_${todayDateStr}`;
+
+      if (!hasAlreadyNotified(eveningKey)) {
+        markAsNotified(eveningKey);
+
+        const periodCount = tomorrowEntries.length;
+        let body = '';
+        if (periodCount === 0) {
+          body = `Ngày mai (${tomorrowDayOfWeek ? 'Thứ ' + tomorrowDayOfWeek : 'Chủ nhật'}) Thầy/Cô không có tiết dạy nào. Chúc Thầy/Cô nghỉ ngơi thư giãn!`;
+        } else {
+          const detail = tomorrowEntries.map(e => `${e.session} T${e.period}: ${e.className} (${e.subject})`).join(', ');
+          body = `Ngày mai (${tomorrowDayOfWeek}) Thầy/Cô có ${periodCount} tiết: ${detail}. Thầy/Cô nhớ chuẩn bị giáo án nhé!`;
+        }
+
+        PushNotificationService.showNotification({
+          title: `🌙 Chuẩn bị lịch dạy ngày mai: ${settings.selectedTeacher}`,
+          body,
+          tag: eveningKey,
+          url: '/?tab=teaching_schedule',
+        });
+
+        return { triggered: true, message: 'Đã gửi bản tin lịch dạy tối' };
+      }
+    }
+
+    // 3. Kiểm tra nhắc nhở trước giờ vào từng tiết
+    if (settings.notifyBeforePeriod && todayEntries.length > 0) {
+      const nowTotalMinutes = now.getHours() * 60 + now.getMinutes();
+
+      for (const entry of todayEntries) {
+        const startTime = this.getPeriodStartTime(entry.session, entry.period);
+        const [h, m] = startTime.split(':').map(Number);
+        const periodTotalMinutes = h * 60 + m;
+
+        // Số phút trước khi vào tiết
+        const diffMinutes = periodTotalMinutes - nowTotalMinutes;
+
+        // Nếu nằm trong khoảng thời gian nhắc nhở (ví dụ đúng diffMinutes === minutesBeforePeriod)
+        if (diffMinutes === settings.minutesBeforePeriod) {
+          const periodKey = `period_${settings.selectedTeacher}_${todayDateStr}_${entry.session}_${entry.period}`;
+          if (!hasAlreadyNotified(periodKey)) {
+            markAsNotified(periodKey);
+
+            PushNotificationService.showNotification({
+              title: `⏰ Sắp đến giờ vào tiết (${entry.session} - Tiết ${entry.period})!`,
+              body: `Thầy/Cô ${settings.selectedTeacher} có tiết dạy lớp ${entry.className} (Môn: ${entry.subject}) lúc ${startTime} (${settings.minutesBeforePeriod} phút nữa).`,
+              tag: periodKey,
+              url: '/?tab=teaching_schedule',
+            });
+
+            return { triggered: true, message: `Đã nhắc trước tiết ${entry.period} lớp ${entry.className}` };
+          }
+        }
+      }
+    }
+
+    return { triggered: false };
+  }
+}

@@ -67,6 +67,15 @@ export const COLLECTIONS = {
   SCHOOL_TIMETABLES: 'school_timetables',
 
   // ============================================================================
+  // PHÂN HỆ THÔNG BÁO & NHẮC NHỞ (NOTIFICATIONS & PUSH NOTIFICATIONS)
+  // ============================================================================
+  /** Cấu hình cài đặt nhắc nhở người dùng (Reminder Settings) */
+  REMINDER_SETTINGS: 'reminder_settings',
+
+  /** Danh sách token / đăng ký nhận Web Push Notification của thiết bị (Push Subscriptions) */
+  PUSH_SUBSCRIPTIONS: 'push_subscriptions',
+
+  // ============================================================================
   // PHÂN HỆ THEO DÕI HOẠT ĐỘNG & XEM GẦN ĐÂY (ACTIVITY & RECENT VIEWS)
   // ============================================================================
   /** Danh sách nội dung đã xem gần đây (subcollection: users/{uid}/recentViews) */

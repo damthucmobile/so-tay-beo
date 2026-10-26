@@ -81,9 +81,9 @@ export const FreelanceScheduleFeature: React.FC<FreelanceScheduleFeatureProps> =
         </div>
       </div>
 
-      {/* Main Tab Content View */}
+      {/* Main Tab Content View - Mở rộng full chiều ngang */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 min-h-0">
-        <div className="max-w-7xl mx-auto w-full">
+        <div className="w-full">
           {isLoading ? (
             <div className="flex h-64 w-full items-center justify-center text-slate-400">
               <Loader2 className="h-6 w-6 animate-spin text-blue-500 mr-2" />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/core/firebase';
 import { useTeachingScheduleStore } from './stores/useTeachingScheduleStore';
 import { TimetableHeaderBanner } from './components/TimetableHeaderBanner';
@@ -8,6 +8,8 @@ import { TeacherScheduleView } from './components/TeacherScheduleView';
 import { ClassScheduleView } from './components/ClassScheduleView';
 import { MatrixTimetableDesktop } from './components/MatrixTimetableDesktop';
 import { ImportModal } from './components/ImportModal';
+import { TeachingReminderModal } from './components/TeachingReminderModal';
+import { TeachingReminderService } from './services/teachingReminderService';
 import {
   CalendarDays,
   Upload,
@@ -16,6 +18,7 @@ import {
   GraduationCap,
   LayoutGrid,
   Trash2,
+  Bell,
 } from 'lucide-react';
 
 export const TeachingScheduleFeature: React.FC = () => {
@@ -26,10 +29,13 @@ export const TeachingScheduleFeature: React.FC = () => {
     setViewMode,
     isImportModalOpen,
     setIsImportModalOpen,
+    selectedTeacher,
     initStore,
     clearTimetable,
     isLoading,
   } = useTeachingScheduleStore();
+
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
 
   useEffect(() => {
     const unsub = initStore(user?.uid);
@@ -39,6 +45,32 @@ export const TeachingScheduleFeature: React.FC = () => {
       }
     };
   }, [user?.uid, initStore]);
+
+  // Background reminder scheduler (chạy kiểm tra mỗi phút 1 lần)
+  useEffect(() => {
+    if (!timetable) return;
+
+    let timer: NodeJS.Timeout | null = null;
+    const runCheck = async () => {
+      try {
+        const settings = await TeachingReminderService.getSettings(user?.uid);
+        if (settings?.enabled) {
+          TeachingReminderService.checkAndTriggerReminders(timetable, settings);
+        }
+      } catch (e) {
+        // Silent catch for background polling
+      }
+    };
+
+    // Chạy kiểm tra ngay khi mount
+    runCheck();
+    // Lên lịch lặp lại mỗi 60 giây
+    timer = setInterval(runCheck, 60000);
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [timetable, user?.uid]);
 
   const handleDeleteTimetable = async () => {
     if (
@@ -98,9 +130,19 @@ export const TeachingScheduleFeature: React.FC = () => {
           </button>
         </div>
 
-        {/* Action Buttons on the right: Đổi / Nhập Excel & Xóa TKB */}
+        {/* Action Buttons on the right: Nhắc lịch, Đổi / Nhập Excel & Xóa TKB */}
         {timetable && (
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsReminderModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-xs font-semibold transition border border-blue-200/60 dark:border-blue-800/40 shadow-sm cursor-pointer"
+              title="Cài đặt thông báo Web Push nhắc tiết dạy"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Nhắc lịch</span>
+              <span className="sm:hidden text-[11px]">Nhắc</span>
+            </button>
+
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-semibold transition border border-slate-200/80 dark:border-slate-700/80 shadow-sm cursor-pointer"
@@ -123,9 +165,9 @@ export const TeachingScheduleFeature: React.FC = () => {
         )}
       </div>
 
-      {/* 2. Main Tab Content View - Căn lề chuẩn px-4 sm:px-6 py-4 sm:py-6 và max-w-7xl mx-auto */}
+      {/* 2. Main Tab Content View - Mở rộng full chiều ngang theo yêu cầu */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 min-h-0">
-        <div className="max-w-7xl mx-auto w-full space-y-4">
+        <div className="w-full space-y-4">
           {!timetable ? (
             /* Empty State khi chưa có TKB: Mời người dùng import file Excel thật */
             <div className="max-w-md mx-auto my-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-5 shadow-xl">
@@ -155,7 +197,7 @@ export const TeachingScheduleFeature: React.FC = () => {
           ) : (
             <>
               {/* Thẻ thông tin trường và TKB nằm cùng lề chuẩn với nội dung bên dưới */}
-              <TimetableHeaderBanner />
+              <TimetableHeaderBanner onOpenReminder={() => setIsReminderModalOpen(true)} />
 
               {viewMode === 'teacher' && <TeacherScheduleView />}
               {viewMode === 'class' && <ClassScheduleView />}
@@ -165,10 +207,17 @@ export const TeachingScheduleFeature: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Modal Import Excel */}
+      {/* 3. Modal Import Excel & Modal Cài đặt Nhắc lịch */}
       <ImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
+      />
+
+      <TeachingReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        timetable={timetable}
+        defaultTeacher={selectedTeacher}
       />
     </div>
   );

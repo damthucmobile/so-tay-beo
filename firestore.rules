@@ -134,6 +134,21 @@ service cloud.firestore {
     }
 
     // ==============================================================================
+    // 10. PHÂN HỆ THÔNG BÁO & NHẮC NHỞ (REMINDER SETTINGS, PUSH SUBSCRIPTIONS)
+    // ==============================================================================
+    match /reminder_settings/{settingId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isNewDocOwner();
+      allow update, delete: if isDocOwner();
+    }
+
+    match /push_subscriptions/{subId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isNewDocOwner();
+      allow update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
     // QUY TẮC MẶC ĐỊNH: TỪ CHỐI TẤT CẢ CÁC TRUY CẬP KHÔNG ĐƯỢC ĐỊNH NGHĨA RÕ RÀNG
     // ==============================================================================
     match /{document=**} {

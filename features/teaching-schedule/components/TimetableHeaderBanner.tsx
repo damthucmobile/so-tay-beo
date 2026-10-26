@@ -1,10 +1,14 @@
 'use client';
 
 import React from 'react';
-import { School, Sparkles } from 'lucide-react';
+import { School, Sparkles, Bell } from 'lucide-react';
 import { useTeachingScheduleStore } from '../stores/useTeachingScheduleStore';
 
-export const TimetableHeaderBanner: React.FC = () => {
+interface TimetableHeaderBannerProps {
+  onOpenReminder?: () => void;
+}
+
+export const TimetableHeaderBanner: React.FC<TimetableHeaderBannerProps> = ({ onOpenReminder }) => {
   const { timetable } = useTeachingScheduleStore();
 
   if (!timetable) return null;
@@ -34,6 +38,17 @@ export const TimetableHeaderBanner: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {onOpenReminder && (
+          <button
+            onClick={onOpenReminder}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-xs font-semibold transition border border-blue-200/60 dark:border-blue-800/40 shadow-sm cursor-pointer shrink-0"
+            title="Cài đặt thông báo Web Push nhắc lịch dạy"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Nhắc lịch</span>
+          </button>
+        )}
       </div>
     </div>
   );

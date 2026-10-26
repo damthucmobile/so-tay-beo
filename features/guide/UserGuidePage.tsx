@@ -147,7 +147,7 @@ export const UserGuidePage: React.FC<UserGuidePageProps> = ({ onNavigateTab }) =
   const showFaqSection = (selectedCategory === 'all' || selectedCategory === 'faq') && filteredFaqs.length > 0;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn pb-16 px-1 sm:px-2">
+    <div className="w-full space-y-8 animate-fadeIn pb-16 px-1 sm:px-2">
       {/* =========================================================================
           HERO BANNER
           ========================================================================= */}
