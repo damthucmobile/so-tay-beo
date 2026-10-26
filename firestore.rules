@@ -1,0 +1,135 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==============================================================================
+    // HELPER FUNCTIONS (CÁC HÀM TIỆN ÍCH KIỂM TRA BẢO MẬT)
+    // ==============================================================================
+
+    /** Kiểm tra xem người dùng đã đăng nhập Firebase Auth chưa */
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    /** Kiểm tra xem người dùng hiện tại có đúng là chủ sở hữu qua userId khớp với UID hay không */
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    /** Kiểm tra quyền sở hữu đối với tài liệu đã tồn tại (dựa vào trường userId trong document) */
+    function isDocOwner() {
+      return isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    /** Kiểm tra quyền sở hữu đối với tài liệu mới được tạo (dựa vào trường userId được gửi lên) */
+    function isNewDocOwner() {
+      return isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ==============================================================================
+    // 1. COLLECTION USERS (HỒ SƠ NGƯỜI DÙNG)
+    // ==============================================================================
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Xem gần đây (Recent Views): Người dùng toàn quyền quản lý
+      match /recentViews/{viewId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Nhật ký hoạt động (Activity Logs): Chỉ ghi nhận và đọc, không cho sửa/xóa
+      match /activityLogs/{logId} {
+        allow create, read: if isOwner(userId);
+        allow update, delete: if false;
+      }
+    }
+
+    // ==============================================================================
+    // 2. COLLECTION USER_NOTES (GHI CHÚ CỦA NGƯỜI DÙNG)
+    // ==============================================================================
+    match /user_notes/{noteId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
+    // 3. COLLECTION NOTEBOOKS (SỔ TAY PHÂN LOẠI)
+    // ==============================================================================
+    match /notebooks/{notebookId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
+    // 4. COLLECTION TAGS (NHÃN GHI CHÚ)
+    // ==============================================================================
+    match /tags/{tagId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
+    // 5. COLLECTION SETTINGS (CẤU HÌNH NGƯỜI DÙNG)
+    // ==============================================================================
+    match /settings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ==============================================================================
+    // 6. PHÂN HỆ QUẢN LÝ LỚP HỌC (CLASSES, STUDENTS, SCHEDULES, SESSIONS)
+    // ==============================================================================
+    match /classes/{classId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    match /class_students/{studentId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    match /schedule_patterns/{patternId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    match /class_sessions/{sessionId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
+    // 7. PHÂN HỆ THU NHẬP & THÙ LAO (TRANSACTIONS / INCOME TRANSACTIONS)
+    // ==============================================================================
+    match /transactions/{txId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    match /income_transactions/{txId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
+    // 8. PHÂN HỆ LỊCH TỰ DO & KHÁCH HÀNG (APPOINTMENTS, CUSTOMERS)
+    // ==============================================================================
+    match /appointments/{appointmentId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    match /customers/{customerId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
+    // QUY TẮC MẶC ĐỊNH: TỪ CHỐI TẤT CẢ CÁC TRUY CẬP KHÔNG ĐƯỢC ĐỊNH NGHĨA RÕ RÀNG
+    // ==============================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
