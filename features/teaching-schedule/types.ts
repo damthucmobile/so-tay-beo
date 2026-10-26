@@ -51,6 +51,7 @@ export interface TimetableEntry {
 
 export interface SchoolTimetable {
   id: string;
+  userId?: string;
   subOrg?: string;
   schoolName: string;
   title: string;
@@ -62,6 +63,9 @@ export interface SchoolTimetable {
   entries: TimetableEntry[];
   totalEntries: number;
   importedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  isActive?: boolean;
 }
 
 export type TeachingScheduleViewMode = 'teacher' | 'class' | 'matrix';

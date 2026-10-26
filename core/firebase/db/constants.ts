@@ -61,6 +61,12 @@ export const COLLECTIONS = {
   CUSTOMERS: 'customers',
 
   // ============================================================================
+  // PHÂN HỆ THỜI KHÓA BIỂU NHÀ TRƯỜNG (TEACHING SCHEDULE MODULE)
+  // ============================================================================
+  /** Thời khóa biểu nhà trường & phân công giảng dạy (School Timetables) */
+  SCHOOL_TIMETABLES: 'school_timetables',
+
+  // ============================================================================
   // PHÂN HỆ THEO DÕI HOẠT ĐỘNG & XEM GẦN ĐÂY (ACTIVITY & RECENT VIEWS)
   // ============================================================================
   /** Danh sách nội dung đã xem gần đây (subcollection: users/{uid}/recentViews) */

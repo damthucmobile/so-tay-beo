@@ -126,6 +126,14 @@ service cloud.firestore {
     }
 
     // ==============================================================================
+    // 9. PHÂN HỆ THỜI KHÓA BIỂU NHÀ TRƯỜNG (SCHOOL TIMETABLES)
+    // ==============================================================================
+    match /school_timetables/{timetableId} {
+      allow create: if isNewDocOwner();
+      allow read, update, delete: if isDocOwner();
+    }
+
+    // ==============================================================================
     // QUY TẮC MẶC ĐỊNH: TỪ CHỐI TẤT CẢ CÁC TRUY CẬP KHÔNG ĐƯỢC ĐỊNH NGHĨA RÕ RÀNG
     // ==============================================================================
     match /{document=**} {

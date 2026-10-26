@@ -96,24 +96,21 @@ export const TeacherScheduleView: React.FC = () => {
   if (!timetable) return null;
 
   return (
-    <div className="space-y-4 pb-12 animate-fadeIn max-w-4xl mx-auto">
+    <div className="space-y-3 sm:space-y-4 pb-12 animate-fadeIn w-full">
       {/* 1. Thanh chọn giáo viên (Quick Teacher Selector with Instant Search) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-              <UserCheck className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                Thời khóa biểu Giáo Viên
-              </span>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white truncate">
                   {selectedTeacher ? `Thầy/Cô: ${selectedTeacher}` : 'Chưa chọn giáo viên'}
                 </h3>
                 {teacherSubjects.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800">
+                  <span className="px-1.5 py-0.5 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800 truncate max-w-[150px] sm:max-w-none">
                     {teacherSubjects.join(', ')}
                   </span>
                 )}
@@ -122,22 +119,20 @@ export const TeacherScheduleView: React.FC = () => {
           </div>
 
           {/* Teacher Dropdown / Search Trigger */}
-          <div className="relative">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:w-60">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Tìm tên giáo viên..."
-                  value={teacherSearch}
-                  onChange={(e) => {
-                    setTeacherSearch(e.target.value);
-                    setIsSearchOpen(true);
-                  }}
-                  onFocus={() => setIsSearchOpen(true)}
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
-                />
-              </div>
+          <div className="relative w-full sm:w-60">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Tìm tên giáo viên..."
+                value={teacherSearch}
+                onChange={(e) => {
+                  setTeacherSearch(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => setIsSearchOpen(true)}
+                className="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+              />
             </div>
 
             {/* Dropdown suggestions */}
@@ -181,16 +176,16 @@ export const TeacherScheduleView: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Teacher Chips (Horizontal Scroll on Mobile) */}
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          <span className="text-[11px] font-semibold text-slate-400 shrink-0 mr-1">
-            Gợi ý nhanh:
+        {/* Quick Teacher Chips (Horizontal Scroll) */}
+        <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 shrink-0 mr-0.5">
+            Gợi ý:
           </span>
-          {timetable.teachers.slice(0, 10).map((t) => (
+          {timetable.teachers.slice(0, 15).map((t) => (
             <button
               key={t}
               onClick={() => setSelectedTeacher(t)}
-              className={`px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold shrink-0 transition cursor-pointer ${
                 t === selectedTeacher
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -202,26 +197,45 @@ export const TeacherScheduleView: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Thống kê KPI tóm tắt trong tuần của giáo viên */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+      {/* 2. Thống kê KPI: Dạng thanh 1 dòng gọn gàng trên mobile, dạng 3 card trên desktop */}
+      <div className="sm:hidden flex items-center justify-between px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs shadow-sm">
+        <div className="flex items-center gap-1">
+          <span className="text-slate-400 text-[11px]">Tuần:</span>
+          <span className="font-extrabold text-blue-600 dark:text-blue-400">{teacherAllEntries.length} tiết</span>
+        </div>
+        <span className="text-slate-300 dark:text-slate-700">•</span>
+        <div className="flex items-center gap-1">
+          <span className="text-slate-400 text-[11px]">{selectedDay}:</span>
+          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{currentDayEntries.length} tiết</span>
+          <span className="text-[10px] text-slate-400">(S:{morningEntries.length} C:{afternoonEntries.length})</span>
+        </div>
+        <span className="text-slate-300 dark:text-slate-700">•</span>
+        <div className="flex items-center gap-1">
+          <span className="text-slate-400 text-[11px]">Dạy:</span>
+          <span className="font-extrabold text-purple-600 dark:text-purple-400">{teacherClasses.length} lớp</span>
+        </div>
+      </div>
+
+      {/* 3 cards trên desktop */}
+      <div className="hidden sm:grid grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Tiết Trong Tuần
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400">
+            <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
               {teacherAllEntries.length}
             </span>
             <span className="text-[11px] text-slate-500 font-medium">tiết</span>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Hôm Nay ({selectedDay})
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
+            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
               {currentDayEntries.length}
             </span>
             <span className="text-[11px] text-slate-500 font-medium">
@@ -230,12 +244,12 @@ export const TeacherScheduleView: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Số Lớp Phụ Trách
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400">
+            <span className="text-2xl font-black text-purple-600 dark:text-purple-400">
               {teacherClasses.length}
             </span>
             <span className="text-[11px] text-slate-500 font-medium">lớp</span>

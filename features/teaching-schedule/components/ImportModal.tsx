@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useTeachingScheduleStore } from '../stores/useTeachingScheduleStore';
 import { parseSchoolTimetable } from '../utils/excelParser';
+import { useAuth } from '@/core/firebase';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -18,11 +19,13 @@ interface ImportModalProps {
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const { setTimetable } = useTeachingScheduleStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<any | null>(null);
 
@@ -65,10 +68,18 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => 
     }
   };
 
-  const handleConfirmApply = () => {
+  const handleConfirmApply = async () => {
     if (previewData) {
-      setTimetable(previewData);
-      onClose();
+      setIsSavingCloud(true);
+      setError(null);
+      try {
+        await setTimetable(previewData, user?.uid);
+        setIsSavingCloud(false);
+        onClose();
+      } catch (err: any) {
+        setIsSavingCloud(false);
+        setError(err?.message || 'Có lỗi xảy ra khi lưu thời khóa biểu lên Firebase. Vui lòng thử lại.');
+      }
     }
   };
 
@@ -105,11 +116,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => 
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3 ${
-              isDragging
+            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3 ${isDragging
                 ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30'
                 : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
-            }`}
+              }`}
           >
             <input
               ref={fileInputRef}
@@ -197,9 +207,20 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => 
           {previewData && (
             <button
               onClick={handleConfirmApply}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 transition cursor-pointer flex items-center gap-1.5"
+              disabled={isSavingCloud}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 transition cursor-pointer flex items-center gap-1.5"
             >
-              <span>Áp Dụng Thời Khóa Biểu Này</span>
+              {isSavingCloud ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Đang Lưu...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Lưu</span>
+                </>
+              )}
             </button>
           )}
         </div>
