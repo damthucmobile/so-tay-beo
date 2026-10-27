@@ -15,7 +15,10 @@ import {
   ShieldAlert, 
   User, 
   Save,
-  Sparkles
+  Smartphone,
+  Share,
+  Volume2,
+  Info
 } from 'lucide-react';
 import { SchoolTimetable, TeachingReminderSettings } from '../types';
 import { TeachingReminderService, DEFAULT_TEACHING_REMINDER_SETTINGS } from '../services/teachingReminderService';
@@ -40,6 +43,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
     permission, 
     isSupported, 
     isGranted, 
+    platformInfo,
     isLoading: isPermLoading, 
     requestPermission, 
     sendTestNotification 
@@ -49,6 +53,8 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [testSent, setTestSent] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [mobileNotice, setMobileNotice] = useState<string | null>(null);
+  const [inAppToast, setInAppToast] = useState<{ title: string; body: string } | null>(null);
 
   // Load existing settings when modal opens
   useEffect(() => {
@@ -63,24 +69,58 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
     });
   }, [isOpen, user?.uid, defaultTeacher, timetable?.teachers]);
 
+  // Lắng nghe sự kiện thông báo in-app
+  useEffect(() => {
+    const handleInApp = (e: any) => {
+      const detail = e.detail;
+      if (detail) {
+        setInAppToast({
+          title: detail.title || '🔔 Thông báo nhắc nhở',
+          body: detail.body || '',
+        });
+        setTimeout(() => setInAppToast(null), 5000);
+      }
+    };
+
+    window.addEventListener('app-inapp-notification', handleInApp);
+    return () => window.removeEventListener('app-inapp-notification', handleInApp);
+  }, []);
+
   if (!isOpen) return null;
 
   const handleRequestPermission = async () => {
+    if (platformInfo?.requiresPwaForPush) {
+      setMobileNotice('Trên iPhone/iPad, Apple yêu cầu bạn nhấn nút "Chia sẻ" (biểu tượng mũi tên lên) ở thanh dưới trình duyệt Safari và chọn "Thêm vào Màn hình chính" để kích hoạt Web Push.');
+      return;
+    }
+
+    if (!isSupported) {
+      if (!platformInfo?.isSecureContext) {
+        setMobileNotice('Trình duyệt trên điện thoại yêu cầu kết nối bảo mật HTTPS (hoặc localhost) để kích hoạt Push Notification. Hiện tại hệ thống vẫn phát chuông và thông báo trực tiếp khi mở trang.');
+      } else {
+        setMobileNotice('Trình duyệt hiện tại chưa hỗ trợ Web Push Notification trực tiếp. Hệ thống sẽ phát chuông âm thanh khi có lịch.');
+      }
+      return;
+    }
+
     const ok = await requestPermission();
     if (ok) {
       setSettings(prev => ({ ...prev, enabled: true }));
+      setMobileNotice(null);
     }
   };
 
   const handleTestNotification = async () => {
     const teacherName = settings.selectedTeacher || 'Thầy/Cô';
     setTestSent(true);
+
     await sendTestNotification({
       title: '🔔 Thông báo thử nghiệm thành công!',
       body: `Hệ thống nhắc lịch dạy của Sổ Tay Béo cho Thầy/Cô ${teacherName} đã sẵn sàng hoạt động.`,
       url: '/?tab=teaching_schedule',
     });
-    setTimeout(() => setTestSent(false), 3000);
+
+    setTimeout(() => setTestSent(false), 2500);
   };
 
   const handleSave = async () => {
@@ -100,36 +140,59 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      {/* Toast In-App Banner nổi trên đỉnh */}
+      {inAppToast && (
+        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50 p-4 rounded-2xl bg-white dark:bg-slate-800 border-2 border-blue-500 shadow-2xl flex items-start gap-3 animate-bounce">
+          <div className="p-2 rounded-xl bg-blue-500 text-white shrink-0">
+            <BellRing className="w-5 h-5 animate-spin" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+              {inAppToast.title}
+            </div>
+            <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
+              {inAppToast.body}
+            </div>
+          </div>
+          <button
+            onClick={() => setInAppToast(null)}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div 
-        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
               <BellRing className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white text-base leading-snug">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base leading-snug">
                 Cài đặt nhắc lịch dạy học
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Thông báo Web Push & trực tiếp trên điện thoại/máy tính
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                Thông báo Web Push & âm thanh chuông trên điện thoại/máy tính
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 text-sm">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 sm:py-5 space-y-5 text-sm">
           {/* Permission Status Box */}
           <div className={`p-4 rounded-xl border transition-all ${
             isGranted
@@ -147,43 +210,69 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                 <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               )}
               <div className="flex-1">
-                <div className="font-medium">
+                <div className="font-medium text-xs sm:text-sm">
                   {isGranted
                     ? 'Quyền thông báo đã được kích hoạt'
                     : permission === 'denied'
                     ? 'Thông báo đang bị chặn bởi trình duyệt'
-                    : 'Cần cấp quyền nhận thông báo'}
+                    : 'Kích hoạt nhận thông báo trên thiết bị này'}
                 </div>
-                <div className="text-xs mt-0.5 opacity-90 leading-relaxed">
+                <div className="text-[11px] sm:text-xs mt-0.5 opacity-90 leading-relaxed">
                   {isGranted
                     ? 'Thiết bị này đã sẵn sàng nhận thông báo Web Push ngay cả khi thu nhỏ trang.'
                     : permission === 'denied'
                     ? 'Vui lòng nhấn vào biểu tượng ổ khóa/cài đặt trên thanh địa chỉ trình duyệt để cho phép Thông báo.'
-                    : 'Nhấn nút bên dưới để cấp quyền cho phép hệ thống gửi thông báo nhắc tiết dạy.'}
+                    : 'Nhấn nút bên dưới để cấp quyền nhận thông báo và chuông nhắc giờ dạy.'}
                 </div>
 
                 {!isGranted && permission !== 'denied' && (
                   <button
                     type="button"
                     onClick={handleRequestPermission}
-                    disabled={isPermLoading || !isSupported}
-                    className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-colors"
+                    disabled={isPermLoading}
+                    className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-colors cursor-pointer"
                   >
                     <Bell className="w-3.5 h-3.5" />
-                    {isPermLoading ? 'Đang xin quyền...' : 'Cho phép nhận thông báo ngay'}
+                    {isPermLoading ? 'Đang kích hoạt...' : 'Cho phép nhận thông báo ngay'}
                   </button>
                 )}
               </div>
             </div>
           </div>
 
+          {/* Hướng dẫn riêng cho thiết bị iOS / Mobile nếu cần */}
+          {platformInfo?.requiresPwaForPush && (
+            <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-xs text-blue-600 dark:text-blue-400">
+                <Smartphone className="w-4 h-4" />
+                Hướng dẫn cho iPhone / iPad (iOS):
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                Để nhận thông báo đẩy khi tắt màn hình trên iPhone: Bấm nút <strong className="inline-flex items-center gap-1 font-bold"><Share className="w-3 h-3 inline" /> Chia sẻ</strong> ở thanh công cụ dưới Safari ➔ Chọn <strong className="font-bold">"Thêm vào Màn hình chính"</strong> (Add to Home Screen).
+              </p>
+            </div>
+          )}
+
+          {/* Thông báo hướng dẫn nếu gặp lỗi Mobile */}
+          {mobileNotice && (
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2 animate-in fade-in">
+              <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1 leading-relaxed text-[11px] sm:text-xs">
+                {mobileNotice}
+              </div>
+              <button onClick={() => setMobileNotice(null)} className="text-amber-600 p-0.5">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Master Toggle */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
             <div>
-              <label htmlFor="master-toggle" className="font-semibold text-slate-900 dark:text-white cursor-pointer">
+              <label htmlFor="master-toggle" className="font-semibold text-slate-900 dark:text-white cursor-pointer text-xs sm:text-sm">
                 Bật tự động nhắc lịch dạy
               </label>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 Kích hoạt hệ thống theo dõi và đẩy thông báo tiết dạy cho Thầy/Cô
               </p>
             </div>
@@ -208,7 +297,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
             <select
               value={settings.selectedTeacher || ''}
               onChange={(e) => setSettings({ ...settings, selectedTeacher: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-xs sm:text-sm"
             >
               <option value="">-- Chọn giáo viên --</option>
               {timetable?.teachers.map((t) => (
@@ -238,7 +327,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                     onChange={(e) => setSettings({ ...settings, notifyBeforePeriod: e.target.checked })}
                     className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800"
                   />
-                  <div className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
+                  <div className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
                     <Clock className="w-4 h-4 text-amber-500" />
                     Nhắc trước giờ vào tiết dạy
                   </div>
@@ -246,7 +335,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
               </div>
 
               {settings.notifyBeforePeriod && (
-                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                   <span>Báo trước:</span>
                   <select
                     value={settings.minutesBeforePeriod}
@@ -274,7 +363,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                     onChange={(e) => setSettings({ ...settings, notifyMorningBrief: e.target.checked })}
                     className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800"
                   />
-                  <div className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
+                  <div className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
                     <Sun className="w-4 h-4 text-orange-500" />
                     Bản tin tổng hợp lịch dạy sáng nay
                   </div>
@@ -282,7 +371,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
               </div>
 
               {settings.notifyMorningBrief && (
-                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                   <span>Gửi lúc:</span>
                   <input
                     type="time"
@@ -305,7 +394,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                     onChange={(e) => setSettings({ ...settings, notifyEveningBrief: e.target.checked })}
                     className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800"
                   />
-                  <div className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
+                  <div className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
                     <Moon className="w-4 h-4 text-indigo-500" />
                     Chuẩn bị giáo án ngày mai (Tối hôm trước)
                   </div>
@@ -313,7 +402,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
               </div>
 
               {settings.notifyEveningBrief && (
-                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                   <span>Gửi lúc:</span>
                   <input
                     type="time"
@@ -329,23 +418,24 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 gap-2">
           <button
             type="button"
             onClick={handleTestNotification}
-            disabled={!isGranted || testSent}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
-            title="Gửi thử một thông báo ngay lập tức để kiểm tra thiết bị"
+            disabled={testSent}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            title="Gửi thử chuông và thông báo ngay lập tức để kiểm tra thiết bị"
           >
-            <Send className="w-3.5 h-3.5" />
-            {testSent ? 'Đã gửi thử nghiệm!' : 'Gửi thử nghiệm'}
+            <Volume2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <Send className="w-3 h-3" />
+            <span>{testSent ? 'Đang gửi...' : 'Gửi thử nghiệm'}</span>
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Hủy
             </button>
@@ -353,7 +443,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
             >
               {saveSuccess ? (
                 <>

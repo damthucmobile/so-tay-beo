@@ -12,10 +12,14 @@ export function usePushNotifications() {
   const [isSupported, setIsSupported] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const [platformInfo, setPlatformInfo] = useState(PushNotificationService.getPlatformInfo());
+
   useEffect(() => {
     const supported = PushNotificationService.isSupported();
     setIsSupported(supported);
-    if (supported) {
+    setPlatformInfo(PushNotificationService.getPlatformInfo());
+
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       setPermission(PushNotificationService.getPermission());
       // Register Service Worker in background
       PushNotificationService.registerServiceWorker().catch(() => {});
@@ -39,17 +43,21 @@ export function usePushNotifications() {
     }
   }, [user]);
 
-  // Send a test local notification
+  // Send a test local notification (luôn phát chuông và toast ngay cả trên mobile)
   const sendTestNotification = useCallback(async (payload?: Partial<PushNotificationPayload>): Promise<boolean> => {
-    if (permission !== 'granted') {
-      const granted = await requestPermission();
-      if (!granted) return false;
+    // Nếu chưa granted, thử xin cấp quyền
+    if (permission !== 'granted' && 'Notification' in window) {
+      try {
+        await requestPermission();
+      } catch {
+        // Bỏ qua lỗi xin quyền để tiếp tục hiển thị in-app notification
+      }
     }
 
     return PushNotificationService.showNotification({
       title: payload?.title || '🔔 Kiểm tra thông báo thành công!',
       body: payload?.body || 'Hệ thống nhắc nhở của Sổ Tay Béo đã hoạt động trơn tru trên thiết bị này.',
-      icon: payload?.icon || '/icon-192.png',
+      icon: payload?.icon || '/icon.png',
       tag: payload?.tag || 'test_notification',
       url: payload?.url || '/?tab=teaching_schedule',
       data: payload?.data,
@@ -59,6 +67,7 @@ export function usePushNotifications() {
   return {
     permission,
     isSupported,
+    platformInfo,
     isLoading,
     isGranted: permission === 'granted',
     requestPermission,
