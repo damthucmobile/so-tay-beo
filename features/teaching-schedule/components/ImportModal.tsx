@@ -117,8 +117,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => 
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3 ${isDragging
-                ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30'
-                : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
+              ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30'
+              : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
               }`}
           >
             <input

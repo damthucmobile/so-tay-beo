@@ -98,33 +98,30 @@ export const TeachingScheduleFeature: React.FC = () => {
         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
           <button
             onClick={() => setViewMode('teacher')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              viewMode === 'teacher'
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'teacher'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
+              }`}
           >
             Lịch giáo viên
           </button>
 
           <button
             onClick={() => setViewMode('class')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              viewMode === 'class'
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'class'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
+              }`}
           >
             Lịch theo lớp
           </button>
 
           <button
             onClick={() => setViewMode('matrix')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              viewMode === 'matrix'
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'matrix'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
+              }`}
           >
             Lịch toàn trường
           </button>

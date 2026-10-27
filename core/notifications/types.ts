@@ -42,11 +42,20 @@ export interface PushNotificationPayload {
   requireInteraction?: boolean;
 }
 
+export interface ZaloNotificationSettings {
+  enabled: boolean;
+  phoneNumber?: string;
+  zaloUserId?: string;
+  status: 'disabled' | 'pending_link' | 'connected';
+  testMode: boolean; // Chế độ thử nghiệm khi chưa có Giấy ĐKKD
+}
+
 export interface BaseReminderSettings {
   id?: string;
   userId?: string;
   enabled: boolean;
   soundEnabled?: boolean;
+  zalo?: ZaloNotificationSettings;
   createdAt?: string;
   updatedAt?: string;
 }

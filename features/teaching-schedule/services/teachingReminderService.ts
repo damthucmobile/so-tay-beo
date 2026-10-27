@@ -15,6 +15,13 @@ export const DEFAULT_TEACHING_REMINDER_SETTINGS: TeachingReminderSettings = {
   eveningBriefTime: '20:00',
   notifyBeforePeriod: true,
   minutesBeforePeriod: 15,
+  zalo: {
+    enabled: false,
+    phoneNumber: '',
+    zaloUserId: '',
+    status: 'disabled',
+    testMode: true,
+  },
 };
 
 const DAY_MAP: Record<number, DayOfWeek | null> = {
@@ -35,7 +42,7 @@ export class TeachingReminderService {
    * Lưu cài đặt nhắc nhở
    */
   public static async saveSettings(
-    settings: TeachingReminderSettings, 
+    settings: TeachingReminderSettings,
     userId?: string
   ): Promise<void> {
     if (typeof window !== 'undefined') {
