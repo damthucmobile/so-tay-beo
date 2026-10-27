@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../useAuth';
 
 export interface LoginFormProps {
@@ -36,6 +36,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const standalone =
+        (window.navigator as any).standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches;
+      setIsStandalone(standalone);
+      setIsIos(/iPhone|iPad|iPod/i.test(navigator.userAgent));
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,10 +73,36 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const handleGoogleAuth = async () => {
     clearError();
     setInfoMessage(null);
-    try {
-      if (googleFlow === 'popup') {
+
+    // Xử lý riêng cho trường hợp PWA trên màn hình chính (Standalone)
+    if (isStandalone && isIos) {
+      try {
         await loginWithGooglePopup();
         onSuccess?.();
+        return;
+      } catch (err: any) {
+        console.warn('[LoginForm] Google Auth restricted on iOS Standalone PWA:', err);
+        setInfoMessage(
+          '⚠️ Trên Màn hình chính iPhone (PWA), Apple chặn cửa sổ Google. Bạn có thể: (1) Đăng nhập bằng Email & Mật khẩu bên dưới, hoặc (2) Mở trình duyệt Safari đăng nhập Google trước rồi mới "Thêm vào MH chính".'
+        );
+        return;
+      }
+    }
+
+    try {
+      if (googleFlow === 'popup') {
+        try {
+          await loginWithGooglePopup();
+          onSuccess?.();
+        } catch (popupErr: any) {
+          const errCode = popupErr?.code || popupErr?.message || '';
+          if (errCode.includes('popup-blocked') || errCode.includes('popup-closed')) {
+            console.log('[LoginForm] Popup bị chặn, tự động chuyển sang Redirect...');
+            await loginWithGoogleRedirect();
+          } else {
+            throw popupErr;
+          }
+        }
       } else {
         await loginWithGoogleRedirect();
       }
@@ -225,6 +263,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             </svg>
             <span>Tiếp tục với Google</span>
           </button>
+
+          {isStandalone && (
+            <p className="mt-2.5 text-[11px] text-amber-700 dark:text-amber-400/90 text-center leading-relaxed bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/40">
+              💡 <strong>Lưu ý trên Màn hình chính:</strong> Nếu gặp lỗi khi bấm Google do chính sách bảo mật của điện thoại, bạn có thể đăng nhập bằng <strong>Email & Mật khẩu</strong> ở trên hoặc mở <strong>Safari</strong> đăng nhập trước.
+            </p>
+          )}
         </div>
       )}
 

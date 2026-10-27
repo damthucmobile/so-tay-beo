@@ -2,18 +2,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Bell, 
-  BellRing, 
-  Clock, 
-  Sun, 
-  Moon, 
-  CheckCircle2, 
-  AlertCircle, 
-  Send, 
-  ShieldAlert, 
-  User, 
+import {
+  X,
+  Bell,
+  BellRing,
+  Clock,
+  Sun,
+  Moon,
+  CheckCircle2,
+  AlertCircle,
+  Send,
+  ShieldAlert,
+  User,
   Save,
   Smartphone,
   Share,
@@ -39,14 +39,14 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
   defaultTeacher = '',
 }) => {
   const { user } = useAuth();
-  const { 
-    permission, 
-    isSupported, 
-    isGranted, 
+  const {
+    permission,
+    isSupported,
+    isGranted,
     platformInfo,
-    isLoading: isPermLoading, 
-    requestPermission, 
-    sendTestNotification 
+    isLoading: isPermLoading,
+    requestPermission,
+    sendTestNotification
   } = usePushNotifications();
 
   const [settings, setSettings] = useState<TeachingReminderSettings>(DEFAULT_TEACHING_REMINDER_SETTINGS);
@@ -90,7 +90,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
 
   const handleRequestPermission = async () => {
     if (platformInfo?.requiresPwaForPush) {
-      setMobileNotice('Trên iPhone/iPad, Apple yêu cầu bạn nhấn nút "Chia sẻ" (biểu tượng mũi tên lên) ở thanh dưới trình duyệt Safari và chọn "Thêm vào Màn hình chính" để kích hoạt Web Push.');
+      setMobileNotice('Trên iPhone/iPad: Bạn hãy đăng nhập tài khoản trên Safari trước, sau đó nhấn nút "Chia sẻ" (biểu tượng mũi tên lên) ở thanh dưới và chọn "Thêm vào Màn hình chính" để nhận thông báo đẩy.');
       return;
     }
 
@@ -164,7 +164,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
         </div>
       )}
 
-      <div 
+      <div
         className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -194,13 +194,12 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 sm:py-5 space-y-5 text-sm">
           {/* Permission Status Box */}
-          <div className={`p-4 rounded-xl border transition-all ${
-            isGranted
+          <div className={`p-4 rounded-xl border transition-all ${isGranted
               ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-200'
               : permission === 'denied'
-              ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200'
-              : 'bg-blue-50/70 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40 text-blue-900 dark:text-blue-200'
-          }`}>
+                ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200'
+                : 'bg-blue-50/70 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40 text-blue-900 dark:text-blue-200'
+            }`}>
             <div className="flex items-start gap-3">
               {isGranted ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -214,15 +213,15 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                   {isGranted
                     ? 'Quyền thông báo đã được kích hoạt'
                     : permission === 'denied'
-                    ? 'Thông báo đang bị chặn bởi trình duyệt'
-                    : 'Kích hoạt nhận thông báo trên thiết bị này'}
+                      ? 'Thông báo đang bị chặn bởi trình duyệt'
+                      : 'Kích hoạt nhận thông báo trên thiết bị này'}
                 </div>
                 <div className="text-[11px] sm:text-xs mt-0.5 opacity-90 leading-relaxed">
                   {isGranted
                     ? 'Thiết bị này đã sẵn sàng nhận thông báo Web Push ngay cả khi thu nhỏ trang.'
                     : permission === 'denied'
-                    ? 'Vui lòng nhấn vào biểu tượng ổ khóa/cài đặt trên thanh địa chỉ trình duyệt để cho phép Thông báo.'
-                    : 'Nhấn nút bên dưới để cấp quyền nhận thông báo và chuông nhắc giờ dạy.'}
+                      ? 'Vui lòng nhấn vào biểu tượng ổ khóa/cài đặt trên thanh địa chỉ trình duyệt để cho phép Thông báo.'
+                      : 'Nhấn nút bên dưới để cấp quyền nhận thông báo và chuông nhắc giờ dạy.'}
                 </div>
 
                 {!isGranted && permission !== 'denied' && (
@@ -248,7 +247,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                 Hướng dẫn cho iPhone / iPad (iOS):
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                Để nhận thông báo đẩy khi tắt màn hình trên iPhone: Bấm nút <strong className="inline-flex items-center gap-1 font-bold"><Share className="w-3 h-3 inline" /> Chia sẻ</strong> ở thanh công cụ dưới Safari ➔ Chọn <strong className="font-bold">"Thêm vào Màn hình chính"</strong> (Add to Home Screen).
+                Để nhận thông báo đẩy khi tắt màn hình: Hãy <strong>đăng nhập tài khoản trên Safari trước</strong> ➔ Bấm nút <strong className="inline-flex items-center gap-1 font-bold"><Share className="w-3 h-3 inline" /> Chia sẻ</strong> ở thanh công cụ dưới Safari ➔ Chọn <strong className="font-bold">"Thêm vào Màn hình chính"</strong> (Add to Home Screen).
               </p>
             </div>
           )}

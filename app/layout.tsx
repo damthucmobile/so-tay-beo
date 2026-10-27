@@ -19,6 +19,11 @@ import { Providers } from "../components/Providers";
 export const metadata: Metadata = {
   title: "Sổ Tay Béo - Quản Lý Lớp Học & Thù Lao",
   description: "Ứng dụng Sổ Tay Béo quản lý lớp học, lịch tự do và đối soát thù lao giảng dạy",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Sổ Tay Béo",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
