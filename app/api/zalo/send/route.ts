@@ -1,32 +1,40 @@
-// app/api/zalo/send/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { ZaloService } from '@/core/notifications/zaloService';
+import { adminDb } from '@/core/firebase/admin';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { recipientId, teacherName, periodInfo, customMessage } = body;
+    const { recipientId, phoneNumber, teacherName, periodInfo, customMessage } = body;
 
-    // Lấy Zalo Access Token từ biến môi trường (hoặc cấu hình)
-    const zaloAccessToken = process.env.ZALO_OA_ACCESS_TOKEN || '';
+    let targetRecipientId = recipientId;
 
-    if (!zaloAccessToken) {
+    // Nếu không có recipientId trực tiếp, tìm kiếm qua số điện thoại đã liên kết trong Firestore
+    if (!targetRecipientId && phoneNumber && adminDb) {
+      try {
+        const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
+        const mappingDoc = await adminDb.collection('zalo_user_mappings').doc(cleanPhone).get();
+        if (mappingDoc.exists) {
+          targetRecipientId = mappingDoc.data()?.zaloUserId;
+        }
+      } catch (dbErr) {
+        console.warn('[Zalo Send] Lỗi tra cứu mapping SĐT:', dbErr);
+      }
+    }
+
+    if (!targetRecipientId) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Chưa cấu hình ZALO_OA_ACCESS_TOKEN trong file .env.local',
-          isSandbox: true,
+          error: `Số điện thoại ${phoneNumber || ''} chưa liên kết với Zalo OA. Thầy/Cô vui lòng dùng Zalo quét mã QR của OA và nhắn tin số điện thoại này vào OA một lần trước!`,
+          needLink: true,
         },
         { status: 400 }
       );
     }
 
-    if (!recipientId) {
-      return NextResponse.json(
-        { success: false, error: 'Thiếu Zalo User ID của người nhận' },
-        { status: 400 }
-      );
-    }
+    // Lấy Zalo Access Token từ biến môi trường
+    const zaloAccessToken = process.env.ZALO_OA_ACCESS_TOKEN || '';
 
     const messageText = customMessage || (
       periodInfo

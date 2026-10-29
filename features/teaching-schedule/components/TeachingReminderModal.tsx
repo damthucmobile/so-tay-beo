@@ -128,18 +128,46 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
     setTimeout(() => setTestSent(false), 2500);
   };
 
-  const handleTestZalo = () => {
+  const handleTestZalo = async () => {
     const phone = settings.zalo?.phoneNumber?.trim();
     if (!phone) {
       setMobileNotice('Vui lòng nhập số điện thoại Zalo trước khi gửi thử nghiệm.');
       return;
     }
     setZaloTestSent(true);
-    setInAppToast({
-      title: '💬 Zalo Notification (Môi trường Sandbox)',
-      body: `Đã gửi bản tin lịch dạy thử nghiệm đến SĐT Zalo ${phone} cho Thầy/Cô ${settings.selectedTeacher || 'được chọn'}.`,
-    });
-    setTimeout(() => setZaloTestSent(false), 3000);
+
+    try {
+      const res = await fetch('/api/zalo/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientId: settings.zalo?.zaloUserId,
+          phoneNumber: phone,
+          teacherName: settings.selectedTeacher || 'Thầy/Cô',
+          customMessage: `🔔 [SỔ TAY BÉO - THỬ NGHIỆM ZALO]\nXin chào Thầy/Cô ${settings.selectedTeacher || ''}!\nHệ thống nhắc lịch dạy của Sổ Tay Béo qua Zalo đã được kết nối thành công.`,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setInAppToast({
+          title: '💬 Zalo Notification: Gửi thành công!',
+          body: `Đã gửi bản tin thử nghiệm đến Zalo của Thầy/Cô ${settings.selectedTeacher || ''}.`,
+        });
+      } else {
+        setInAppToast({
+          title: '⚠️ Chưa thể gửi tin Zalo',
+          body: data.error || 'Vui lòng kiểm tra Zalo Access Token hoặc quét mã QR quan tâm OA.',
+        });
+      }
+    } catch (err: any) {
+      setInAppToast({
+        title: '⚠️ Lỗi kết nối Zalo',
+        body: err?.message || 'Không thể kết nối đến máy chủ gửi tin Zalo.',
+      });
+    } finally {
+      setTimeout(() => setZaloTestSent(false), 3000);
+    }
   };
 
   const handleSave = async () => {

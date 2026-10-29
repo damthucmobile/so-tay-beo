@@ -225,12 +225,57 @@ async function handleCron(request: NextRequest) {
           }
         }
 
+        // 5. Gửi song song qua Zalo OA (nếu người dùng bật chế độ Zalo)
+        let zaloResult = null;
+        if (setting.zalo?.enabled) {
+          const phone = setting.zalo?.phoneNumber?.trim()?.replace(/\s+/g, '');
+          let zaloUid = setting.zalo?.zaloUserId;
+
+          // Nếu chưa có Zalo UID trực tiếp, tìm kiếm từ mapping đã lưu
+          if (!zaloUid && phone) {
+            try {
+              const mapDoc = await adminDb.collection('zalo_user_mappings').doc(phone).get();
+              if (mapDoc.exists) {
+                zaloUid = mapDoc.data()?.zaloUserId;
+              }
+            } catch (zErr) {
+              console.warn('[Cron Reminders] Lỗi tra cứu mapping Zalo:', zErr);
+            }
+          }
+
+          if (zaloUid) {
+            try {
+              const { ZaloService } = await import('@/core/notifications/zaloService');
+              const zaloAccessToken = process.env.ZALO_OA_ACCESS_TOKEN || '';
+              zaloResult = await ZaloService.sendMessage(zaloAccessToken, {
+                recipientId: zaloUid,
+                messageText: `🔔 [SỔ TAY BÉO - NHẮC LỊCH DẠY]\n${notificationToSend.title}\n\n${notificationToSend.body}`,
+                buttons: [
+                  {
+                    title: 'Xem Thời Khóa Biểu',
+                    type: 'oa.open.url',
+                    payload: {
+                      url: process.env.NEXT_PUBLIC_APP_URL || 'https://sotaybeo.vn/?tab=teaching_schedule',
+                    },
+                  },
+                ],
+              });
+            } catch (zaloSendErr: any) {
+              console.error('[Cron Reminders] Lỗi gửi tin Zalo:', zaloSendErr);
+              zaloResult = { error: zaloSendErr?.message };
+            }
+          } else {
+            zaloResult = { skipped: true, reason: 'Chưa có Zalo UID liên kết với số điện thoại này' };
+          }
+        }
+
         results.push({
           userId,
           teacher,
           notification: notificationToSend,
           deviceTokensCount: tokens.length,
-          pushResult,
+          fcmPushResult: pushResult,
+          zaloResult,
         });
       }
     }

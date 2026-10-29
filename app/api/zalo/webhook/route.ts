@@ -22,8 +22,19 @@ export async function POST(req: NextRequest) {
       const phoneMatch = messageText.match(/0\d{9}/);
       if (phoneMatch) {
         const detectedPhone = phoneMatch[0];
-        console.log(`[Zalo Webhook] Phát hiện yêu cầu liên kết: Zalo UID ${senderId} <-> SĐT ${detectedPhone}`);
-        // Ở đây hệ thống có thể lưu vào Firestore mapping: sdt -> zalo_uid
+        console.log(`[Zalo Webhook] Lưu liên kết: Zalo UID ${senderId} <-> SĐT ${detectedPhone}`);
+        try {
+          const { adminDb } = await import('@/core/firebase/admin');
+          if (adminDb) {
+            await adminDb.collection('zalo_user_mappings').doc(detectedPhone).set({
+              phoneNumber: detectedPhone,
+              zaloUserId: senderId,
+              updatedAt: new Date().toISOString(),
+            }, { merge: true });
+          }
+        } catch (dbErr) {
+          console.error('[Zalo Webhook] Lỗi lưu Firestore:', dbErr);
+        }
       }
     }
 
