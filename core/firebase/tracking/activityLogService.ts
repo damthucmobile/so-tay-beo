@@ -78,9 +78,11 @@ class ActivityLogBuffer {
       });
 
       await batch.commit();
-    } catch (error) {
-      console.warn('Lỗi xả hàng đợi Activity Log:', error);
-      // Giữ lại các mục chưa gửi nếu cần thiết
+    } catch (error: any) {
+      // Bỏ qua cảnh báo permission-denied để tránh spam console khi Firestore Rules chưa deploy
+      if (error?.code !== 'permission-denied') {
+        console.warn('Lỗi xả hàng đợi Activity Log:', error);
+      }
     }
   }
 

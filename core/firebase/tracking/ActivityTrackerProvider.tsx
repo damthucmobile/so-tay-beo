@@ -79,7 +79,11 @@ function RouteNavigationWatcher({
         subtitle: match.subtitle,
         sessionId,
         metadata: match.metadata,
-      }).catch((e) => console.warn('Lỗi auto-tracking recent view:', e));
+      }).catch((e) => {
+        if (e?.code !== 'permission-denied') {
+          console.warn('Lỗi auto-tracking recent view:', e);
+        }
+      });
 
       // Tự động ghi nhận Activity Log
       logUserActivity(userId, `VIEW_${match.contentType.toUpperCase()}`, {
