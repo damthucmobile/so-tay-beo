@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     );
 
     const result = await ZaloService.sendMessage(zaloAccessToken, {
-      recipientId,
+      recipientId: targetRecipientId,
       messageText,
       buttons: [
         {
