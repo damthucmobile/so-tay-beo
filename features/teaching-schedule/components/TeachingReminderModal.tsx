@@ -300,122 +300,119 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
             </h4>
 
             {/* 1. Nhắc trước giờ vào tiết */}
-            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+            <div className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2.5 cursor-pointer">
+                <label className="flex items-center gap-2.5 cursor-pointer flex-1">
                   <input
                     type="checkbox"
                     checked={settings.notifyBeforePeriod}
                     onChange={(e) => setSettings({ ...settings, notifyBeforePeriod: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800"
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800 shrink-0"
                   />
                   <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
-                    <Clock className="w-4 h-4 text-amber-500" />
-                    Nhắc trước giờ vào lớp từng tiết dạy
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Nhắc trước giờ vào lớp từng tiết dạy</span>
                   </div>
                 </label>
               </div>
 
               {settings.notifyBeforePeriod && (
-                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
-                  <span>Báo trước:</span>
+                <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-medium">Thời gian báo trước:</span>
                   <select
                     value={settings.minutesBeforePeriod}
                     onChange={(e) => setSettings({ ...settings, minutesBeforePeriod: Number(e.target.value) })}
-                    className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold outline-none"
+                    className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold outline-none text-xs shrink-0"
                   >
-                    <option value={5}>5 phút</option>
-                    <option value={10}>10 phút</option>
-                    <option value={15}>15 phút (Khuyên dùng)</option>
-                    <option value={20}>20 phút</option>
-                    <option value={30}>30 phút</option>
+                    <option value={5}>5 phút trước</option>
+                    <option value={10}>10 phút trước</option>
+                    <option value={15}>15 phút trước (Khuyên dùng)</option>
+                    <option value={20}>20 phút trước</option>
+                    <option value={30}>30 phút trước</option>
                   </select>
-                  <span>kèm thông tin lớp dạy và môn học</span>
                 </div>
               )}
             </div>
 
             {/* 2. Bản tin sáng */}
-            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+            <div className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2.5 cursor-pointer">
+                <label className="flex items-center gap-2.5 cursor-pointer flex-1">
                   <input
                     type="checkbox"
                     checked={settings.notifyMorningBrief}
                     onChange={(e) => setSettings({ ...settings, notifyMorningBrief: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800"
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800 shrink-0"
                   />
                   <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
-                    <Sun className="w-4 h-4 text-orange-500" />
-                    Bản tin tổng hợp lịch dạy sáng nay
+                    <Sun className="w-4 h-4 text-orange-500 shrink-0" />
+                    <span>Bản tin tổng hợp lịch dạy sáng nay</span>
                   </div>
                 </label>
               </div>
 
               {settings.notifyMorningBrief && (
-                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
-                  <span>Gửi lúc:</span>
+                <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-medium">Giờ gửi mỗi sáng:</span>
                   <input
                     type="time"
                     value={settings.morningBriefTime}
                     onChange={(e) => setSettings({ ...settings, morningBriefTime: e.target.value })}
-                    className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold outline-none"
+                    className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold outline-none text-xs shrink-0"
                   />
-                  <span>mỗi sáng (tóm tắt tổng số tiết & các lớp)</span>
                 </div>
               )}
             </div>
 
             {/* 3. Bản tin tối */}
-            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+            <div className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2.5 cursor-pointer">
+                <label className="flex items-center gap-2.5 cursor-pointer flex-1">
                   <input
                     type="checkbox"
                     checked={settings.notifyEveningBrief}
                     onChange={(e) => setSettings({ ...settings, notifyEveningBrief: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800"
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:bg-slate-800 shrink-0"
                   />
                   <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
-                    <Moon className="w-4 h-4 text-indigo-500" />
-                    Chuẩn bị giáo án ngày mai (Tối hôm trước)
+                    <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
+                    <span>Chuẩn bị giáo án ngày mai (Tối hôm trước)</span>
                   </div>
                 </label>
               </div>
 
               {settings.notifyEveningBrief && (
-                <div className="pl-6 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
-                  <span>Gửi lúc:</span>
+                <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-medium">Giờ gửi mỗi tối:</span>
                   <input
                     type="time"
                     value={settings.eveningBriefTime}
                     onChange={(e) => setSettings({ ...settings, eveningBriefTime: e.target.value })}
-                    className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold outline-none"
+                    className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold outline-none text-xs shrink-0"
                   />
-                  <span>mỗi tối để chuẩn bị giáo án</span>
                 </div>
               )}
             </div>
 
             {/* Âm thanh chuông báo */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+            <div className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 shrink-0">
                   <Volume2 className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
-                    Âm thanh chuông thông báo
+                <div className="min-w-0">
+                  <div className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate">
+                    Chuông âm thanh
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Phát chuông báo hiệu khi có thông báo lịch dạy
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    Phát chuông báo khi có lịch dạy
                   </div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleTestSound}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer shadow-sm"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer shadow-sm shrink-0"
               >
                 Nghe thử chuông
               </button>
@@ -423,24 +420,24 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 gap-2">
+        {/* Footer Actions - Responsive mượt mà trên Mobile */}
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 gap-2.5">
           <button
             type="button"
             onClick={handleTestNotification}
             disabled={testSent}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-900/50 transition cursor-pointer shrink-0 shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-900/50 transition cursor-pointer shrink-0 shadow-sm active:scale-95"
             title="Gửi thử chuông và thông báo để bấm kiểm tra chuyển lịch"
           >
             <Send className="w-3.5 h-3.5" />
             <span>{testSent ? 'Đang gửi thử...' : 'Gửi thử thông báo'}</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer text-center"
             >
               Hủy
             </button>
@@ -448,7 +445,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition cursor-pointer disabled:opacity-50"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition cursor-pointer disabled:opacity-50 text-center"
             >
               {saveSuccess ? (
                 <>

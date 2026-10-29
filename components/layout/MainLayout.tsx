@@ -77,41 +77,48 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30 selection:text-blue-600 dark:selection:text-blue-200 transition-colors duration-200">
-      {/* Toast thông báo In-App nổi trên toàn bộ màn hình */}
+      {/* Toast thông báo In-App nổi trên toàn bộ màn hình - Căn giữa đối xứng 100% trên Mobile & góc phải trên Desktop */}
       {activeNotification && (
-        <div
-          role="alert"
-          onClick={handleNotificationClick}
-          className="fixed top-4 right-4 z-50 max-w-sm w-full mx-auto sm:max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-blue-500/60 dark:border-blue-500/50 rounded-2xl p-4 shadow-2xl flex items-start gap-3.5 animate-in slide-in-from-top-4 duration-300 cursor-pointer hover:border-blue-600 transition-all group"
-        >
-          <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
-            <Bell className="w-5 h-5 animate-bounce" />
-          </div>
-
-          <div className="flex-1 min-w-0 pr-2">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1 flex items-center gap-1.5">
-              <span>{activeNotification.title}</span>
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-2 leading-relaxed">
-              {activeNotification.body}
-            </p>
-            <div className="mt-2.5 flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
-              <span>Xem lịch ngay</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveNotification(null);
-            }}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
-            title="Đóng thông báo"
+        <div className="fixed top-3 sm:top-5 inset-x-0 sm:inset-x-auto sm:right-6 z-[9999] flex justify-center sm:justify-end px-3 sm:px-0 pointer-events-none animate-in slide-in-from-top-3 duration-300">
+          <div
+            role="alert"
+            onClick={handleNotificationClick}
+            className="pointer-events-auto w-full max-w-md bg-slate-900/95 text-white backdrop-blur-xl border-2 border-blue-500/80 rounded-2xl p-3.5 sm:p-4 shadow-2xl shadow-blue-900/50 flex items-start gap-3 cursor-pointer hover:border-blue-400 transition-all group ring-1 ring-white/10"
           >
-            <X className="w-4 h-4" />
-          </button>
+            <div className="p-2 sm:p-2.5 rounded-xl bg-blue-500/20 text-blue-400 shrink-0 mt-0.5 border border-blue-500/30 group-hover:scale-105 transition-transform">
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 animate-bounce" />
+            </div>
+
+            <div className="flex-1 min-w-0 pr-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
+                  THÔNG BÁO LỊCH DẠY
+                </span>
+                <h4 className="text-xs sm:text-sm font-bold text-white truncate max-w-full">
+                  {activeNotification.title}
+                </h4>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                {activeNotification.body}
+              </p>
+              <div className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
+                <span>Bấm vào đây để mở lịch dạy</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveNotification(null);
+              }}
+              className="p-1.5 -mr-1 -mt-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0 cursor-pointer"
+              title="Đóng thông báo"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
       {/* Background Glows */}
