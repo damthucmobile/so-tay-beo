@@ -39,6 +39,39 @@ export class TeachingReminderService {
   private static LAST_NOTIFIED_KEY = 'teaching_reminder_last_dispatched';
 
   /**
+   * Lấy chuỗi ngày YYYY-MM-DD theo giờ địa phương (tránh sai lệch múi giờ UTC)
+   */
+  public static getLocalDateString(date: Date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Xóa bộ nhớ đệm các thông báo đã gửi trong ngày hôm nay khi người dùng đổi giờ hoặc lưu cài đặt mới
+   */
+  public static clearDispatchedForToday(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const todayDateStr = this.getLocalDateString();
+      const history = localStorage.getItem(this.LAST_NOTIFIED_KEY);
+      if (!history) return;
+      const parsed = JSON.parse(history);
+      const newHistory: Record<string, boolean> = {};
+      for (const key of Object.keys(parsed)) {
+        // Nếu không thuộc ngày hôm nay, hoặc là key nhắc tiết cũ thì giữ lại
+        if (!key.includes(todayDateStr) || key.startsWith('period_')) {
+          newHistory[key] = parsed[key];
+        }
+      }
+      localStorage.setItem(this.LAST_NOTIFIED_KEY, JSON.stringify(newHistory));
+    } catch {
+      // ignore
+    }
+  }
+
+  /**
    * Lưu cài đặt nhắc nhở
    */
   public static async saveSettings(
@@ -47,6 +80,8 @@ export class TeachingReminderService {
   ): Promise<void> {
     if (typeof window !== 'undefined') {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(settings));
+      // Tự động làm mới cache thông báo trong ngày khi người dùng đổi giờ/cài đặt
+      this.clearDispatchedForToday();
     }
 
     if (userId) {
@@ -122,10 +157,7 @@ export class TeachingReminderService {
     const currentDayOfWeek = DAY_MAP[currentDayOfWeekIdx];
     const todayEntries = currentDayOfWeek ? this.getTeacherEntriesForDay(timetable, settings.selectedTeacher, currentDayOfWeek) : [];
 
-    const nowHours = String(now.getHours()).padStart(2, '0');
-    const nowMinutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTimeStr = `${nowHours}:${nowMinutes}`;
-    const todayDateStr = now.toISOString().split('T')[0];
+    const todayDateStr = this.getLocalDateString(now);
 
     // Helper kiểm tra đã gửi thông báo hay chưa
     const hasAlreadyNotified = (key: string): boolean => {
@@ -146,7 +178,6 @@ export class TeachingReminderService {
         const history = localStorage.getItem(this.LAST_NOTIFIED_KEY);
         const parsed = history ? JSON.parse(history) : {};
         parsed[key] = true;
-        // Clean up old dates if too big
         localStorage.setItem(this.LAST_NOTIFIED_KEY, JSON.stringify(parsed));
       } catch {
         // ignore
@@ -156,13 +187,14 @@ export class TeachingReminderService {
     const nowTotalMinutes = now.getHours() * 60 + now.getMinutes();
 
     // 1. Kiểm tra bản tin sáng (Morning Brief) - Cửa sổ 30 phút tính từ giờ hẹn
-    if (settings.notifyMorningBrief) {
+    if (settings.notifyMorningBrief && settings.morningBriefTime) {
       const [mH, mM] = settings.morningBriefTime.split(':').map(Number);
       const morningMinutes = mH * 60 + mM;
       const isMorningWindow = nowTotalMinutes >= morningMinutes && nowTotalMinutes <= morningMinutes + 30;
 
       if (isMorningWindow) {
-        const briefKey = `morning_${settings.selectedTeacher}_${todayDateStr}`;
+        // Key gắn liền với mốc thời gian đã cài để khi đổi giờ vẫn thông báo được
+        const briefKey = `morning_${settings.selectedTeacher}_${todayDateStr}_${settings.morningBriefTime}`;
         if (!hasAlreadyNotified(briefKey)) {
           markAsNotified(briefKey);
 
@@ -188,16 +220,17 @@ export class TeachingReminderService {
     }
 
     // 2. Kiểm tra bản tin tối (Evening Brief) - báo lịch ngày mai - Cửa sổ 45 phút
-    if (settings.notifyEveningBrief) {
+    if (settings.notifyEveningBrief && settings.eveningBriefTime) {
       const [eH, eM] = settings.eveningBriefTime.split(':').map(Number);
       const eveningMinutes = eH * 60 + eM;
       const isEveningWindow = nowTotalMinutes >= eveningMinutes && nowTotalMinutes <= eveningMinutes + 45;
 
       if (isEveningWindow) {
-        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        // Tính ngày mai theo múi giờ địa phương
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         const tomorrowDayOfWeek = DAY_MAP[tomorrow.getDay()];
         const tomorrowEntries = tomorrowDayOfWeek ? this.getTeacherEntriesForDay(timetable, settings.selectedTeacher, tomorrowDayOfWeek) : [];
-        const eveningKey = `evening_${settings.selectedTeacher}_${todayDateStr}`;
+        const eveningKey = `evening_${settings.selectedTeacher}_${todayDateStr}_${settings.eveningBriefTime}`;
 
         if (!hasAlreadyNotified(eveningKey)) {
           markAsNotified(eveningKey);

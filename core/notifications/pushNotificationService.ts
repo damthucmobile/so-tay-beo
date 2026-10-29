@@ -167,6 +167,46 @@ export class PushNotificationService {
   }
 
   /**
+   * Yêu cầu mã FCM Token từ Firebase Cloud Messaging cho thiết bị này
+   */
+  public static async getFcmToken(): Promise<string | null> {
+    if (typeof window === 'undefined' || !this.isSupported()) return null;
+    if (Notification.permission !== 'granted') return null;
+
+    const vapidKey =
+      process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ||
+      (process.env as any).VITE_FIREBASE_VAPID_KEY;
+
+    try {
+      const reg = await this.registerServiceWorker();
+      if (!reg) return null;
+
+      // Import động firebase/messaging để tránh lỗi SSR trên server Next.js
+      const { getMessaging, getToken } = await import('firebase/messaging');
+      const { app: firebaseApp, initFirebase } = await import('../firebase/auth/config');
+      const targetApp = firebaseApp || initFirebase().app;
+      const messaging = getMessaging(targetApp);
+
+      const tokenOptions: { serviceWorkerRegistration: ServiceWorkerRegistration; vapidKey?: string } = {
+        serviceWorkerRegistration: reg,
+      };
+      if (vapidKey) {
+        tokenOptions.vapidKey = vapidKey;
+      }
+
+      const token = await getToken(messaging, tokenOptions);
+      if (token) {
+        console.log('[PushNotificationService] FCM Token fetched successfully:', token);
+        return token;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[PushNotificationService] Không thể lấy FCM Token (cần cấu hình NEXT_PUBLIC_FIREBASE_VAPID_KEY):', err);
+      return null;
+    }
+  }
+
+  /**
    * Get or register push subscription and save to Firestore
    */
   public static async syncDeviceSubscription(
@@ -186,6 +226,12 @@ export class PushNotificationService {
       const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
       const platform = isMobile ? 'mobile' : 'desktop';
+
+      // Tự động lấy FCM Token nếu chưa được truyền vào
+      let token = fcmToken;
+      if (!token) {
+        token = (await this.getFcmToken()) || '';
+      }
 
       // Attempt standard Web Push subscription if supported
       let webPushEndpoint: string | undefined;
@@ -210,7 +256,7 @@ export class PushNotificationService {
       const subscriptionData: PushDeviceSubscription = {
         id: deviceId,
         userId,
-        fcmToken: fcmToken || '',
+        fcmToken: token || '',
         endpoint: webPushEndpoint || '',
         keys: webPushKeys || { p256dh: '', auth: '' },
         platform,

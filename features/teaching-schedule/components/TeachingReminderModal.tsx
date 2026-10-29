@@ -147,6 +147,10 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
     try {
       await TeachingReminderService.saveSettings(settings, user?.uid);
       setSaveSuccess(true);
+      // Phát sự kiện toàn cục để scheduler kiểm tra ngay lập tức với giờ mới
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app-teaching-settings-updated', { detail: settings }));
+      }
       setTimeout(() => {
         setSaveSuccess(false);
         onClose();
@@ -266,7 +270,7 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                 Hướng dẫn cho iPhone / iPad (iOS):
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                Để nhận thông báo đẩy khi tắt màn hình: Hãy <strong>đăng nhập tài khoản trên Safari trước</strong> ➔ Bấm nút <strong className="inline-flex items-center gap-1 font-bold"><Share className="w-3 h-3 inline" /> Chia sẻ</strong> ở thanh công cụ dưới Safari ➔ Chọn <strong className="font-bold">"Thêm vào Màn hình chính"</strong> (Add to Home Screen).
+                Để nhận thông báo đẩy khi tắt màn hình: Hãy <strong>đăng nhập tài khoản trên Safari trước</strong> ➔ Bấm nút <strong className="inline-flex items-center gap-1 font-bold"><Share className="w-3 h-3 inline" /> Chia sẻ</strong> ở thanh công cụ dưới Safari ➔ Chọn <strong className="font-bold">&quot;Thêm vào Màn hình chính&quot;</strong> (Add to Home Screen).
               </p>
             </div>
           )}

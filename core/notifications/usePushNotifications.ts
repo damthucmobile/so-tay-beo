@@ -20,11 +20,16 @@ export function usePushNotifications() {
     setPlatformInfo(PushNotificationService.getPlatformInfo());
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermission(PushNotificationService.getPermission());
+      const perm = PushNotificationService.getPermission();
+      setPermission(perm);
       // Register Service Worker in background
       PushNotificationService.registerServiceWorker().catch(() => {});
+
+      if (perm === 'granted' && user?.uid) {
+        PushNotificationService.syncDeviceSubscription(user.uid, user.email || undefined).catch(() => {});
+      }
     }
-  }, []);
+  }, [user]);
 
   // Request browser permission
   const requestPermission = useCallback(async (): Promise<boolean> => {
