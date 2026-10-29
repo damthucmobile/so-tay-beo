@@ -546,15 +546,28 @@ export const TeachingReminderModal: React.FC<TeachingReminderModalProps> = ({
                     </div>
 
                     {showZaloQr && (
-                      <div className="mt-2.5 p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col items-center gap-2 animate-in fade-in">
-                        <div className="w-32 h-32 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center border-2 border-dashed border-blue-400 text-slate-400 text-center p-3 shadow-inner">
-                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                            Mã QR Zalo OA kết nối tự động
-                          </span>
+                      <div className="mt-2.5 p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col items-center gap-3 animate-in fade-in">
+                        <img
+                          src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://zalo.me/1448326612599819432"
+                          alt="Mã QR Zalo OA"
+                          className="w-36 h-36 rounded-xl border border-slate-200 dark:border-slate-700 bg-white p-1.5 shadow-sm"
+                        />
+                        <div className="text-center space-y-1.5">
+                          <a
+                            href="https://zalo.me/1448326612599819432"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                          >
+                            <span>👉 Hoặc bấm vào đây để mở Zalo OA</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                            <strong>Bước 1:</strong> Mở link hoặc quét QR để vào Zalo OA.<br />
+                            <strong>Bước 2:</strong> Bấm <strong>Quan tâm</strong> và nhắn tin số điện thoại của bạn vào OA.<br />
+                            <strong>Bước 3:</strong> Quay lại đây bấm <strong>Gửi thử Zalo</strong>!
+                          </p>
                         </div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center max-w-xs leading-relaxed">
-                          Mở Zalo trên điện thoại quét mã này để tự động cấp quyền nhận lịch dạy qua tin nhắn Zalo.
-                        </p>
                       </div>
                     )}
                   </div>
