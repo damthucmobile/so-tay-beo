@@ -19,6 +19,11 @@ import { Providers } from "../components/Providers";
 export const metadata: Metadata = {
   title: "Sổ Tay Béo - Quản Lý Lớp Học & Thù Lao",
   description: "Ứng dụng Sổ Tay Béo quản lý lớp học, lịch tự do và đối soát thù lao giảng dạy",
+  verification: {
+    other: {
+      "zalo-platform-site-verification": "UkIbBghECXSXiASKyQDrJ2ELs6ZFumCoE3Gm",
+    },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -42,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${beVietnamPro.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <meta name="zalo-platform-site-verification" content="UkIbBghECXSXiASKyQDrJ2ELs6ZFumCoE3Gm" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
