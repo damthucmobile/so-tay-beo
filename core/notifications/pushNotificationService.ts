@@ -329,7 +329,26 @@ export class PushNotificationService {
         await reg.showNotification(title, options);
         return true;
       } else if ('Notification' in window) {
-        new Notification(title, options);
+        const notif = new Notification(title, options);
+        notif.onclick = () => {
+          try {
+            window.focus();
+          } catch {}
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('app-navigate-tab', {
+                detail: {
+                  tab: payload.data?.tab || 'teaching_schedule',
+                  teacher: payload.data?.teacher,
+                  url: payload.url || '/?tab=teaching_schedule',
+                },
+              })
+            );
+            if (payload.url) {
+              window.history.pushState({}, '', payload.url);
+            }
+          }
+        };
         return true;
       }
       return true;

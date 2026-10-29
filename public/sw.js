@@ -75,6 +75,11 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of windowClients) {
         if ('focus' in client) {
           if (client.url.includes(self.location.origin)) {
+            client.postMessage({
+              type: 'NOTIFICATION_CLICKED',
+              url: targetUrl,
+              data: event.notification.data,
+            });
             client.navigate(targetUrl);
             return client.focus();
           }

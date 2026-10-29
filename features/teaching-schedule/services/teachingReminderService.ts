@@ -211,7 +211,12 @@ export class TeachingReminderService {
             title: `🌅 Lịch dạy hôm nay: ${settings.selectedTeacher}`,
             body,
             tag: briefKey,
-            url: '/?tab=teaching_schedule',
+            url: `/?tab=teaching_schedule&teacher=${encodeURIComponent(settings.selectedTeacher)}`,
+            data: {
+              url: `/?tab=teaching_schedule&teacher=${encodeURIComponent(settings.selectedTeacher)}`,
+              tab: 'teaching_schedule',
+              teacher: settings.selectedTeacher,
+            },
           });
 
           return { triggered: true, message: 'Đã gửi bản tin lịch dạy sáng' };
@@ -248,7 +253,12 @@ export class TeachingReminderService {
             title: `🌙 Chuẩn bị lịch dạy ngày mai: ${settings.selectedTeacher}`,
             body,
             tag: eveningKey,
-            url: '/?tab=teaching_schedule',
+            url: `/?tab=teaching_schedule&teacher=${encodeURIComponent(settings.selectedTeacher)}`,
+            data: {
+              url: `/?tab=teaching_schedule&teacher=${encodeURIComponent(settings.selectedTeacher)}`,
+              tab: 'teaching_schedule',
+              teacher: settings.selectedTeacher,
+            },
           });
 
           return { triggered: true, message: 'Đã gửi bản tin lịch dạy tối' };
@@ -276,7 +286,14 @@ export class TeachingReminderService {
               title: `⏰ Sắp đến giờ vào tiết (${entry.session} - Tiết ${entry.period})!`,
               body: `Thầy/Cô ${settings.selectedTeacher} có tiết dạy lớp ${entry.className} (Môn: ${entry.subject}) lúc ${startTime} (${diffMinutes} phút nữa).`,
               tag: periodKey,
-              url: '/?tab=teaching_schedule',
+              url: `/?tab=teaching_schedule&teacher=${encodeURIComponent(settings.selectedTeacher)}`,
+              data: {
+                url: `/?tab=teaching_schedule&teacher=${encodeURIComponent(settings.selectedTeacher)}`,
+                tab: 'teaching_schedule',
+                teacher: settings.selectedTeacher,
+                session: entry.session,
+                period: entry.period,
+              },
             });
 
             return { triggered: true, message: `Đã nhắc trước tiết ${entry.period} lớp ${entry.className}` };

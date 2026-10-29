@@ -10,6 +10,7 @@ import { UserGuidePage } from '../features/guide';
 import { MainLayout } from '../components/layout/MainLayout';
 import { NavTabId } from '../components/layout/Sidebar';
 import { useThemeStore } from '../stores/useThemeStore';
+import { useTeachingScheduleStore } from '../features/teaching-schedule/stores/useTeachingScheduleStore';
 import {
   GraduationCap,
   Settings,
@@ -42,6 +43,72 @@ export default function HomePage() {
       setTabHistory((prev) => prev.slice(0, -1));
     }
   };
+
+  // Tự động kiểm tra URL query param và lắng nghe sự kiện khi người dùng click vào thông báo
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkUrlParams = () => {
+      try {
+        const search = window.location.search;
+        if (!search) return;
+        const params = new URLSearchParams(search);
+        const tab = params.get('tab') as NavTabId | null;
+        const teacher = params.get('teacher');
+
+        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'settings', 'guide'].includes(tab)) {
+          setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
+          if (teacher && tab === 'teaching_schedule') {
+            useTeachingScheduleStore.getState().setSelectedTeacher(decodeURIComponent(teacher));
+            useTeachingScheduleStore.getState().setViewMode('teacher');
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    checkUrlParams();
+
+    // 1. Lắng nghe sự kiện click thông báo nội bộ
+    const handleNavigateTab = (e: any) => {
+      const detail = e.detail;
+      if (detail?.tab) {
+        setTabHistory((prev) => (prev[prev.length - 1] === detail.tab ? prev : [...prev, detail.tab]));
+        if (detail.teacher && detail.tab === 'teaching_schedule') {
+          useTeachingScheduleStore.getState().setSelectedTeacher(detail.teacher);
+          useTeachingScheduleStore.getState().setViewMode('teacher');
+        }
+      }
+    };
+
+    // 2. Lắng nghe tin nhắn từ Service Worker khi người dùng bấm vào Web Push
+    const handleSwMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'NOTIFICATION_CLICKED') {
+        const data = e.data.data;
+        const tab = data?.tab || 'teaching_schedule';
+        setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
+        if (data?.teacher && tab === 'teaching_schedule') {
+          useTeachingScheduleStore.getState().setSelectedTeacher(data.teacher);
+          useTeachingScheduleStore.getState().setViewMode('teacher');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', checkUrlParams);
+    window.addEventListener('app-navigate-tab', handleNavigateTab);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', checkUrlParams);
+      window.removeEventListener('app-navigate-tab', handleNavigateTab);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+      }
+    };
+  }, []);
 
   // Tự động ghi nhận màn hình phân hệ đang xem vào danh sách Xem Gần Đây (Global SPA Tracking)
   useEffect(() => {
