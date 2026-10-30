@@ -53,8 +53,20 @@ const TAB_DEFAULT_TITLES: Record<NavTabId, { title: string; subtitle: string }> 
     subtitle: 'Theo dõi chỉ số sức khỏe, thói quen & luyện tập thể chất',
   },
   travel: {
-    title: 'Du Lịch & Nghỉ Dưỡng',
-    subtitle: 'Kế hoạch chuyến đi, điểm đến & lịch trình thư giãn',
+    title: 'Lịch Trình Chuyến Đi',
+    subtitle: 'Lập kế hoạch hành trình chi tiết, điểm đến & timeline di chuyển',
+  },
+  travel_journal: {
+    title: 'Nhật Ký & Album Kỷ Niệm',
+    subtitle: 'Lưu giữ khoảnh khắc, cảm xúc và thư viện ảnh video chất lượng cao',
+  },
+  travel_budget: {
+    title: 'Ngân Sách & Chi Tiêu Du Lịch',
+    subtitle: 'Dự toán chi phí, ghi nhận hóa đơn & chia tiền nhóm linh hoạt',
+  },
+  travel_checklist: {
+    title: 'Hành Lý & Chuẩn Bị Chuyến Đi',
+    subtitle: 'Checklist đồ đạc cần mang, giấy tờ tùy thân & vé máy bay/khách sạn',
   },
   family: {
     title: 'Gia Đình',

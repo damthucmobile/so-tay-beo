@@ -19,6 +19,10 @@ import {
   Home,
   BookOpenCheck,
   Briefcase,
+  Compass,
+  Camera,
+  Wallet,
+  CheckSquare,
 } from 'lucide-react';
 
 export type NavTabId =
@@ -30,6 +34,9 @@ export type NavTabId =
   | 'guide'
   | 'health'
   | 'travel'
+  | 'travel_journal'
+  | 'travel_budget'
+  | 'travel_checklist'
   | 'family'
   | 'education';
 
@@ -88,7 +95,10 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Du lịch & nghỉ dưỡng',
     icon: Palmtree,
     items: [
-      { id: 'travel', label: 'Du lịch & nghỉ dưỡng', icon: Palmtree },
+      { id: 'travel', label: 'Lịch trình chuyến đi', icon: Compass, badge: 'Hot' },
+      { id: 'travel_journal', label: 'Nhật ký & Album', icon: Camera },
+      { id: 'travel_budget', label: 'Ngân sách & Chi tiêu', icon: Wallet },
+      { id: 'travel_checklist', label: 'Hành lý & Checklist', icon: CheckSquare },
     ],
   },
   {
