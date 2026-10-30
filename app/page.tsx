@@ -9,6 +9,7 @@ import { IncomeFeature } from '../features/income';
 import { UserGuidePage } from '../features/guide';
 import { MainLayout } from '../components/layout/MainLayout';
 import { NavTabId } from '../components/layout/Sidebar';
+import { BlankModuleView } from '../components/shared/BlankModuleView';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useTeachingScheduleStore } from '../features/teaching-schedule/stores/useTeachingScheduleStore';
 import {
@@ -24,6 +25,17 @@ import {
   BookOpen,
   ArrowRight,
   PhoneCall,
+  HeartPulse,
+  Palmtree,
+  Home,
+  BookOpenCheck,
+  Dumbbell,
+  Apple,
+  Compass,
+  MapPin,
+  Users,
+  Award,
+  BookMarked,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -56,7 +68,7 @@ export default function HomePage() {
         const tab = params.get('tab') as NavTabId | null;
         const teacher = params.get('teacher');
 
-        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'settings', 'guide'].includes(tab)) {
+        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'settings', 'guide', 'health', 'travel', 'family', 'education'].includes(tab)) {
           setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
           if (teacher && tab === 'teaching_schedule') {
             useTeachingScheduleStore.getState().setSelectedTeacher(decodeURIComponent(teacher));
@@ -120,6 +132,10 @@ export default function HomePage() {
       income: { title: 'Báo Cáo Thu Nhập & Thù Lao', subtitle: 'Đối soát thù lao giảng dạy' },
       settings: { title: 'Cài Đặt Hệ Thống', subtitle: 'Hồ sơ & giao diện' },
       guide: { title: 'Hướng Dẫn Sử Dụng', subtitle: 'Tài liệu hướng dẫn & mẹo sử dụng phần mềm' },
+      health: { title: 'Sức Khỏe & Thể Chất', subtitle: 'Theo dõi chỉ số sinh học, thể thao & chế độ dinh dưỡng' },
+      travel: { title: 'Du Lịch & Nghỉ Dưỡng', subtitle: 'Lập kế hoạch hành trình, địa điểm & ngân sách chuyến đi' },
+      family: { title: 'Gia Đình & Tổ Ấm', subtitle: 'Kỷ niệm, ngày sinh nhật, gia phả & tài chính gia đình' },
+      education: { title: 'Giáo Dục & Bản Thân', subtitle: 'Khóa học phát triển kỹ năng, mục tiêu học tập & sách hay' },
     };
     const meta = tabMeta[currentTab];
     if (meta) {
@@ -399,6 +415,122 @@ export default function HomePage() {
 
       {/* 5. HƯỚNG DẪN SỬ DỤNG */}
       {currentTab === 'guide' && <UserGuidePage onNavigateTab={handleSelectTab} />}
+
+      {/* 6. SỨC KHỎE & THỂ CHẤT */}
+      {currentTab === 'health' && (
+        <BlankModuleView
+          category="Sức Khỏe & Thể Chất"
+          title="Nhật Ký & Theo Dõi Sức Khỏe"
+          description="Không gian toàn diện giúp bạn ghi chép chỉ số thể chất (BMI, cân nặng, huyết áp), nhật ký tập luyện thể thao, kế hoạch ăn uống healthy và lịch nhắc khám sức khỏe định kỳ."
+          icon={HeartPulse}
+          accentColor="rose"
+          suggestedCards={[
+            {
+              icon: Dumbbell,
+              title: 'Lịch Tập & Workout',
+              description: 'Lên lịch tập gym, chạy bộ, cardio theo tuần và ghi nhận số calo tiêu hao.',
+            },
+            {
+              icon: Apple,
+              title: 'Dinh Dưỡng & Thực Đơn',
+              description: 'Theo dõi khẩu phần bữa ăn, lượng nước uống hàng ngày và mục tiêu calo nạp vào.',
+            },
+            {
+              icon: HeartPulse,
+              title: 'Chỉ Số Sinh Học',
+              description: 'Biểu đồ theo dõi cân nặng, huyết áp, nhịp tim và chu kỳ giấc ngủ.',
+            },
+          ]}
+          emptyStateTip="Sức khỏe là tài sản quý giá nhất. Hãy bắt đầu ghi chép ngày hôm nay!"
+        />
+      )}
+
+      {/* 7. DU LỊCH & NGHỈ DƯỠNG */}
+      {currentTab === 'travel' && (
+        <BlankModuleView
+          category="Du Lịch & Nghỉ Dưỡng"
+          title="Kế Hoạch & Nhật Ký Du Lịch"
+          description="Lên kế hoạch cho những chuyến vi vu sắp tới: Danh sách địa điểm muốn đến (Bucket list), lịch trình chi tiết theo ngày, quản lý ngân sách vé máy bay / khách sạn và lưu giữ album ảnh kỷ niệm."
+          icon={Palmtree}
+          accentColor="emerald"
+          suggestedCards={[
+            {
+              icon: Compass,
+              title: 'Lịch Trình Chuyến Đi',
+              description: 'Thiết kế timeline chi tiết từng ngày, điểm tham quan, ăn uống và phương tiện di chuyển.',
+            },
+            {
+              icon: MapPin,
+              title: 'Bucket List Điểm Đến',
+              description: 'Ghim các địa điểm mơ ước trong và ngoài nước kèm checklist hành lý cần chuẩn bị.',
+            },
+            {
+              icon: Sparkles,
+              title: 'Chi Phí & Ngân Sách',
+              description: 'Hạch toán chi tiêu trước và trong chuyến đi, chia tiền nhóm bạn linh hoạt.',
+            },
+          ]}
+          emptyStateTip="Cuộc đời là những chuyến đi. Khám phá những vùng đất mới cùng Sổ Tay Béo!"
+        />
+      )}
+
+      {/* 8. GIA ĐÌNH */}
+      {currentTab === 'family' && (
+        <BlankModuleView
+          category="Gia Đình"
+          title="Không Gian Gia Đình & Yêu Thương"
+          description="Nơi vun đắp tình cảm gia đình: Lịch nhắc sinh nhật, ngày kỷ niệm gia tộc, danh sách việc nhà, quản lý ngân sách mua sắm chung và góc lưu giữ những khoảnh khắc ấm áp bên người thân."
+          icon={Home}
+          accentColor="amber"
+          suggestedCards={[
+            {
+              icon: Users,
+              title: 'Thành Viên & Kỷ Niệm',
+              description: 'Hồ sơ thành viên gia đình, nhắc hẹn sinh nhật, ngày cưới và các dịp họp mặt.',
+            },
+            {
+              icon: Sparkles,
+              title: 'Việc Nhà & Lịch Chung',
+              description: 'Phân công dọn dẹp, mua sắm thực phẩm và lịch tiêm chủng, khám bệnh cho cả nhà.',
+            },
+            {
+              icon: Home,
+              title: 'Quỹ Gia Đình',
+              description: 'Quản lý thu chi sinh hoạt chung, hóa đơn điện nước và quỹ dự phòng gia đình.',
+            },
+          ]}
+          emptyStateTip="Gia đình là nơi bình yên nhất để trở về. Hãy gắn kết các thành viên!"
+        />
+      )}
+
+      {/* 9. GIÁO DỤC */}
+      {currentTab === 'education' && (
+        <BlankModuleView
+          category="Giáo Dục"
+          title="Học Tập & Phát Triển Bản Thân"
+          description="Trung tâm nâng cao tri thức: Quản lý các khóa học đang theo đuổi, danh sách sách đã và đang đọc, ghi chú kiến thức mới, mục tiêu phát triển kỹ năng mềm và theo dõi chứng chỉ chuyên môn."
+          icon={BookOpenCheck}
+          accentColor="indigo"
+          suggestedCards={[
+            {
+              icon: BookMarked,
+              title: 'Tủ Sách Cá Nhân',
+              description: 'Danh sách sách cần đọc, tóm tắt các bài học tâm đắc và mục tiêu số trang mỗi ngày.',
+            },
+            {
+              icon: Award,
+              title: 'Khóa Học & Chứng Chỉ',
+              description: 'Theo dõi tiến độ hoàn thành các khóa online, chứng chỉ ngoại ngữ và chuyên môn.',
+            },
+            {
+              icon: Sparkles,
+              title: 'Mục Tiêu & Kỹ Năng',
+              description: 'Thiết lập lộ trình phát triển bản thân theo quý/năm và thói quen học tập hàng ngày.',
+            },
+          ]}
+          emptyStateTip="Đầu tư vào tri thức mang lại lợi nhuận cao nhất. Cùng bứt phá giới hạn!"
+        />
+      )}
     </MainLayout>
   );
 }

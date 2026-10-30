@@ -48,6 +48,22 @@ const TAB_DEFAULT_TITLES: Record<NavTabId, { title: string; subtitle: string }> 
     title: 'Hướng Dẫn Sử Dụng',
     subtitle: 'Cẩm nang & Mẹo làm việc hiệu quả với Sổ Tay Béo',
   },
+  health: {
+    title: 'Sức Khoẻ & Thể Chất',
+    subtitle: 'Theo dõi chỉ số sức khỏe, thói quen & luyện tập thể chất',
+  },
+  travel: {
+    title: 'Du Lịch & Nghỉ Dưỡng',
+    subtitle: 'Kế hoạch chuyến đi, điểm đến & lịch trình thư giãn',
+  },
+  family: {
+    title: 'Gia Đình',
+    subtitle: 'Nhật ký gia đình, sự kiện, chi tiêu & khoảnh khắc yêu thương',
+  },
+  education: {
+    title: 'Giáo Dục & Học Tập',
+    subtitle: 'Kế hoạch học tập, khóa học & tài liệu phát triển bản thân',
+  },
 };
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
