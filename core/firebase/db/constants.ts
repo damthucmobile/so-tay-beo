@@ -76,6 +76,12 @@ export const COLLECTIONS = {
   PUSH_SUBSCRIPTIONS: 'push_subscriptions',
 
   // ============================================================================
+  // PHÂN HỆ DU LỊCH & NGHỈ DƯỠNG (TRAVEL MODULE)
+  // ============================================================================
+  /** Danh sách chuyến đi, kế hoạch & album chia sẻ gia đình */
+  TRAVEL_TRIPS: 'travel_trips',
+
+  // ============================================================================
   // PHÂN HỆ THEO DÕI HOẠT ĐỘNG & XEM GẦN ĐÂY (ACTIVITY & RECENT VIEWS)
   // ============================================================================
   /** Danh sách nội dung đã xem gần đây (subcollection: users/{uid}/recentViews) */

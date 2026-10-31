@@ -2,359 +2,548 @@
 'use client';
 
 import { create } from 'zustand';
-import { Trip, TripActivity, DayItinerary, TripStatus } from '../types';
+import {
+  Trip,
+  TripActivity,
+  TripStatus,
+  ShareConfig,
+  SharedMember,
+  TripMedia,
+  TripChecklistItem,
+} from '../types';
+import {
+  setDocument,
+  getDocuments,
+  deleteDocument,
+  updateDocument,
+} from '@/core/firebase/db/firestoreService';
+import { COLLECTIONS } from '@/core/firebase/db/constants';
 
 interface TravelStore {
   trips: Trip[];
+  isLoading: boolean;
   selectedTripId: string | null;
   searchQuery: string;
   statusFilter: TripStatus | 'all';
-  
+  userId: string | null;
+
   // Actions
+  fetchTrips: (userId: string) => Promise<void>;
   setSearchQuery: (query: string) => void;
   setStatusFilter: (filter: TripStatus | 'all') => void;
   setSelectedTripId: (id: string | null) => void;
-  addTrip: (trip: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>) => Trip;
-  updateTrip: (id: string, trip: Partial<Trip>) => void;
-  deleteTrip: (id: string) => void;
-  addActivity: (tripId: string, dayNumber: number, activity: Omit<TripActivity, 'id'>) => void;
-  toggleActivityComplete: (tripId: string, dayNumber: number, activityId: string) => void;
-  deleteActivity: (tripId: string, dayNumber: number, activityId: string) => void;
+
+  addTrip: (trip: Omit<Trip, 'id' | 'createdAt' | 'updatedAt'>, userId?: string) => Promise<Trip>;
+  updateTrip: (id: string, trip: Partial<Trip>) => Promise<void>;
+  deleteTrip: (id: string) => Promise<void>;
+
+  addActivity: (tripId: string, dayNumber: number, activity: Omit<TripActivity, 'id'>) => Promise<void>;
+  toggleActivityComplete: (tripId: string, dayNumber: number, activityId: string) => Promise<void>;
+  deleteActivity: (tripId: string, dayNumber: number, activityId: string) => Promise<void>;
+
+  // Sharing Actions
+  updateShareConfig: (tripId: string, config: Partial<ShareConfig>) => Promise<void>;
+  inviteMember: (tripId: string, email: string, role: 'viewer' | 'editor', name?: string) => Promise<void>;
+  removeMember: (tripId: string, memberId: string) => Promise<void>;
+
+  // Media Actions
+  addMedia: (tripId: string, media: Omit<TripMedia, 'id' | 'createdAt'>) => Promise<void>;
+  deleteMedia: (tripId: string, mediaId: string) => Promise<void>;
+
+  // Checklist Actions
+  addChecklistItem: (tripId: string, item: Omit<TripChecklistItem, 'id'>) => Promise<void>;
+  toggleChecklistItem: (tripId: string, itemId: string) => Promise<void>;
+  deleteChecklistItem: (tripId: string, itemId: string) => Promise<void>;
 }
 
-const SAMPLE_TRIPS: Trip[] = [
-  {
-    id: 'trip-1',
-    title: 'Khám Phá Cung Đường Hà Giang - Mùa Hoa Tam Giác Mạch',
-    destination: 'Hà Giang, Việt Nam',
-    startDate: '2026-11-15',
-    endDate: '2026-11-18',
-    status: 'planning',
-    coverImage: 'https://images.unsplash.com/photo-1528127269322-539801943592?q=80&w=1200&auto=format&fit=crop',
-    budget: 8500000,
-    spent: 2400000,
-    notes: 'Mang theo áo khoác ấm vì nhiệt độ ban đêm tại Đồng Văn xuống dưới 12°C. Đặt xe máy trước tại TP Hà Giang.',
-    members: ['Bạn thân', 'Người yêu'],
-    tags: ['Phượt', 'Núi rừng', 'Săn mây'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    itinerary: [
-      {
-        day: 1,
-        date: '2026-11-15',
-        title: 'Hà Nội - TP Hà Giang - Quản Bạ - Yên Minh',
-        activities: [
-          {
-            id: 'act-1-1',
-            time: '06:00',
-            title: 'Khởi hành xe Limousine từ Hà Nội đi TP Hà Giang',
-            location: 'Bến xe Mỹ Đình',
-            cost: 350000,
-            category: 'transport',
-            completed: false,
-          },
-          {
-            id: 'act-1-2',
-            time: '12:30',
-            title: 'Ăn trưa bún vịt làng & nhận xe máy tại TP Hà Giang',
-            location: 'Trung tâm TP Hà Giang',
-            cost: 250000,
-            category: 'food',
-            completed: false,
-          },
-          {
-            id: 'act-1-3',
-            time: '15:30',
-            title: 'Check-in Cổng Trời Quản Bạ & Núi Đôi Cô Tiên',
-            location: 'Huyện Quản Bạ',
-            cost: 0,
-            category: 'sightseeing',
-            completed: false,
-          },
-          {
-            id: 'act-1-4',
-            time: '18:30',
-            title: 'Nghỉ đêm tại Homestay Yên Minh & ăn tối lẩu gà đen',
-            location: 'Thị trấn Yên Minh',
-            cost: 650000,
-            category: 'hotel',
-            completed: false,
-          },
-        ],
-      },
-      {
-        day: 2,
-        date: '2026-11-16',
-        title: 'Yên Minh - Dốc Thẩm Mã - Dinh Vua Mèo - Cột Cờ Lũng Cú',
-        activities: [
-          {
-            id: 'act-2-1',
-            time: '08:00',
-            title: 'Chinh phục Dốc Thẩm Mã & thung lũng Sủng Là',
-            location: 'Đồng Văn',
-            category: 'sightseeing',
-            completed: false,
-          },
-          {
-            id: 'act-2-2',
-            time: '11:00',
-            title: 'Thăm Dinh Thự Họ Vương (Vua Mèo)',
-            location: 'Xã Sà Phìn',
-            cost: 40000,
-            category: 'sightseeing',
-            completed: false,
-          },
-          {
-            id: 'act-2-3',
-            time: '15:00',
-            title: 'Check-in Cột cờ Lũng Cú cực Bắc Tổ quốc',
-            location: 'Đỉnh Lũng Cú',
-            cost: 50000,
-            category: 'sightseeing',
-            completed: false,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'trip-2',
-    title: 'Nghỉ Dưỡng Biển Đà Nẵng - Hội An 4N3Đ',
-    destination: 'Đà Nẵng & Hội An',
-    startDate: '2026-12-24',
-    endDate: '2026-12-27',
-    status: 'planning',
-    coverImage: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?q=80&w=1200&auto=format&fit=crop',
-    budget: 14000000,
-    spent: 6800000,
-    notes: 'Đã book vé máy bay Vietjet & Resort 4 sao bãi biển Mỹ Khê. Nhớ book bàn ăn tối Noel sớm tại phố cổ Hội An.',
-    members: ['Gia đình'],
-    tags: ['Nghỉ dưỡng', 'Biển', 'Ẩm thực'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    itinerary: [
-      {
-        day: 1,
-        date: '2026-12-24',
-        title: 'Check-in Đà Nẵng - Tắm biển Mỹ Khê - Đêm Noel',
-        activities: [
-          {
-            id: 'act-dn-1',
-            time: '09:15',
-            title: 'Chuyến bay VJ-128 Hà Nội - Đà Nẵng',
-            location: 'Sân bay Đà Nẵng',
-            cost: 3200000,
-            category: 'transport',
-            completed: false,
-          },
-          {
-            id: 'act-dn-2',
-            time: '11:30',
-            title: 'Ăn trưa bánh tráng cuốn thịt heo Đại Lộc',
-            location: 'Đường 2/9, Đà Nẵng',
-            cost: 420000,
-            category: 'food',
-            completed: false,
-          },
-          {
-            id: 'act-dn-3',
-            time: '14:00',
-            title: 'Nhận phòng Resort & thư giãn hồ bơi',
-            location: 'Bãi biển Mỹ Khê',
-            cost: 3600000,
-            category: 'hotel',
-            completed: false,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'trip-3',
-    title: 'Chữa Lành & Săn Mây Tà Xùa - Mộc Châu',
-    destination: 'Sơn La, Việt Nam',
-    startDate: '2026-10-10',
-    endDate: '2026-10-12',
-    status: 'completed',
-    coverImage: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1200&auto=format&fit=crop',
-    budget: 5200000,
-    spent: 4950000,
-    notes: 'Chuyến đi săn mây đại thành công. Homestay Lu Trế view biển mây đỉnh cao!',
-    members: ['Nhóm bạn đại học'],
-    tags: ['Săn mây', 'Chữa lành', 'Camping'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    itinerary: [],
-  },
-];
+import { auth } from '@/core/firebase/auth/config';
+
+// Hàm hỗ trợ lấy ID người dùng hiện tại an toàn nhất
+function getEffectiveUserId(explicitUserId?: string, storeUserId?: string | null): string | null {
+  if (explicitUserId) return explicitUserId;
+  if (storeUserId) return storeUserId;
+  if (auth?.currentUser?.uid) return auth.currentUser.uid;
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem('app_auth_cached_user');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.uid) return parsed.uid;
+      }
+    } catch {}
+  }
+  return null;
+}
 
 export const useTravelStore = create<TravelStore>((set, get) => ({
-  trips: (() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('sotaybeo_travel_trips');
-        if (saved) return JSON.parse(saved);
-      } catch (e) {
-        // ignore
-      }
-    }
-    return SAMPLE_TRIPS;
-  })(),
+  trips: [],
+  isLoading: false,
   selectedTripId: null,
   searchQuery: '',
   statusFilter: 'all',
+  userId: null,
 
   setSearchQuery: (query) => set({ searchQuery: query }),
   setStatusFilter: (filter) => set({ statusFilter: filter }),
   setSelectedTripId: (id) => set({ selectedTripId: id }),
 
-  addTrip: (tripData) => {
+  // 1. Tải danh sách chuyến đi trực tiếp từ Firestore Database
+  fetchTrips: async (userId?: string) => {
+    const effectiveUid = getEffectiveUserId(userId, get().userId);
+    if (!effectiveUid) return;
+    set({ userId: effectiveUid, isLoading: true });
+
+    try {
+      // 1. Truy vấn các chuyến đi của người dùng
+      const data = await getDocuments<Trip & { userId?: string }>(COLLECTIONS.TRAVEL_TRIPS, {
+        filters: [{ field: 'userId', operator: '==', value: effectiveUid }],
+      });
+
+      // 2. Sắp xếp an toàn ở client theo ngày tạo giảm dần
+      const sorted = (data || []).sort((a, b) => {
+        const timeA = new Date(b.createdAt || 0).getTime();
+        const timeB = new Date(a.createdAt || 0).getTime();
+        return timeA - timeB;
+      });
+
+      set({ trips: sorted, isLoading: false });
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách chuyến đi từ Firestore:', error);
+      set({ trips: [], isLoading: false });
+    }
+  },
+
+  // 2. Tạo chuyến đi mới trực tiếp trên Firestore Database
+  addTrip: async (tripData, explicitUserId) => {
+    const uid = getEffectiveUserId(explicitUserId, get().userId);
+    const newId = `trip-${Date.now()}`;
+    const now = new Date().toISOString();
+
     const newTrip: Trip = {
       ...tripData,
-      id: `trip-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      id: newId,
+      shareConfig: {
+        isPublicLinkEnabled: true,
+        shareToken: Math.random().toString(36).substring(2, 10),
+        hideBudget: false,
+        hideAlbum: false,
+        hideChecklist: false,
+      },
+      sharedMembers: [],
+      media: [],
+      checklist: [],
+      createdAt: now,
+      updatedAt: now,
     };
-    const updated = [newTrip, ...get().trips];
-    set({ trips: updated, selectedTripId: newTrip.id });
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('sotaybeo_travel_trips', JSON.stringify(updated));
-      } catch (e) {
-        // ignore
-      }
+
+    // Cập nhật UI trước (Optimistic UI)
+    const currentTrips = get().trips;
+    set({ trips: [newTrip, ...currentTrips], selectedTripId: newTrip.id, userId: uid || get().userId });
+
+    // Ghi trực tiếp vào Firestore Database
+    try {
+      await setDocument(
+        COLLECTIONS.TRAVEL_TRIPS,
+        newId,
+        {
+          ...newTrip,
+          userId: uid || 'anonymous',
+        },
+        true
+      );
+    } catch (error) {
+      console.error('Lỗi khi tạo chuyến đi trên Firestore:', error);
     }
+
     return newTrip;
   },
 
-  updateTrip: (id, tripUpdate) => {
-    const updated = get().trips.map((t) =>
-      t.id === id ? { ...t, ...tripUpdate, updatedAt: new Date().toISOString() } : t
-    );
-    set({ trips: updated });
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('sotaybeo_travel_trips', JSON.stringify(updated));
-      } catch (e) {
-        // ignore
-      }
+  // 3. Cập nhật chuyến đi trực tiếp trên Firestore Database
+  updateTrip: async (id, tripUpdate) => {
+    const current = get().trips.find((t) => t.id === id);
+    if (!current) return;
+
+    const updatedTrip: Trip = {
+      ...current,
+      ...tripUpdate,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === id ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, id, updatedTrip);
+    } catch (error) {
+      console.error('Lỗi khi cập nhật chuyến đi trên Firestore:', error);
     }
   },
 
-  deleteTrip: (id) => {
-    const updated = get().trips.filter((t) => t.id !== id);
-    set({ trips: updated, selectedTripId: get().selectedTripId === id ? null : get().selectedTripId });
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('sotaybeo_travel_trips', JSON.stringify(updated));
-      } catch (e) {
-        // ignore
-      }
+  // 4. Xóa chuyến đi trực tiếp khỏi Firestore Database
+  deleteTrip: async (id) => {
+    set({
+      trips: get().trips.filter((t) => t.id !== id),
+      selectedTripId: get().selectedTripId === id ? null : get().selectedTripId,
+    });
+
+    try {
+      await deleteDocument(COLLECTIONS.TRAVEL_TRIPS, id);
+    } catch (error) {
+      console.error('Lỗi khi xóa chuyến đi trên Firestore:', error);
     }
   },
 
-  addActivity: (tripId, dayNumber, activityData) => {
+  // 5. Thêm hoạt động vào lịch trình ngày trên Firestore
+  addActivity: async (tripId, dayNumber, activityData) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
     const newActivity: TripActivity = {
       ...activityData,
       id: `act-${Date.now()}`,
       completed: false,
     };
 
-    const updated = get().trips.map((trip) => {
-      if (trip.id !== tripId) return trip;
+    let dayFound = false;
+    const updatedItinerary = trip.itinerary.map((day) => {
+      if (day.day === dayNumber) {
+        dayFound = true;
+        return {
+          ...day,
+          activities: [...day.activities, newActivity],
+        };
+      }
+      return day;
+    });
 
-      // Find or create day
-      let dayFound = false;
-      const updatedItinerary = trip.itinerary.map((day) => {
-        if (day.day === dayNumber) {
-          dayFound = true;
-          return {
-            ...day,
-            activities: [...day.activities, newActivity],
-          };
-        }
-        return day;
+    if (!dayFound) {
+      updatedItinerary.push({
+        day: dayNumber,
+        date: trip.startDate,
+        activities: [newActivity],
       });
+      updatedItinerary.sort((a, b) => a.day - b.day);
+    }
 
-      if (!dayFound) {
-        updatedItinerary.push({
-          day: dayNumber,
-          date: trip.startDate,
-          activities: [newActivity],
-        });
-        updatedItinerary.sort((a, b) => a.day - b.day);
-      }
+    const additionalCost = activityData.cost || 0;
+    const updatedTrip: Trip = {
+      ...trip,
+      itinerary: updatedItinerary,
+      spent: trip.spent + additionalCost,
+      updatedAt: new Date().toISOString(),
+    };
 
-      // Add to spent if cost exists
-      const additionalCost = activityData.cost || 0;
-
-      return {
-        ...trip,
-        itinerary: updatedItinerary,
-        spent: trip.spent + additionalCost,
-        updatedAt: new Date().toISOString(),
-      };
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
     });
 
-    set({ trips: updated });
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('sotaybeo_travel_trips', JSON.stringify(updated));
-      } catch (e) {
-        // ignore
-      }
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        itinerary: updatedTrip.itinerary,
+        spent: updatedTrip.spent,
+      });
+    } catch (error) {
+      console.error('Lỗi khi thêm hoạt động lên Firestore:', error);
     }
   },
 
-  toggleActivityComplete: (tripId, dayNumber, activityId) => {
-    const updated = get().trips.map((trip) => {
-      if (trip.id !== tripId) return trip;
-      return {
-        ...trip,
-        itinerary: trip.itinerary.map((day) => {
-          if (day.day !== dayNumber) return day;
-          return {
-            ...day,
-            activities: day.activities.map((act) =>
-              act.id === activityId ? { ...act, completed: !act.completed } : act
-            ),
-          };
-        }),
-      };
+  // 6. Đổi trạng thái hoàn thành hoạt động trên Firestore
+  toggleActivityComplete: async (tripId, dayNumber, activityId) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const updatedTrip: Trip = {
+      ...trip,
+      itinerary: trip.itinerary.map((day) => {
+        if (day.day !== dayNumber) return day;
+        return {
+          ...day,
+          activities: day.activities.map((act) =>
+            act.id === activityId ? { ...act, completed: !act.completed } : act
+          ),
+        };
+      }),
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
     });
 
-    set({ trips: updated });
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('sotaybeo_travel_trips', JSON.stringify(updated));
-      } catch (e) {
-        // ignore
-      }
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        itinerary: updatedTrip.itinerary,
+      });
+    } catch (error) {
+      console.error('Lỗi khi đổi trạng thái hoạt động trên Firestore:', error);
     }
   },
 
-  deleteActivity: (tripId, dayNumber, activityId) => {
-    const updated = get().trips.map((trip) => {
-      if (trip.id !== tripId) return trip;
-      return {
-        ...trip,
-        itinerary: trip.itinerary.map((day) => {
-          if (day.day !== dayNumber) return day;
-          return {
-            ...day,
-            activities: day.activities.filter((act) => act.id !== activityId),
-          };
-        }),
-      };
+  // 7. Xóa hoạt động trên Firestore
+  deleteActivity: async (tripId, dayNumber, activityId) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const updatedTrip: Trip = {
+      ...trip,
+      itinerary: trip.itinerary.map((day) => {
+        if (day.day !== dayNumber) return day;
+        return {
+          ...day,
+          activities: day.activities.filter((act) => act.id !== activityId),
+        };
+      }),
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
     });
 
-    set({ trips: updated });
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('sotaybeo_travel_trips', JSON.stringify(updated));
-      } catch (e) {
-        // ignore
-      }
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        itinerary: updatedTrip.itinerary,
+      });
+    } catch (error) {
+      console.error('Lỗi khi xóa hoạt động trên Firestore:', error);
+    }
+  },
+
+  // 8. Cập nhật cấu hình chia sẻ trên Firestore
+  updateShareConfig: async (tripId, config) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const currentConfig = trip.shareConfig || {
+      isPublicLinkEnabled: false,
+      shareToken: Math.random().toString(36).substring(2, 10),
+    };
+
+    const newConfig = {
+      ...currentConfig,
+      ...config,
+    };
+
+    const updatedTrip: Trip = {
+      ...trip,
+      shareConfig: newConfig,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        shareConfig: newConfig,
+      });
+    } catch (error) {
+      console.error('Lỗi khi cập nhật cấu hình chia sẻ trên Firestore:', error);
+    }
+  },
+
+  // 9. Mời thành viên gia đình trên Firestore
+  inviteMember: async (tripId, email, role, name) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const newMember: SharedMember = {
+      id: `member-${Date.now()}`,
+      email,
+      role,
+      name: name || email.split('@')[0],
+      addedAt: new Date().toISOString(),
+    };
+
+    const currentMembers = trip.sharedMembers || [];
+    const filtered = currentMembers.filter((m) => m.email.toLowerCase() !== email.toLowerCase());
+    const newMembers = [...filtered, newMember];
+
+    const updatedTrip: Trip = {
+      ...trip,
+      sharedMembers: newMembers,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        sharedMembers: newMembers,
+      });
+    } catch (error) {
+      console.error('Lỗi khi thêm thành viên trên Firestore:', error);
+    }
+  },
+
+  // 10. Hủy quyền thành viên trên Firestore
+  removeMember: async (tripId, memberId) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const newMembers = (trip.sharedMembers || []).filter(
+      (m) => m.id !== memberId && m.email !== memberId
+    );
+
+    const updatedTrip: Trip = {
+      ...trip,
+      sharedMembers: newMembers,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        sharedMembers: newMembers,
+      });
+    } catch (error) {
+      console.error('Lỗi khi xóa thành viên trên Firestore:', error);
+    }
+  },
+
+  // 11. Thêm ảnh kỷ niệm vào album trên Firestore
+  addMedia: async (tripId, mediaData) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const newMedia: TripMedia = {
+      ...mediaData,
+      id: `media-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    const newMediaList = [newMedia, ...(trip.media || [])];
+    const updatedTrip: Trip = {
+      ...trip,
+      media: newMediaList,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        media: newMediaList,
+      });
+    } catch (error) {
+      console.error('Lỗi khi thêm ảnh vào album trên Firestore:', error);
+    }
+  },
+
+  // 12. Xóa ảnh khỏi album trên Firestore
+  deleteMedia: async (tripId, mediaId) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const newMediaList = (trip.media || []).filter((m) => m.id !== mediaId);
+    const updatedTrip: Trip = {
+      ...trip,
+      media: newMediaList,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        media: newMediaList,
+      });
+    } catch (error) {
+      console.error('Lỗi khi xóa ảnh khỏi album trên Firestore:', error);
+    }
+  },
+
+  // 13. Thêm đồ dùng hành lý trên Firestore
+  addChecklistItem: async (tripId, itemData) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const newItem: TripChecklistItem = {
+      ...itemData,
+      id: `chk-${Date.now()}`,
+    };
+
+    const newChecklist = [...(trip.checklist || []), newItem];
+    const updatedTrip: Trip = {
+      ...trip,
+      checklist: newChecklist,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        checklist: newChecklist,
+      });
+    } catch (error) {
+      console.error('Lỗi khi thêm đồ dùng vào checklist trên Firestore:', error);
+    }
+  },
+
+  // 14. Đổi trạng thái checklist trên Firestore
+  toggleChecklistItem: async (tripId, itemId) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const newChecklist = (trip.checklist || []).map((item) =>
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    );
+
+    const updatedTrip: Trip = {
+      ...trip,
+      checklist: newChecklist,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        checklist: newChecklist,
+      });
+    } catch (error) {
+      console.error('Lỗi khi đổi trạng thái checklist trên Firestore:', error);
+    }
+  },
+
+  // 15. Xóa đồ dùng checklist trên Firestore
+  deleteChecklistItem: async (tripId, itemId) => {
+    const trip = get().trips.find((t) => t.id === tripId);
+    if (!trip) return;
+
+    const newChecklist = (trip.checklist || []).filter((item) => item.id !== itemId);
+    const updatedTrip: Trip = {
+      ...trip,
+      checklist: newChecklist,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({
+      trips: get().trips.map((t) => (t.id === tripId ? updatedTrip : t)),
+    });
+
+    try {
+      await updateDocument(COLLECTIONS.TRAVEL_TRIPS, tripId, {
+        checklist: newChecklist,
+      });
+    } catch (error) {
+      console.error('Lỗi khi xóa đồ dùng khỏi checklist trên Firestore:', error);
     }
   },
 }));

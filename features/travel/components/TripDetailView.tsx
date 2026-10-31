@@ -23,8 +23,13 @@ import {
   Wallet,
   Clock,
   X,
+  Share2,
+  Image as ImageIcon,
+  CheckSquare,
+  Upload,
 } from 'lucide-react';
 import { Trip, ActivityCategory, TripActivity } from '../types';
+import { useTravelStore } from '../stores/useTravelStore';
 
 interface TripDetailViewProps {
   trip: Trip;
@@ -33,6 +38,7 @@ interface TripDetailViewProps {
   onAddActivity: (tripId: string, dayNumber: number, activity: Omit<TripActivity, 'id'>) => void;
   onToggleActivity: (tripId: string, dayNumber: number, activityId: string) => void;
   onDeleteActivity: (tripId: string, dayNumber: number, activityId: string) => void;
+  onShare?: (trip: Trip) => void;
 }
 
 const CATEGORY_MAP: Record<
@@ -54,9 +60,23 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
   onAddActivity,
   onToggleActivity,
   onDeleteActivity,
+  onShare,
 }) => {
+  const [mainTab, setMainTab] = useState<'itinerary' | 'album' | 'checklist'>('itinerary');
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+
+  // Travel store actions for media & checklist
+  const { addMedia, deleteMedia, addChecklistItem, toggleChecklistItem, deleteChecklistItem } = useTravelStore();
+
+  // Media upload modal/state
+  const [newMediaUrl, setNewMediaUrl] = useState('');
+  const [newMediaCaption, setNewMediaCaption] = useState('');
+  const [showAddMediaModal, setShowAddMediaModal] = useState(false);
+
+  // Checklist state
+  const [newChecklistText, setNewChecklistText] = useState('');
+  const [newChecklistCategory, setNewChecklistCategory] = useState<'clothes' | 'documents' | 'electronics' | 'medicine' | 'other'>('clothes');
 
   // New activity form state
   const [newTime, setNewTime] = useState('08:00');
@@ -93,9 +113,32 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
     setShowAddModal(false);
   };
 
+  const handleAddMedia = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMediaUrl.trim()) return;
+    addMedia(trip.id, {
+      url: newMediaUrl.trim(),
+      caption: newMediaCaption.trim() || undefined,
+    });
+    setNewMediaUrl('');
+    setNewMediaCaption('');
+    setShowAddMediaModal(false);
+  };
+
+  const handleAddChecklist = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChecklistText.trim()) return;
+    addChecklistItem(trip.id, {
+      text: newChecklistText.trim(),
+      category: newChecklistCategory,
+      completed: false,
+    });
+    setNewChecklistText('');
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
-      {/* Top Banner Navigation & Quick Status */}
+      {/* Top Banner Navigation & Quick Status & Share */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <Button
           onClick={onBack}
@@ -106,17 +149,30 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
           <span>Quay lại danh sách chuyến đi</span>
         </Button>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Trạng thái:</span>
-          <select
-            value={trip.status}
-            onChange={(e) => onUpdateStatus(trip.id, e.target.value as Trip['status'])}
-            className="text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-          >
-            <option value="planning">Đang lên lịch</option>
-            <option value="ongoing">Đang diễn ra</option>
-            <option value="completed">Đã hoàn thành</option>
-          </select>
+        <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap">
+          {onShare && (
+            <Button
+              onClick={() => onShare(trip)}
+              variant="default"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-md shadow-emerald-500/20 text-xs"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Chia sẻ với gia đình</span>
+            </Button>
+          )}
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Trạng thái:</span>
+            <select
+              value={trip.status}
+              onChange={(e) => onUpdateStatus(trip.id, e.target.value as Trip['status'])}
+              className="text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            >
+              <option value="planning">Đang lên lịch</option>
+              <option value="ongoing">Đang diễn ra</option>
+              <option value="completed">Đã hoàn thành</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -147,6 +203,11 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
                 Đồng hành: {trip.members.join(', ')}
               </span>
             )}
+            {trip.sharedMembers && trip.sharedMembers.length > 0 && (
+              <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 backdrop-blur-md">
+                Đã chia sẻ: {trip.sharedMembers.length} người thân
+              </span>
+            )}
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{trip.title}</h1>
@@ -171,8 +232,59 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
         </div>
       </div>
 
-      {/* Days Navigation Tabs */}
-      <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800">
+      {/* Main Sub Tabs (Lịch trình, Album ảnh, Hành lý) */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2">
+        <button
+          onClick={() => setMainTab('itinerary')}
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+            mainTab === 'itinerary'
+              ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Lịch trình chi tiết</span>
+          <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">
+            {trip.itinerary.reduce((total, d) => total + d.activities.length, 0)}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setMainTab('album')}
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+            mainTab === 'album'
+              ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <ImageIcon className="w-4 h-4" />
+          <span>Album ảnh kỷ niệm</span>
+          <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">
+            {trip.media?.length || 0}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setMainTab('checklist')}
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+            mainTab === 'checklist'
+              ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <CheckSquare className="w-4 h-4" />
+          <span>Chuẩn bị hành lý</span>
+          <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">
+            {trip.checklist?.length || 0}
+          </span>
+        </button>
+      </div>
+
+      {/* Tab 1: Lịch trình chi tiết */}
+      {mainTab === 'itinerary' && (
+        <div className="space-y-6">
+          {/* Days Navigation Tabs */}
+          <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           {trip.itinerary.map((day) => (
             <button
@@ -351,6 +463,225 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+        </div>
+      )}
+
+      {/* Tab 2: Album Ảnh Kỷ Niệm */}
+      {mainTab === 'album' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
+            <div>
+              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-emerald-500" />
+                Album Ảnh Chuyến Đi & Gia Đình
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Lưu giữ những khoảnh khắc đẹp nhất. Ảnh sẽ tự động hiển thị trong liên kết chia sẻ cho người thân.
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowAddMediaModal(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Thêm ảnh kỷ niệm</span>
+            </Button>
+          </div>
+
+          {(!trip.media || trip.media.length === 0) ? (
+            <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 mx-auto flex items-center justify-center">
+                <Camera className="w-7 h-7" />
+              </div>
+              <h4 className="font-bold text-foreground text-sm">Chưa có ảnh nào trong album</h4>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                Bấm nút &quot;Thêm ảnh kỷ niệm&quot; để lưu lại các góc chụp sống ảo, cảnh đẹp và kỷ niệm cùng người thân.
+              </p>
+              <Button
+                onClick={() => setShowAddMediaModal(true)}
+                variant="outline"
+                className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-50"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                <span>Thêm ảnh đầu tiên</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {trip.media.map((img) => (
+                <div
+                  key={img.id}
+                  className="group relative aspect-square rounded-2xl overflow-hidden border border-border bg-slate-900 shadow-sm hover:shadow-lg transition-all"
+                >
+                  <img
+                    src={img.url}
+                    alt={img.caption || 'Ảnh chuyến đi'}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-between">
+                    <button
+                      onClick={() => deleteMedia(trip.id, img.id)}
+                      className="self-end p-1.5 rounded-lg bg-red-500/80 hover:bg-red-600 text-white transition cursor-pointer"
+                      title="Xóa ảnh"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    {img.caption && (
+                      <p className="text-xs text-white font-medium line-clamp-2">
+                        {img.caption}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Chuẩn Bị Hành Lý */}
+      {mainTab === 'checklist' && (
+        <div className="space-y-6">
+          {/* Quick Add Item Bar */}
+          <form onSubmit={handleAddChecklist} className="p-4 rounded-2xl border border-border bg-card flex flex-col sm:flex-row gap-3">
+            <Input
+              value={newChecklistText}
+              onChange={(e) => setNewChecklistText(e.target.value)}
+              placeholder="Thêm đồ dùng cần chuẩn bị (VD: Hộ chiếu, kem chống nắng, sạc dự phòng...)"
+              className="flex-1 text-xs"
+            />
+            <select
+              value={newChecklistCategory}
+              onChange={(e) => setNewChecklistCategory(e.target.value as any)}
+              className="text-xs rounded-xl border border-input bg-background px-3 py-2 text-foreground focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            >
+              <option value="clothes">👕 Quần áo</option>
+              <option value="documents">📄 Giấy tờ / Vé</option>
+              <option value="electronics">🔌 Thiết bị điện tử</option>
+              <option value="medicine">💊 Y tế & Thuốc</option>
+              <option value="other">✨ Khác</option>
+            </select>
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0">
+              <Plus className="w-4 h-4 mr-1" />
+              <span>Thêm đồ</span>
+            </Button>
+          </form>
+
+          {/* Checklist Items */}
+          {(!trip.checklist || trip.checklist.length === 0) ? (
+            <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center space-y-2">
+              <CheckSquare className="w-10 h-10 text-muted-foreground mx-auto opacity-40" />
+              <h4 className="font-bold text-foreground text-sm">Chưa có danh sách đồ dùng</h4>
+              <p className="text-xs text-muted-foreground">Nhập đồ dùng ở thanh phía trên để không bị quên đồ trước ngày lên đường.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {trip.checklist.map((item) => (
+                <div
+                  key={item.id}
+                  className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    item.completed
+                      ? 'bg-muted/40 border-border opacity-60'
+                      : 'bg-card border-border hover:border-emerald-500/40'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleChecklistItem(trip.id, item.id)}
+                    className="flex items-center gap-3 text-left flex-1 cursor-pointer"
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${
+                        item.completed
+                          ? 'bg-emerald-500 border-emerald-500 text-white'
+                          : 'border-slate-300 dark:border-slate-700'
+                      }`}
+                    >
+                      {item.completed && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </div>
+                    <span className={`text-xs font-medium ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                      {item.text}
+                    </span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] capitalize">
+                      {item.category === 'clothes'
+                        ? 'Quần áo'
+                        : item.category === 'documents'
+                        ? 'Giấy tờ'
+                        : item.category === 'electronics'
+                        ? 'Thiết bị'
+                        : item.category === 'medicine'
+                        ? 'Y tế'
+                        : 'Khác'}
+                    </Badge>
+                    <button
+                      type="button"
+                      onClick={() => deleteChecklistItem(trip.id, item.id)}
+                      className="p-1 text-muted-foreground hover:text-red-500 transition cursor-pointer"
+                      title="Xóa đồ dùng"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Media Modal */}
+      {showAddMediaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl bg-card border border-border shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-emerald-500" />
+                Thêm Ảnh Vào Album Kỷ Niệm
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddMediaModal(false)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddMedia} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-foreground">Đường dẫn hình ảnh (URL)</label>
+                <Input
+                  value={newMediaUrl}
+                  onChange={(e) => setNewMediaUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/... hoặc link ảnh"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-foreground">Chú thích khoảnh khắc</label>
+                <Input
+                  value={newMediaCaption}
+                  onChange={(e) => setNewMediaCaption(e.target.value)}
+                  placeholder="VD: Cả nhà cùng ngắm hoàng hôn, check-in đèo..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button type="button" variant="outline" onClick={() => setShowAddMediaModal(false)}>
+                  Hủy
+                </Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  Lưu Ảnh Vào Album
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

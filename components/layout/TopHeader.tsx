@@ -80,7 +80,6 @@ const TAB_DEFAULT_TITLES: Record<NavTabId, { title: string; subtitle: string }> 
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
   onToggleMobileMenu,
-  onLogout,
   user,
   onSelectSettings,
   currentTab = 'classes',
@@ -192,15 +191,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             </div>
           </button>
         )}
-
-        {/* Nút Đăng xuất */}
-        <button
-          onClick={onLogout}
-          className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition cursor-pointer"
-          title="Đăng xuất tài khoản"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
       </div>
     </header>
   );

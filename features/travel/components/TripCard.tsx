@@ -15,6 +15,7 @@ import {
   Sparkles,
   CheckCircle2,
   Clock,
+  Share2,
 } from 'lucide-react';
 import { Trip } from '../types';
 
@@ -22,9 +23,10 @@ interface TripCardProps {
   trip: Trip;
   onSelect: (tripId: string) => void;
   onDelete: (tripId: string) => void;
+  onShare?: (trip: Trip) => void;
 }
 
-export const TripCard: React.FC<TripCardProps> = ({ trip, onSelect, onDelete }) => {
+export const TripCard: React.FC<TripCardProps> = ({ trip, onSelect, onDelete, onShare }) => {
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
@@ -82,19 +84,35 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, onSelect, onDelete }) 
               <span>{statusConfig.label}</span>
             </span>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm(`Bạn có chắc muốn xóa chuyến đi "${trip.title}"?`)) {
-                  onDelete(trip.id);
-                }
-              }}
-              className="w-8 h-8 rounded-full bg-black/40 hover:bg-red-500/80 text-white flex items-center justify-center backdrop-blur-md transition cursor-pointer"
-              title="Xóa chuyến đi"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              {onShare && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(trip);
+                  }}
+                  className="w-8 h-8 rounded-full bg-black/40 hover:bg-emerald-600 text-white flex items-center justify-center backdrop-blur-md transition cursor-pointer"
+                  title="Chia sẻ chuyến đi & album cho gia đình"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Bạn có chắc muốn xóa chuyến đi "${trip.title}"?`)) {
+                    onDelete(trip.id);
+                  }
+                }}
+                className="w-8 h-8 rounded-full bg-black/40 hover:bg-red-500/80 text-white flex items-center justify-center backdrop-blur-md transition cursor-pointer"
+                title="Xóa chuyến đi"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Destination & Duration Bottom overlay */}

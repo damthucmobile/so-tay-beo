@@ -149,6 +149,34 @@ service cloud.firestore {
     }
 
     // ==============================================================================
+    // 11. PHÂN HỆ DU LỊCH & NGHỈ DƯỠNG (TRAVEL TRIPS & ALBUMS)
+    // ==============================================================================
+    match /travel_trips/{tripId} {
+      // 1. Quyền đọc (Read):
+      // - Người thân xem qua liên kết chia sẻ công khai (không cần đăng nhập nếu isPublicLinkEnabled == true)
+      // - Hoặc bất kỳ người dùng nào đã đăng nhập hệ thống
+      allow read: if (resource != null && resource.data.get(['shareConfig', 'isPublicLinkEnabled'], false) == true)
+        || isAuthenticated();
+
+      // 2. Quyền tạo mới (Create): Người dùng đã đăng nhập
+      allow create: if isAuthenticated();
+
+      // 3. Quyền cập nhật (Update): Chủ sở hữu chuyến đi hoặc thành viên
+      allow update: if isAuthenticated() && (
+        resource == null 
+        || !('userId' in resource.data) 
+        || resource.data.userId == request.auth.uid
+      );
+
+      // 4. Quyền xóa (Delete): Chỉ chủ sở hữu chuyến đi
+      allow delete: if isAuthenticated() && (
+        resource == null 
+        || !('userId' in resource.data) 
+        || resource.data.userId == request.auth.uid
+      );
+    }
+
+    // ==============================================================================
     // QUY TẮC MẶC ĐỊNH: TỪ CHỐI TẤT CẢ CÁC TRUY CẬP KHÔNG ĐƯỢC ĐỊNH NGHĨA RÕ RÀNG
     // ==============================================================================
     match /{document=**} {

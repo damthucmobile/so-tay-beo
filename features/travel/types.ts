@@ -22,6 +22,39 @@ export interface DayItinerary {
   activities: TripActivity[];
 }
 
+export interface ShareConfig {
+  isPublicLinkEnabled: boolean;
+  shareToken: string;
+  hideBudget?: boolean;
+  hideAlbum?: boolean;
+  hideChecklist?: boolean;
+  allowComments?: boolean;
+}
+
+export interface SharedMember {
+  id: string;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+  role: 'viewer' | 'editor';
+  addedAt: string;
+}
+
+export interface TripMedia {
+  id: string;
+  url: string;
+  caption?: string;
+  uploadedBy?: string;
+  createdAt: string;
+}
+
+export interface TripChecklistItem {
+  id: string;
+  text: string;
+  category: 'clothes' | 'documents' | 'electronics' | 'medicine' | 'other';
+  completed: boolean;
+}
+
 export interface Trip {
   id: string;
   title: string;
@@ -36,6 +69,10 @@ export interface Trip {
   members?: string[];
   tags?: string[];
   itinerary: DayItinerary[];
+  shareConfig?: ShareConfig;
+  sharedMembers?: SharedMember[];
+  media?: TripMedia[];
+  checklist?: TripChecklistItem[];
   createdAt: string;
   updatedAt: string;
 }

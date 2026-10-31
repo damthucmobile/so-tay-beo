@@ -19,18 +19,23 @@ import { TripStats } from './components/TripStats';
 import { TripCard } from './components/TripCard';
 import { TripDetailView } from './components/TripDetailView';
 import { CreateTripModal } from './components/CreateTripModal';
-import { TripStatus } from './types';
+import { ShareTripModal } from './components/ShareTripModal';
+import { Trip, TripStatus } from './types';
+import { useAuth } from '@/core/firebase';
 
 interface TravelFeatureProps {
   onNavigateTab?: (tab: any) => void;
 }
 
 export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) => {
+  const { user } = useAuth();
   const {
     trips,
+    isLoading,
     selectedTripId,
     searchQuery,
     statusFilter,
+    fetchTrips,
     setSearchQuery,
     setStatusFilter,
     setSelectedTripId,
@@ -43,20 +48,38 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
   } = useTravelStore();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [sharingTrip, setSharingTrip] = useState<Trip | null>(null);
+
+  // Tải trực tiếp danh sách chuyến đi từ Firestore khi người dùng đăng nhập
+  React.useEffect(() => {
+    if (user?.uid) {
+      fetchTrips(user.uid);
+    }
+  }, [user?.uid, fetchTrips]);
 
   // If a trip is selected, show its full detail & itinerary view
   const selectedTrip = trips.find((t) => t.id === selectedTripId);
 
   if (selectedTrip) {
     return (
-      <TripDetailView
-        trip={selectedTrip}
-        onBack={() => setSelectedTripId(null)}
-        onUpdateStatus={(id, status) => updateTrip(id, { status })}
-        onAddActivity={addActivity}
-        onToggleActivity={toggleActivityComplete}
-        onDeleteActivity={deleteActivity}
-      />
+      <>
+        <TripDetailView
+          trip={selectedTrip}
+          onBack={() => setSelectedTripId(null)}
+          onUpdateStatus={(id, status) => updateTrip(id, { status })}
+          onAddActivity={addActivity}
+          onToggleActivity={toggleActivityComplete}
+          onDeleteActivity={deleteActivity}
+          onShare={(t) => setSharingTrip(t)}
+        />
+        {sharingTrip && (
+          <ShareTripModal
+            trip={sharingTrip}
+            isOpen={Boolean(sharingTrip)}
+            onClose={() => setSharingTrip(null)}
+          />
+        )}
+      </>
     );
   }
 
@@ -81,9 +104,15 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-bold text-emerald-100 border border-white/20">
-              <Palmtree className="w-3.5 h-3.5 text-emerald-200" />
-              <span>Phân hệ Du lịch & Nghỉ dưỡng</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-bold text-emerald-100 border border-white/20">
+                <Palmtree className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Phân hệ Du lịch & Nghỉ dưỡng</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/40 backdrop-blur-md text-[11px] font-semibold text-emerald-200 border border-emerald-400/30">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>Firebase Firestore Database (Trực tiếp)</span>
+              </div>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
               Lịch Trình & Kế Hoạch Chuyến Đi
@@ -145,7 +174,12 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
       </div>
 
       {/* Trips Grid View */}
-      {filteredTrips.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-card p-16 text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-muted-foreground">Đang tải danh sách chuyến đi từ Firebase Firestore...</p>
+        </div>
+      ) : filteredTrips.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-12 text-center space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-600 mx-auto flex items-center justify-center">
             <Compass className="w-8 h-8" />
@@ -178,6 +212,7 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
               trip={trip}
               onSelect={(id) => setSelectedTripId(id)}
               onDelete={(id) => deleteTrip(id)}
+              onShare={(t) => setSharingTrip(t)}
             />
           ))}
         </div>
@@ -187,8 +222,17 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
       <CreateTripModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={addTrip}
+        onSubmit={(data) => addTrip(data, user?.uid)}
       />
+
+      {/* Modal share trip */}
+      {sharingTrip && (
+        <ShareTripModal
+          trip={sharingTrip}
+          isOpen={Boolean(sharingTrip)}
+          onClose={() => setSharingTrip(null)}
+        />
+      )}
     </div>
   );
 };

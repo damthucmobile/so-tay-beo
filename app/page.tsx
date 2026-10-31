@@ -8,6 +8,10 @@ import { FreelanceScheduleFeature } from '../features/schedule';
 import { IncomeFeature } from '../features/income';
 import { UserGuidePage } from '../features/guide';
 import { TravelFeature } from '../features/travel';
+import { SharedTripView } from '../features/travel/components/SharedTripView';
+import { useTravelStore } from '../features/travel/stores/useTravelStore';
+import { getPublicSharedTrip } from '../features/travel/services/travelFirebaseService';
+import { Trip } from '../features/travel/types';
 import { MainLayout } from '../components/layout/MainLayout';
 import { NavTabId } from '../components/layout/Sidebar';
 import { BlankModuleView } from '../components/shared/BlankModuleView';
@@ -50,6 +54,10 @@ export default function HomePage() {
   const { theme, setTheme } = useThemeStore();
   const [tabHistory, setTabHistory] = useState<NavTabId[]>(['classes']);
   const currentTab = tabHistory[tabHistory.length - 1] || 'classes';
+  const [sharedTripId, setSharedTripId] = useState<string | null>(null);
+  const [sharedToken, setSharedToken] = useState<string | null>(null);
+  const [sharedTripData, setSharedTripData] = useState<Trip | null>(null);
+  const [isLoadingSharedTrip, setIsLoadingSharedTrip] = useState<boolean>(false);
 
   const handleSelectTab = (tab: NavTabId) => {
     if (tab === currentTab) return;
@@ -71,6 +79,16 @@ export default function HomePage() {
         const search = window.location.search;
         if (!search) return;
         const params = new URLSearchParams(search);
+        
+        // Kiểm tra xem có đang mở liên kết chia sẻ chuyến đi không
+        const share = params.get('share');
+        const token = params.get('token');
+        if (share) {
+          setSharedTripId(share);
+          setSharedToken(token || null);
+          return;
+        }
+
         const tab = params.get('tab') as NavTabId | null;
         const teacher = params.get('teacher');
 
@@ -127,6 +145,40 @@ export default function HomePage() {
       }
     };
   }, []);
+
+  // Tải dữ liệu chuyến đi chia sẻ (Từ Local Store hoặc trực tiếp từ Firebase Firestore cho khách)
+  useEffect(() => {
+    if (!sharedTripId) {
+      setSharedTripData(null);
+      return;
+    }
+
+    const localTrip = useTravelStore.getState().trips.find((t) => t.id === sharedTripId);
+    if (localTrip) {
+      setSharedTripData(localTrip);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsLoadingSharedTrip(true);
+    getPublicSharedTrip(sharedTripId, sharedToken || undefined)
+      .then((remoteTrip) => {
+        if (!isCancelled) {
+          setSharedTripData(remoteTrip);
+          setIsLoadingSharedTrip(false);
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          console.error('Lỗi khi tải chuyến đi chia sẻ từ Firebase:', err);
+          setIsLoadingSharedTrip(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [sharedTripId, sharedToken]);
 
   // Tự động ghi nhận màn hình phân hệ đang xem vào danh sách Xem Gần Đây (Global SPA Tracking)
   useEffect(() => {
@@ -190,6 +242,66 @@ export default function HomePage() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs text-slate-500 dark:text-slate-400">Đang khởi tạo ứng dụng Sổ Tay Béo...</p>
+        </div>
+      </main>
+    );
+  }
+
+  // =========================================================================
+  // MÀN HÌNH XEM CHUYẾN ĐI ĐƯỢC CHIA SẺ (CHO GIA ĐÌNH / NGƯỜI THÂN)
+  // =========================================================================
+  if (sharedTripId) {
+    if (isLoadingSharedTrip) {
+      return (
+        <main className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-slate-500 dark:text-slate-400">Đang tải lịch trình chuyến đi của gia đình...</p>
+          </div>
+        </main>
+      );
+    }
+
+    if (sharedTripData) {
+      return (
+        <SharedTripView
+          trip={sharedTripData}
+          onExit={() => {
+            setSharedTripId(null);
+            setSharedToken(null);
+            setSharedTripData(null);
+            if (typeof window !== 'undefined') {
+              window.history.replaceState({}, '', '/');
+            }
+          }}
+        />
+      );
+    }
+
+    // Không tìm thấy hoặc liên kết đã bị tắt
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+            <Palmtree className="w-7 h-7" />
+          </div>
+          <h2 className="text-lg font-bold">Không tìm thấy chuyến đi</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Chuyến đi này có thể không tồn tại hoặc chủ sở hữu đã tắt liên kết chia sẻ công khai.
+          </p>
+          <button
+            onClick={() => {
+              setSharedTripId(null);
+              setSharedToken(null);
+              setSharedTripData(null);
+              if (typeof window !== 'undefined') {
+                window.history.replaceState({}, '', '/');
+              }
+            }}
+            className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition cursor-pointer"
+          >
+            Về trang chủ Sổ Tay Béo
+          </button>
         </div>
       </main>
     );
