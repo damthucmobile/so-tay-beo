@@ -26,31 +26,18 @@ export async function uploadFileToR2(
 ): Promise<ClientUploadResult> {
   const { folder = 'images', onProgress, metadata } = options;
 
-  // 1. Gọi API nội bộ của Next.js để xin cấp mã Presigned Upload URL
-  const presignRes = await fetch('/api/media/upload-url', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filename: file.name,
-      contentType: file.type || 'application/octet-stream',
-      folder,
-      metadata,
-    }),
-  });
-
-  if (!presignRes.ok) {
-    const errData = await presignRes.json().catch(() => ({}));
-    throw new Error(errData.error || 'Không thể lấy liên kết tải lên từ máy chủ Cloudflare R2.');
-  }
-
-  const { uploadUrl, fileKey, publicUrl } = await presignRes.json();
-
-  // 2. Upload trực tiếp file lên Cloudflare R2 (qua XMLHttpRequest để theo dõi % tiến độ)
-  await new Promise<void>((resolve, reject) => {
+  // Sử dụng endpoint nội bộ /api/media/upload để loại bỏ 100% lỗi CORS
+  // Đồng thời sử dụng XMLHttpRequest để hiển thị thanh đo tiến trình % tải lên
+  return new Promise<ClientUploadResult>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+    if (metadata) {
+      formData.append('metadata', JSON.stringify(metadata));
+    }
 
-    xhr.open('PUT', uploadUrl, true);
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.open('POST', '/api/media/upload', true);
 
     if (xhr.upload && onProgress) {
       xhr.upload.onprogress = (event) => {
@@ -66,22 +53,33 @@ export async function uploadFileToR2(
     }
 
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new Error(`Tải file lên Cloudflare R2 thất bại với mã lỗi HTTP: ${xhr.status}`));
+      try {
+        const response = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status >= 200 && xhr.status < 300 && response.success) {
+          resolve({
+            fileKey: response.fileKey,
+            publicUrl: response.publicUrl,
+          });
+        } else {
+          reject(
+            new Error(
+              response.error || `Tải file lên Cloudflare R2 thất bại với mã lỗi HTTP: ${xhr.status}`
+            )
+          );
+        }
+      } catch {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ fileKey: '', publicUrl: '' });
+        } else {
+          reject(new Error(`Tải tệp thất bại (HTTP ${xhr.status})`));
+        }
       }
     };
 
     xhr.onerror = () => {
-      reject(new Error('Lỗi kết nối mạng khi tải tệp lên Cloudflare R2.'));
+      reject(new Error('Lỗi kết nối khi gửi tệp lên máy chủ.'));
     };
 
-    xhr.send(file);
+    xhr.send(formData);
   });
-
-  return {
-    fileKey,
-    publicUrl,
-  };
 }

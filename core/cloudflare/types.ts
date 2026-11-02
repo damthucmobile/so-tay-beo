@@ -4,7 +4,7 @@
  * Dành cho lưu trữ Media (Hình ảnh, Video, Tệp đính kèm) trong Sổ Tay Béo
  */
 
-export type MediaFolder = 'images' | 'videos' | 'attachments' | 'avatars' | 'notes' | 'timetables';
+export type MediaFolder = 'images' | 'videos' | 'attachments' | 'avatars' | 'notes' | 'timetables' | 'travel';
 
 export interface CloudflareR2Config {
   accountId: string;

@@ -57,11 +57,11 @@ export class R2Service {
    */
   public static getPublicUrl(fileKey: string): string {
     const config = getCloudflareR2Config();
-    if (!config.publicDomain) {
-      // Fallback nếu chưa gắn custom domain
-      return `https://${config.bucketName}.${config.accountId}.r2.cloudflarestorage.com/${fileKey}`;
+    const domain = config.publicDomain?.trim();
+    if (!domain || domain.includes('.r2.cloudflarestorage.com')) {
+      return `/api/media/view?key=${encodeURIComponent(fileKey)}`;
     }
-    return `${config.publicDomain}/${fileKey}`;
+    return `${domain}/${fileKey}`;
   }
 
   /**

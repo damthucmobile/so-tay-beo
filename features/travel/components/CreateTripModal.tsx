@@ -4,8 +4,9 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Sparkles, MapPin, Calendar, Wallet, Image as ImageIcon, Users } from 'lucide-react';
+import { X, Sparkles, MapPin, Calendar, Wallet, Image as ImageIcon, Users, CloudUpload, Loader2 } from 'lucide-react';
 import { TripStatus } from '../types';
+import { uploadFileToR2 } from '@/core/cloudflare/client';
 
 interface CreateTripModalProps {
   isOpen: boolean;
@@ -56,6 +57,27 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ isOpen, onClos
   const [coverImage, setCoverImage] = useState(COVER_PRESETS[0].url);
   const [membersInput, setMembersInput] = useState('');
   const [notes, setNotes] = useState('');
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn tệp hình ảnh (JPG, PNG, WEBP, GIF)');
+      return;
+    }
+
+    try {
+      setIsUploadingCover(true);
+      const res = await uploadFileToR2(file, { folder: 'travel' });
+      setCoverImage(res.publicUrl);
+    } catch (err: any) {
+      console.error('Lỗi khi tải ảnh bìa lên R2:', err);
+      alert('Không thể tải ảnh lên Cloudflare R2: ' + (err?.message || 'Lỗi mạng'));
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -205,10 +227,35 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ isOpen, onClos
 
           {/* Cover image selector */}
           <div className="space-y-2 pt-1">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-              <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
-              <span>Ảnh bìa chuyến đi</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+                <span>Ảnh bìa chuyến đi</span>
+              </label>
+
+              {/* Nút tải ảnh lên Cloudflare R2 */}
+              <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 text-xs font-bold cursor-pointer transition">
+                {isUploadingCover ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang tải lên R2...</span>
+                  </>
+                ) : (
+                  <>
+                    <CloudUpload className="w-3.5 h-3.5" />
+                    <span>Tải ảnh từ máy lên R2</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isUploadingCover}
+                  onChange={handleCoverFileChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
             <div className="grid grid-cols-4 gap-2">
               {COVER_PRESETS.map((preset, idx) => (
                 <button
@@ -228,10 +275,11 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ isOpen, onClos
                 </button>
               ))}
             </div>
+
             <Input
               value={coverImage}
               onChange={(e) => setCoverImage(e.target.value)}
-              placeholder="Hoặc dán URL ảnh trực tiếp..."
+              placeholder="Hoặc dán URL ảnh trực tiếp từ web..."
               className="text-xs mt-1.5"
             />
           </div>

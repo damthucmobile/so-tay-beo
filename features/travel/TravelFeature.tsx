@@ -97,7 +97,7 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
   });
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12 max-w-7xl mx-auto">
+    <div className="space-y-6 animate-fadeIn pb-12 w-full">
       {/* Top Banner Card */}
       <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-6 sm:p-8 text-white shadow-xl shadow-emerald-500/15">
         <div className="absolute top-0 right-0 -mt-6 -mr-6 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
