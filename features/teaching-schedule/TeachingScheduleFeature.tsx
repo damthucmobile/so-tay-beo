@@ -9,6 +9,7 @@ import { ClassScheduleView } from './components/ClassScheduleView';
 import { MatrixTimetableDesktop } from './components/MatrixTimetableDesktop';
 import { ImportModal } from './components/ImportModal';
 import { TeachingReminderModal } from './components/TeachingReminderModal';
+import { GeminiAssistantModal } from '@/components/ai/GeminiAssistantModal';
 import { TeachingReminderService } from './services/teachingReminderService';
 import {
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   LayoutGrid,
   Trash2,
   Bell,
+  Sparkles,
 } from 'lucide-react';
 
 export const TeachingScheduleFeature: React.FC = () => {
@@ -36,6 +38,7 @@ export const TeachingScheduleFeature: React.FC = () => {
   } = useTeachingScheduleStore();
 
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   useEffect(() => {
     const unsub = initStore(user?.uid);
@@ -127,9 +130,19 @@ export const TeachingScheduleFeature: React.FC = () => {
           </button>
         </div>
 
-        {/* Action Buttons on the right: Nhắc lịch, Đổi / Nhập Excel & Xóa TKB */}
+        {/* Action Buttons on the right: Trợ lý AI, Nhắc lịch, Đổi / Nhập Excel & Xóa TKB */}
         {timetable && (
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsAIAssistantOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 text-purple-700 dark:text-purple-300 text-xs font-bold transition border border-purple-200/80 dark:border-purple-800/60 shadow-xs cursor-pointer"
+              title="Trợ lý Gemini AI hỗ trợ hỏi đáp lịch dạy & soạn giáo án"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
+              <span className="hidden sm:inline">Trợ lý AI</span>
+              <span className="sm:hidden text-[11px]">AI</span>
+            </button>
+
             <button
               onClick={() => setIsReminderModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-xs font-semibold transition border border-blue-200/60 dark:border-blue-800/40 shadow-sm cursor-pointer"
@@ -215,6 +228,14 @@ export const TeachingScheduleFeature: React.FC = () => {
         onClose={() => setIsReminderModalOpen(false)}
         timetable={timetable}
         defaultTeacher={selectedTeacher}
+      />
+
+      {/* 4. Modal Trợ lý Gemini AI */}
+      <GeminiAssistantModal
+        isOpen={isAIAssistantOpen}
+        onClose={() => setIsAIAssistantOpen(false)}
+        timetable={timetable}
+        teacherName={selectedTeacher}
       />
     </div>
   );
