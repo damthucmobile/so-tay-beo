@@ -151,7 +151,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         />
 
         {/* Dynamic Page Content - Chỉ cuộn phần nội dung */}
-        {currentTab === 'schedule' || currentTab === 'teaching_schedule' ? (
+        {currentTab === 'schedule' || currentTab === 'teaching_schedule' || currentTab === 'ai_assistant' ? (
           <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {children}
           </main>

@@ -9,7 +9,6 @@ import { ClassScheduleView } from './components/ClassScheduleView';
 import { MatrixTimetableDesktop } from './components/MatrixTimetableDesktop';
 import { ImportModal } from './components/ImportModal';
 import { TeachingReminderModal } from './components/TeachingReminderModal';
-import { GeminiAssistantModal } from '@/components/ai/GeminiAssistantModal';
 import { TeachingReminderService } from './services/teachingReminderService';
 import {
   CalendarDays,
@@ -38,7 +37,6 @@ export const TeachingScheduleFeature: React.FC = () => {
   } = useTeachingScheduleStore();
 
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   useEffect(() => {
     const unsub = initStore(user?.uid);
@@ -134,9 +132,11 @@ export const TeachingScheduleFeature: React.FC = () => {
         {timetable && (
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setIsAIAssistantOpen(true)}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('app-navigate-tab', { detail: { tab: 'ai_assistant' } }));
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 text-purple-700 dark:text-purple-300 text-xs font-bold transition border border-purple-200/80 dark:border-purple-800/60 shadow-xs cursor-pointer"
-              title="Trợ lý Gemini AI hỗ trợ hỏi đáp lịch dạy & soạn giáo án"
+              title="Mở Không gian Trợ lý Gemini AI toàn màn hình"
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
               <span className="hidden sm:inline">Trợ lý AI</span>
@@ -228,14 +228,6 @@ export const TeachingScheduleFeature: React.FC = () => {
         onClose={() => setIsReminderModalOpen(false)}
         timetable={timetable}
         defaultTeacher={selectedTeacher}
-      />
-
-      {/* 4. Modal Trợ lý Gemini AI */}
-      <GeminiAssistantModal
-        isOpen={isAIAssistantOpen}
-        onClose={() => setIsAIAssistantOpen(false)}
-        timetable={timetable}
-        teacherName={selectedTeacher}
       />
     </div>
   );

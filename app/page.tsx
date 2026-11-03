@@ -17,6 +17,8 @@ import { NavTabId } from '../components/layout/Sidebar';
 import { BlankModuleView } from '../components/shared/BlankModuleView';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useTeachingScheduleStore } from '../features/teaching-schedule/stores/useTeachingScheduleStore';
+import { AIAssistantPage } from '../components/ai/AIAssistantPage';
+import { AIFloatingButton } from '../components/ai/AIFloatingButton';
 import {
   GraduationCap,
   Settings,
@@ -92,7 +94,7 @@ export default function HomePage() {
         const tab = params.get('tab') as NavTabId | null;
         const teacher = params.get('teacher');
 
-        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'settings', 'guide', 'health', 'travel', 'travel_journal', 'travel_budget', 'travel_checklist', 'family', 'education'].includes(tab)) {
+        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'settings', 'guide', 'health', 'travel', 'travel_journal', 'travel_budget', 'travel_checklist', 'family', 'education', 'ai_assistant'].includes(tab)) {
           setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
           if (teacher && tab === 'teaching_schedule') {
             useTeachingScheduleStore.getState().setSelectedTeacher(decodeURIComponent(teacher));
@@ -197,6 +199,7 @@ export default function HomePage() {
       travel_checklist: { title: 'Hành Lý & Chuẩn Bị Chuyến Đi', subtitle: 'Checklist đồ đạc cần mang, giấy tờ tùy thân & vé máy bay' },
       family: { title: 'Gia Đình & Tổ Ấm', subtitle: 'Kỷ niệm, ngày sinh nhật, gia phả & tài chính gia đình' },
       education: { title: 'Giáo Dục & Bản Thân', subtitle: 'Khóa học phát triển kỹ năng, mục tiêu học tập & sách hay' },
+      ai_assistant: { title: 'Trợ Lý Gemini AI', subtitle: 'Trợ lý AI thông minh phân tích thời khóa biểu & hỗ trợ soạn bài' },
     };
     const meta = tabMeta[currentTab];
     if (meta) {
@@ -636,6 +639,15 @@ export default function HomePage() {
           emptyStateTip="Đầu tư vào tri thức mang lại lợi nhuận cao nhất. Cùng bứt phá giới hạn!"
         />
       )}
+
+      {/* 10. TRỢ LÝ AI (MÀN HÌNH CHUYÊN BIỆT CÓ LỊCH SỬ HỎI ĐÁP) */}
+      {currentTab === 'ai_assistant' && <AIAssistantPage onNavigateTab={handleSelectTab} />}
+
+      {/* Nút Floating Action Button mở Trợ lý AI ở góc màn hình */}
+      <AIFloatingButton
+        currentTab={currentTab}
+        onOpenAI={() => handleSelectTab('ai_assistant')}
+      />
     </MainLayout>
   );
 }

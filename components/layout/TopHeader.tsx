@@ -40,6 +40,10 @@ const TAB_DEFAULT_TITLES: Record<NavTabId, { title: string; subtitle: string }> 
     title: 'Thu Nhập & Thù Lao',
     subtitle: 'Báo cáo đối soát thù lao hợp nhất',
   },
+  ai_assistant: {
+    title: 'Trợ Lý Gemini AI',
+    subtitle: 'Không gian hỏi đáp thông minh, phân tích thời khóa biểu & soạn giáo án',
+  },
   settings: {
     title: 'Cài Đặt & Hồ Sơ',
     subtitle: 'Tài khoản & Tùy chọn hệ thống',
