@@ -22,9 +22,28 @@ import {
   Search,
   ArrowLeft,
   HelpCircle,
+  Globe,
+  ChevronDown,
+  Clock,
+  GraduationCap,
+  CalendarDays,
 } from 'lucide-react';
-import { useGeminiAI, gemini, promptTemplates, getCustomUserApiKey, setCustomUserApiKey, ChatMessage } from '@/core';
+import {
+  useGeminiAI,
+  gemini,
+  promptTemplates,
+  getCustomUserApiKey,
+  setCustomUserApiKey,
+  ChatMessage,
+  AIContextScope,
+  CONTEXT_SCOPE_OPTIONS,
+  buildSystemContextPrompt,
+} from '@/core';
+import { useAuth } from '@/core/firebase';
 import { useTeachingScheduleStore } from '@/features/teaching-schedule/stores/useTeachingScheduleStore';
+import { useClassManager } from '@/features/class/hooks/useClassManager';
+import { useScheduleManager } from '@/features/schedule/hooks/useScheduleManager';
+import { useIncomeManager } from '@/features/income/hooks/useIncomeManager';
 import { NavTabId } from '../layout/Sidebar';
 
 interface ChatSession {
@@ -42,7 +61,14 @@ interface AIAssistantPageProps {
 }
 
 export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab }) => {
+  const { user } = useAuth();
   const { timetable, selectedTeacher } = useTeachingScheduleStore();
+  const { classes, students, sessions: classSessions } = useClassManager(user?.uid);
+  const { appointments, customers } = useScheduleManager(user?.uid);
+  const { transactions } = useIncomeManager(user?.uid);
+
+  const [selectedScope, setSelectedScope] = useState<AIContextScope>('global');
+  const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'chat' | 'lesson' | 'config'>('chat');
   const [inputText, setInputText] = useState('');
@@ -106,24 +132,38 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     return sessions.find((s) => s.id === currentSessionId) || sessions[0] || null;
   }, [sessions, currentSessionId]);
 
-  // Context thời khóa biểu giáo viên
-  const teacherEntries = timetable && selectedTeacher
-    ? timetable.entries.filter((e) => e.teacher.toLowerCase() === selectedTeacher.toLowerCase())
-    : [];
+  const currentScopeConfig = useMemo(() => {
+    return CONTEXT_SCOPE_OPTIONS.find((o) => o.id === selectedScope) || CONTEXT_SCOPE_OPTIONS[0];
+  }, [selectedScope]);
 
-  const timetableSummary = teacherEntries.length > 0
-    ? teacherEntries
-        .map(
-          (e) =>
-            `- Thứ ${e.dayOfWeek}, ${e.session}, Tiết ${e.period}: Lớp ${e.className}, Môn ${e.subject}${e.room ? `, Phòng ${e.room}` : ''}`
-        )
-        .join('\n')
-    : 'Chưa có thông tin tiết dạy của giáo viên này.';
-
-  const systemInstruction = promptTemplates.teachingScheduleAssistant(
-    selectedTeacher || 'Thầy/Cô',
-    timetableSummary
-  );
+  // Xây dựng system prompt đa bối cảnh toàn diện
+  const systemInstruction = useMemo(() => {
+    return buildSystemContextPrompt(selectedScope, {
+      user: {
+        name: user?.displayName || selectedTeacher || 'Thầy/Cô',
+        email: user?.email,
+      },
+      timetable,
+      selectedTeacher,
+      classes,
+      students,
+      sessions: classSessions,
+      appointments,
+      customers,
+      transactions,
+    });
+  }, [
+    selectedScope,
+    user,
+    timetable,
+    selectedTeacher,
+    classes,
+    students,
+    classSessions,
+    appointments,
+    customers,
+    transactions,
+  ]);
 
   const {
     isLoading,
@@ -135,6 +175,48 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     systemInstruction,
     model: 'gemini-2.5-flash',
   });
+
+  const scopeSuggestions = useMemo(() => {
+    switch (selectedScope) {
+      case 'global':
+        return [
+          'Tuần này tôi có bị trùng ca dạy gia sư nào với thời khóa biểu trường không?',
+          'Tổng hợp tình hình: số tiết dạy trường, số ca gia sư và danh sách lớp học',
+          'Thống kê các lớp còn học sinh chưa nộp học phí và các khoản công nợ',
+          'Hôm nay tôi có những lịch trình và tiết dạy nào cần lưu ý?',
+        ];
+      case 'teaching':
+        return [
+          'Tuần này tôi có những buổi nào trống tiết?',
+          'Hôm nay tôi dạy những lớp nào, tiết mấy?',
+          'Soạn tin nhắn dặn dò học sinh chuẩn bị bài cho ngày mai',
+          'Thống kê tổng số tiết môn Toán tôi dạy tuần này',
+        ];
+      case 'classes':
+        return [
+          'Danh sách các lớp tôi đang quản lý và sĩ số từng lớp',
+          'Có bao nhiêu học sinh chưa nộp học phí trong tháng này?',
+          'Soạn thông báo nhắc đóng học phí gửi phụ huynh học sinh',
+          'Thống kê tổng doanh thu học phí dự kiến từ tất cả các lớp',
+        ];
+      case 'schedule':
+        return [
+          'Sắp tới tôi có những ca dạy gia sư / lịch hẹn nào?',
+          'Thống kê tổng số ca dạy tự do đã hoàn thành và chưa hoàn thành',
+          'Ca hẹn tiếp theo diễn ra ở đâu, vào lúc mấy giờ?',
+          'Tổng tiền thù lao từ các ca dạy tự do sắp tới là bao nhiêu?',
+        ];
+      case 'general':
+        return [
+          'Giúp tôi viết một bức thư cảm ơn phụ huynh bằng tiếng Việt trang trọng',
+          'Gợi ý 5 phương pháp sư phạm tích cực giúp học sinh tập trung hơn',
+          'Dịch bài phát biểu này sang tiếng Anh chuẩn phong cách giáo dục',
+          'Lập dàn ý cho một tiết sinh hoạt lớp chủ đề Kỹ năng an toàn số',
+        ];
+      default:
+        return [];
+    }
+  }, [selectedScope]);
 
   // Đồng bộ tin nhắn khi đổi session
   useEffect(() => {
@@ -390,9 +472,85 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
         {/* CỘT PHẢI: KHUNG LÀM VIỆC CHÍNH (CHAT / SOẠN GIÁO ÁN / CẤU HÌNH) */}
         <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
-          {/* Thanh điều hướng Tab bên phải */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs shrink-0">
-            <div className="flex items-center gap-1.5">
+          {/* Thanh điều hướng Tab bên phải & Bộ chọn Bối cảnh Dữ liệu */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-xs shrink-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* BỘ CHỌN BỐI CẢNH DỮ LIỆU ĐỘNG */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsScopeMenuOpen(!isScopeMenuOpen)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-600/10 hover:bg-purple-600/20 text-purple-700 dark:text-purple-300 border border-purple-300/80 dark:border-purple-800/80 font-bold transition shadow-2xs cursor-pointer"
+                  title="Nhấn để đổi phạm vi bối cảnh dữ liệu nạp cho AI"
+                >
+                  {selectedScope === 'global' && <Globe className="w-3.5 h-3.5 text-purple-600" />}
+                  {selectedScope === 'teaching' && <CalendarDays className="w-3.5 h-3.5 text-blue-600" />}
+                  {selectedScope === 'classes' && <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />}
+                  {selectedScope === 'schedule' && <Clock className="w-3.5 h-3.5 text-amber-600" />}
+                  {selectedScope === 'general' && <Sparkles className="w-3.5 h-3.5 text-pink-600" />}
+                  <span>Bối cảnh: <strong className="font-extrabold">{currentScopeConfig.shortLabel}</strong></span>
+                  <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform ${isScopeMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isScopeMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsScopeMenuOpen(false)}
+                    />
+                    <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 space-y-1 animate-fadeIn">
+                      <div className="px-3 py-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                        Phạm vi bối cảnh dữ liệu
+                      </div>
+                      {CONTEXT_SCOPE_OPTIONS.map((opt) => {
+                        const isSelected = opt.id === selectedScope;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedScope(opt.id);
+                              setIsScopeMenuOpen(false);
+                            }}
+                            className={`w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800'
+                                : 'hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-transparent'
+                            }`}
+                          >
+                            <div className="mt-0.5 shrink-0">
+                              {opt.id === 'global' && <Globe className="w-4 h-4 text-purple-600" />}
+                              {opt.id === 'teaching' && <CalendarDays className="w-4 h-4 text-blue-600" />}
+                              {opt.id === 'classes' && <GraduationCap className="w-4 h-4 text-emerald-600" />}
+                              {opt.id === 'schedule' && <Clock className="w-4 h-4 text-amber-600" />}
+                              {opt.id === 'general' && <Sparkles className="w-4 h-4 text-pink-600" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                  {opt.label}
+                                </span>
+                                {opt.badge && (
+                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-purple-600 text-white">
+                                    {opt.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                                {opt.description}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+
+              {/* Chế độ tương tác */}
               <button
                 onClick={() => setActiveTab('chat')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
@@ -402,7 +560,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 }`}
               >
                 <Bot className="w-3.5 h-3.5" />
-                <span>Hỏi đáp Lịch Dạy</span>
+                <span>Trò chuyện AI</span>
               </button>
 
               <button
@@ -414,7 +572,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>Soạn Giáo Án Nhanh</span>
+                <span>Soạn Giáo Án 2018</span>
               </button>
 
               <button
@@ -445,31 +603,30 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 {chatMessages.length === 0 ? (
                   <div className="max-w-4xl 2xl:max-w-5xl mx-auto py-12 text-center space-y-4">
                     <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-purple-500/15 to-indigo-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto shadow-sm">
-                      <Bot className="w-7 h-7" />
+                      {selectedScope === 'global' ? <Globe className="w-7 h-7" /> : <Bot className="w-7 h-7" />}
                     </div>
                     <div>
                       <h4 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100">
-                        Xin chào {selectedTeacher ? `Thầy/Cô ${selectedTeacher}` : 'Thầy/Cô'}!
+                        Xin chào {user?.displayName || selectedTeacher || 'Thầy/Cô'}!
                       </h4>
                       <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl mx-auto leading-relaxed">
-                        Tôi đã nắm rõ toàn bộ thời khóa biểu tuần này. Thầy/Cô có thể hỏi lịch dạy, tìm tiết trống hoặc soạn thông báo dặn dò:
+                        Đang kích hoạt bối cảnh: <strong className="text-purple-600 dark:text-purple-400">{currentScopeConfig.label}</strong>.
+                        {selectedScope === 'global'
+                          ? ' Trợ lý đã nắm toàn bộ dữ liệu TKB trường, Lớp học, Lịch tự do và Thu nhập để sẵn sàng đối soát chéo cho bạn:'
+                          : ' Thầy/Cô có thể đặt câu hỏi hoặc yêu cầu bất kỳ điều gì:'}
                       </p>
                     </div>
 
-                    {/* Câu hỏi gợi ý */}
+                    {/* Câu hỏi gợi ý theo bối cảnh */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-left">
-                      {[
-                        'Tuần này tôi có những buổi nào trống tiết?',
-                        'Hôm nay tôi dạy những lớp nào, tiết mấy?',
-                        'Soạn tin nhắn dặn dò học sinh chuẩn bị bài cho ngày mai',
-                        'Thống kê tổng số tiết môn Toán tôi dạy tuần này',
-                      ].map((q) => (
+                      {scopeSuggestions.map((q) => (
                         <button
                           key={q}
                           onClick={() => setInputText(q)}
-                          className="text-xs p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-purple-400 hover:text-purple-600 transition cursor-pointer text-left shadow-2xs leading-relaxed"
+                          className="text-xs p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-purple-400 hover:text-purple-600 transition cursor-pointer text-left shadow-2xs leading-relaxed group flex items-start gap-2"
                         >
-                          💡 {q}
+                          <span className="text-purple-500 mt-0.5">💡</span>
+                          <span className="group-hover:text-purple-600 transition-colors">{q}</span>
                         </button>
                       ))}
                     </div>
