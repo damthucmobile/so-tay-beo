@@ -7,7 +7,7 @@ import { TeachingScheduleFeature } from '../features/teaching-schedule';
 import { FreelanceScheduleFeature } from '../features/schedule';
 import { IncomeFeature } from '../features/income';
 import { UserGuidePage } from '../features/guide';
-import { TravelFeature } from '../features/travel';
+import { TravelFeature, JournalFeature, BudgetFeature, ChecklistFeature } from '../features/travel';
 import { SharedTripView } from '../features/travel/components/SharedTripView';
 import { useTravelStore } from '../features/travel/stores/useTravelStore';
 import { getPublicSharedTrip } from '../features/travel/services/travelFirebaseService';
@@ -571,91 +571,13 @@ export default function HomePage() {
       {currentTab === 'travel' && <TravelFeature onNavigateTab={handleSelectTab} />}
 
       {/* 7.2 Nhật ký & Album ảnh */}
-      {currentTab === 'travel_journal' && (
-        <BlankModuleView
-          category="Du Lịch & Nghỉ Dưỡng"
-          title="Nhật Ký & Thư Viện Ảnh / Video Kỷ Niệm"
-          description="Nơi lưu giữ những khoảnh khắc đẹp nhất: Tải lên album ảnh & video chất lượng cao (kết nối trực tiếp lưu trữ Cloudflare R2) và những dòng nhật ký xúc cảm sau mỗi chuyến đi."
-          icon={Camera}
-          accentColor="cyan"
-          suggestedCards={[
-            {
-              icon: Camera,
-              title: 'Album Ảnh & Video R2',
-              description: 'Tải lên không giới hạn ảnh và video ngắn kỷ niệm lưu trữ trên Cloudflare R2.',
-            },
-            {
-              icon: BookOpen,
-              title: 'Nhật Ký Trải Nghiệm',
-              description: 'Ghi lại cảm xúc, câu chuyện thú vị và đánh giá các quán ăn, điểm đến ấn tượng.',
-            },
-            {
-              icon: Sparkles,
-              title: 'Khoảnh Khắc Nổi Bật',
-              description: 'Tạo bộ sưu tập những bức ảnh đẹp nhất để chia sẻ hoặc xem lại nhanh.',
-            },
-          ]}
-          emptyStateTip="Lưu giữ từng khoảnh khắc đáng nhớ trong mỗi bước chân bạn đi qua!"
-        />
-      )}
+      {currentTab === 'travel_journal' && <JournalFeature onNavigateTab={handleSelectTab} />}
 
       {/* 7.3 Ngân sách & Chi tiêu */}
-      {currentTab === 'travel_budget' && (
-        <BlankModuleView
-          category="Du Lịch & Nghỉ Dưỡng"
-          title="Quản Lý Ngân Sách & Chi Tiêu Chuyến Đi"
-          description="Dự toán tài chính chuyến đi, hạch toán hóa đơn ăn uống, lưu trú thực tế theo thời gian thực và chia tiền nhóm (Bill Splitter) sòng phẳng, chính xác."
-          icon={Wallet}
-          accentColor="amber"
-          suggestedCards={[
-            {
-              icon: Wallet,
-              title: 'Hạn Mức & Dự Toán',
-              description: 'Thiết lập ngân sách dự trù cho chuyến đi và theo dõi mức độ chi tiêu thực tế.',
-            },
-            {
-              icon: Receipt,
-              title: 'Hóa Đơn & Danh Mục Chi',
-              description: 'Phân loại chi phí: Vé máy bay, tiền phòng, ẩm thực, vé tham quan và quà lưu niệm.',
-            },
-            {
-              icon: Users,
-              title: 'Chia Tiền Nhóm Bạn',
-              description: 'Ghi nhận người trả trước và tự động tính toán số tiền mỗi thành viên cần chuyển khoản.',
-            },
-          ]}
-          emptyStateTip="Quản lý chi tiêu thông minh để mỗi chuyến đi trọn vẹn và an tâm hơn!"
-        />
-      )}
+      {currentTab === 'travel_budget' && <BudgetFeature onNavigateTab={handleSelectTab} />}
 
       {/* 7.4 Hành lý & Checklist */}
-      {currentTab === 'travel_checklist' && (
-        <BlankModuleView
-          category="Du Lịch & Nghỉ Dưỡng"
-          title="Checklist Hành Lý & Két Giấy Tờ Tùy Thân"
-          description="Bộ checklist hành lý thông minh cho từng loại chuyến đi (đi biển, leo núi, công tác, nước ngoài) và két bảo mật lưu ảnh chụp hộ chiếu, căn cước, vé máy bay."
-          icon={CheckSquare}
-          accentColor="purple"
-          suggestedCards={[
-            {
-              icon: Luggage,
-              title: 'Checklist Hành Lý Mẫu',
-              description: 'Gợi ý đồ đạc cần mang theo chủ đề: Đi biển, trekking cắm trại, đi công tác...',
-            },
-            {
-              icon: Sparkles,
-              title: 'Két Giấy Tờ Tùy Thân',
-              description: 'Lưu trữ ảnh hộ chiếu, CCCD, bằng lái xe và hợp đồng bảo hiểm du lịch.',
-            },
-            {
-              icon: CheckSquare,
-              title: 'Checklist Trước Khởi Hành',
-              description: 'Nhắc nhở kiểm tra khóa cửa, tắt điện nước và sạc đầy pin thiết bị.',
-            },
-          ]}
-          emptyStateTip="Chuẩn bị chu đáo từ trước giúp hành trình của bạn luôn suôn sẻ!"
-        />
-      )}
+      {currentTab === 'travel_checklist' && <ChecklistFeature onNavigateTab={handleSelectTab} />}
 
       {/* 8. GIA ĐÌNH */}
       {currentTab === 'family' && (

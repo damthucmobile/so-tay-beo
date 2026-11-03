@@ -81,6 +81,18 @@ export const COLLECTIONS = {
   /** Danh sách chuyến đi, kế hoạch & album chia sẻ gia đình */
   TRAVEL_TRIPS: 'travel_trips',
 
+  /** Nhật ký trải nghiệm & bài viết hành trình du lịch */
+  TRAVEL_JOURNALS: 'travel_journals',
+
+  /** Ngân sách & Hóa đơn chi tiêu du lịch */
+  TRAVEL_EXPENSES: 'travel_expenses',
+
+  /** Checklist hành lý & đồ đạc chuẩn bị */
+  TRAVEL_CHECKLISTS: 'travel_checklists',
+
+  /** Két giấy tờ du lịch, vé máy bay & voucher */
+  TRAVEL_DOCUMENTS: 'travel_documents',
+
   // ============================================================================
   // PHÂN HỆ THEO DÕI HOẠT ĐỘNG & XEM GẦN ĐÂY (ACTIVITY & RECENT VIEWS)
   // ============================================================================

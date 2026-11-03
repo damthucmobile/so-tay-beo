@@ -53,8 +53,8 @@ const TAB_DEFAULT_TITLES: Record<NavTabId, { title: string; subtitle: string }> 
     subtitle: 'Theo dõi chỉ số sức khỏe, thói quen & luyện tập thể chất',
   },
   travel: {
-    title: 'Lịch Trình Chuyến Đi',
-    subtitle: 'Lập kế hoạch hành trình chi tiết, điểm đến & timeline di chuyển',
+    title: 'Quản Lý Chuyến Đi',
+    subtitle: 'Hành trình, nhật ký & album, ngân sách và hành lý theo chuyến',
   },
   travel_journal: {
     title: 'Nhật Ký & Album Kỷ Niệm',

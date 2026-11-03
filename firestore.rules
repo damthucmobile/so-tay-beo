@@ -177,6 +177,56 @@ service cloud.firestore {
     }
 
     // ==============================================================================
+    // 12. PHÂN HỆ DU LỊCH: NHẬT KÝ & ALBUM (TRAVEL JOURNALS)
+    // ==============================================================================
+    match /travel_journals/{journalId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        resource == null 
+        || !('userId' in resource.data) 
+        || resource.data.userId == request.auth.uid
+      );
+    }
+
+    // ==============================================================================
+    // 13. PHÂN HỆ DU LỊCH: NGÂN SÁCH & CHI TIÊU (TRAVEL EXPENSES)
+    // ==============================================================================
+    match /travel_expenses/{expenseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        resource == null 
+        || !('userId' in resource.data) 
+        || resource.data.userId == request.auth.uid
+      );
+    }
+
+    // ==============================================================================
+    // 14. PHÂN HỆ DU LỊCH: HÀNH LÝ & CHECKLIST (TRAVEL CHECKLISTS & DOCUMENTS)
+    // ==============================================================================
+    match /travel_checklists/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        resource == null 
+        || !('userId' in resource.data) 
+        || resource.data.userId == request.auth.uid
+      );
+    }
+
+    match /travel_documents/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        resource == null 
+        || !('userId' in resource.data) 
+        || resource.data.userId == request.auth.uid
+      );
+    }
+
+
+    // ==============================================================================
     // QUY TẮC MẶC ĐỊNH: TỪ CHỐI TẤT CẢ CÁC TRUY CẬP KHÔNG ĐƯỢC ĐỊNH NGHĨA RÕ RÀNG
     // ==============================================================================
     match /{document=**} {

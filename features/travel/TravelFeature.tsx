@@ -106,8 +106,8 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-bold text-emerald-100 border border-white/20">
-                <Palmtree className="w-3.5 h-3.5 text-emerald-200" />
-                <span>Phân hệ Du lịch & Nghỉ dưỡng</span>
+                <Compass className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Danh Mục Chuyến Đi</span>
               </div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/40 backdrop-blur-md text-[11px] font-semibold text-emerald-200 border border-emerald-400/30">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
@@ -115,11 +115,10 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
               </div>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              Lịch Trình & Kế Hoạch Chuyến Đi
+              Quản Lý Chuyến Đi
             </h1>
             <p className="text-xs sm:text-sm text-emerald-50/90 max-w-2xl leading-relaxed">
-              Thiết kế lịch trình du lịch chi tiết từng ngày, theo dõi ngân sách chi tiêu thực tế và lưu
-              giữ những cung đường đáng nhớ cùng người thân.
+              Tổng hợp tất cả các chuyến đi của bạn. Bấm vào từng chuyến đi để xem lịch trình chi tiết, viết nhật ký & kho ảnh kỷ niệm, hạch toán ngân sách và sắp xếp hành lý riêng biệt.
             </p>
           </div>
 

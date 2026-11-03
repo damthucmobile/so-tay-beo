@@ -101,7 +101,7 @@ export const BlankModuleView: React.FC<BlankModuleViewProps> = ({
   const colors = COLOR_MAP[accentColor] || COLOR_MAP.blue;
 
   return (
-    <div className="w-full space-y-6 animate-fadeIn pb-12 max-w-7xl mx-auto">
+    <div className="w-full space-y-6 animate-fadeIn pb-12">
       {/* Top Banner Header */}
       <div
         className={`relative overflow-hidden rounded-3xl border ${colors.border} bg-white dark:bg-slate-900/90 p-6 sm:p-8 shadow-sm backdrop-blur-xl`}
