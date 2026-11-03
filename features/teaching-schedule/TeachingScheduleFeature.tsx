@@ -94,7 +94,7 @@ export const TeachingScheduleFeature: React.FC = () => {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* 1. Sub-Tabs Navigation Bar - Đồng bộ chuẩn thiết kế với Lịch Tự Do & Khách Hàng */}
-      <div className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2 overflow-x-auto">
+      <div className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2 overflow-x-auto print:hidden">
         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
           <button
             onClick={() => setViewMode('teacher')}

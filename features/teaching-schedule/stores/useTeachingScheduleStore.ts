@@ -7,7 +7,8 @@ import {
 } from '../services/teachingScheduleService';
 
 const STORAGE_KEY = 'so_tay_beo_teaching_schedule_v1';
-const PREFS_KEY = 'so_tay_beo_teaching_prefs_v1';
+const PREFS_KEY = 'so_tay_beo_teaching_prefs_v2';
+const OLD_PREFS_KEY = 'so_tay_beo_teaching_prefs_v1';
 
 // Xác định thứ hiện tại trong tuần (1 = Thứ 2 ... 5 = Thứ 6)
 function getTodayDayOfWeek(): DayOfWeek {
@@ -23,18 +24,24 @@ function getTodayDayOfWeek(): DayOfWeek {
       return 'Năm';
     case 5:
       return 'Sáu';
+    case 6:
+      return 'Bảy';
     default:
-      return 'Hai'; // Cuối tuần mặc định hiển thị Thứ 2
+      return 'Hai'; // Chủ nhật mặc định hiển thị Thứ 2
   }
 }
+
+export type ScheduleDisplayMode = 'grid' | 'agenda';
 
 interface TeachingScheduleState {
   timetable: SchoolTimetable | null;
   allTimetables: SchoolTimetable[];
   selectedTeacher: string;
+  myTeacher: string;
   selectedClass: string;
   selectedDay: DayOfWeek;
   viewMode: TeachingScheduleViewMode;
+  displayMode: ScheduleDisplayMode;
   searchQuery: string;
   isImportModalOpen: boolean;
   isLoading: boolean;
@@ -46,9 +53,11 @@ interface TeachingScheduleState {
   setTimetable: (timetable: SchoolTimetable, userId?: string) => Promise<void>;
   clearTimetable: (userId?: string) => Promise<void>;
   setSelectedTeacher: (teacher: string) => void;
+  setMyTeacher: (teacher: string) => void;
   setSelectedClass: (className: string) => void;
   setSelectedDay: (day: DayOfWeek) => void;
   setViewMode: (mode: TeachingScheduleViewMode) => void;
+  setDisplayMode: (mode: ScheduleDisplayMode) => void;
   setSearchQuery: (query: string) => void;
   setIsImportModalOpen: (open: boolean) => void;
   setSelectedTimetable: (timetableId: string) => void;
@@ -59,9 +68,11 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
   timetable: null,
   allTimetables: [],
   selectedTeacher: '',
+  myTeacher: '',
   selectedClass: '',
   selectedDay: getTodayDayOfWeek(),
   viewMode: 'teacher',
+  displayMode: 'agenda',
   searchQuery: '',
   isImportModalOpen: false,
   isLoading: false,
@@ -75,18 +86,39 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
     // 1. Khởi tạo tức thì từ LocalStorage (giúp render siêu tốc, không nháy màn hình)
     try {
       const savedTimetable = localStorage.getItem(STORAGE_KEY);
-      const savedPrefs = localStorage.getItem(PREFS_KEY);
+      let savedPrefs = localStorage.getItem(PREFS_KEY);
+
+      if (!savedPrefs && typeof window !== 'undefined') {
+        const oldPrefs = localStorage.getItem(OLD_PREFS_KEY);
+        if (oldPrefs) {
+          try {
+            const parsedOld = JSON.parse(oldPrefs);
+            const migrated = {
+              ...parsedOld,
+              displayMode: 'agenda',
+            };
+            savedPrefs = JSON.stringify(migrated);
+            localStorage.setItem(PREFS_KEY, savedPrefs);
+          } catch {}
+        }
+      }
 
       if (savedTimetable) {
         const parsedTimetable: SchoolTimetable = JSON.parse(savedTimetable);
         if (parsedTimetable && parsedTimetable.classes && parsedTimetable.entries) {
           let teacher = parsedTimetable.teachers[0] || '';
+          let myTeacher = '';
           let className = parsedTimetable.classes[0] || '';
           let mode: TeachingScheduleViewMode = 'teacher';
+          let displayMode: ScheduleDisplayMode = 'agenda';
 
           if (savedPrefs) {
             try {
               const prefs = JSON.parse(savedPrefs);
+              if (prefs.myTeacher && parsedTimetable.teachers.includes(prefs.myTeacher)) {
+                myTeacher = prefs.myTeacher;
+                teacher = prefs.myTeacher; // Mặc định mở luôn lịch của giáo viên này
+              }
               if (prefs.selectedTeacher && parsedTimetable.teachers.includes(prefs.selectedTeacher)) {
                 teacher = prefs.selectedTeacher;
               }
@@ -96,6 +128,9 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
               if (prefs.viewMode) {
                 mode = prefs.viewMode;
               }
+              if (prefs.displayMode) {
+                displayMode = prefs.displayMode;
+              }
             } catch (e) {
               console.error('Failed to parse saved prefs:', e);
             }
@@ -104,8 +139,10 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
           set({
             timetable: parsedTimetable,
             selectedTeacher: teacher,
+            myTeacher: myTeacher,
             selectedClass: className,
             viewMode: mode,
+            displayMode: displayMode,
             selectedDay: getTodayDayOfWeek(),
           });
         }
@@ -133,14 +170,20 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
             let teacher = activeTimetable.teachers.includes(get().selectedTeacher)
               ? get().selectedTeacher
               : activeTimetable.teachers[0] || '';
+            let myTeacher = get().myTeacher;
             let className = activeTimetable.classes.includes(get().selectedClass)
               ? get().selectedClass
               : activeTimetable.classes[0] || '';
             let mode = get().viewMode;
+            let displayMode = get().displayMode;
 
             if (savedPrefs) {
               try {
                 const prefs = JSON.parse(savedPrefs);
+                if (prefs.myTeacher && activeTimetable.teachers.includes(prefs.myTeacher)) {
+                  myTeacher = prefs.myTeacher;
+                  if (!get().selectedTeacher) teacher = prefs.myTeacher;
+                }
                 if (prefs.selectedTeacher && activeTimetable.teachers.includes(prefs.selectedTeacher)) {
                   teacher = prefs.selectedTeacher;
                 }
@@ -150,6 +193,9 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
                 if (prefs.viewMode) {
                   mode = prefs.viewMode;
                 }
+                if (prefs.displayMode) {
+                  displayMode = prefs.displayMode;
+                }
               } catch {}
             }
 
@@ -157,8 +203,10 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
               timetable: activeTimetable,
               allTimetables: timetables,
               selectedTeacher: teacher,
+              myTeacher: myTeacher,
               selectedClass: className,
               viewMode: mode,
+              displayMode: displayMode,
               isLoading: false,
               isSaving: false,
               syncStatus: 'synced',
@@ -301,8 +349,26 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
       try {
         const prefs = {
           selectedTeacher: teacher,
+          myTeacher: get().myTeacher,
           selectedClass: get().selectedClass,
           viewMode: get().viewMode,
+          displayMode: get().displayMode,
+        };
+        localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      } catch {}
+    }
+  },
+
+  setMyTeacher: (teacher: string) => {
+    set({ myTeacher: teacher });
+    if (typeof window !== 'undefined') {
+      try {
+        const prefs = {
+          selectedTeacher: get().selectedTeacher,
+          myTeacher: teacher,
+          selectedClass: get().selectedClass,
+          viewMode: get().viewMode,
+          displayMode: get().displayMode,
         };
         localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
       } catch {}
@@ -315,8 +381,10 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
       try {
         const prefs = {
           selectedTeacher: get().selectedTeacher,
+          myTeacher: get().myTeacher,
           selectedClass: className,
           viewMode: get().viewMode,
+          displayMode: get().displayMode,
         };
         localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
       } catch {}
@@ -333,8 +401,26 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
       try {
         const prefs = {
           selectedTeacher: get().selectedTeacher,
+          myTeacher: get().myTeacher,
           selectedClass: get().selectedClass,
           viewMode: mode,
+          displayMode: get().displayMode,
+        };
+        localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      } catch {}
+    }
+  },
+
+  setDisplayMode: (mode: ScheduleDisplayMode) => {
+    set({ displayMode: mode });
+    if (typeof window !== 'undefined') {
+      try {
+        const prefs = {
+          selectedTeacher: get().selectedTeacher,
+          myTeacher: get().myTeacher,
+          selectedClass: get().selectedClass,
+          viewMode: get().viewMode,
+          displayMode: mode,
         };
         localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
       } catch {}

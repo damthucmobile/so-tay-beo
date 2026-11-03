@@ -11,6 +11,7 @@ export const DAYS_OF_WEEK: { id: DayOfWeek; label: string; short: string; dayInd
   { id: 'Tư', label: 'Thứ Tư', short: 'T4', dayIndex: 3 },
   { id: 'Năm', label: 'Thứ Năm', short: 'T5', dayIndex: 4 },
   { id: 'Sáu', label: 'Thứ Sáu', short: 'T6', dayIndex: 5 },
+  { id: 'Bảy', label: 'Thứ Bảy', short: 'T7', dayIndex: 6 },
 ];
 
 export interface PeriodTimeConfig {
