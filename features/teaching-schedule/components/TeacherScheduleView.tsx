@@ -20,6 +20,8 @@ import {
   ListOrdered,
   Printer,
   CalendarDays,
+  ChevronDown,
+  MoreVertical,
 } from 'lucide-react';
 import { useTeachingScheduleStore } from '../stores/useTeachingScheduleStore';
 import { DAYS_OF_WEEK, DayOfWeek, DEFAULT_PERIOD_TIMES, Session, TimetableEntry } from '../types';
@@ -42,10 +44,12 @@ export const TeacherScheduleView: React.FC = () => {
     setViewMode,
     displayMode,
     setDisplayMode,
+    isCompactView,
   } = useTeachingScheduleStore();
 
   const [teacherSearch, setTeacherSearch] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   const todayDayOfWeek = useMemo(() => getTodayDayOfWeekVietnamese(), []);
@@ -126,13 +130,200 @@ export const TeacherScheduleView: React.FC = () => {
   const isMyTeacher = selectedTeacher && myTeacher === selectedTeacher;
 
   return (
-    <div className="space-y-3 sm:space-y-4 pb-12 animate-fadeIn w-full">
-      {/* 1. Thanh chọn giáo viên & Chế độ xem (Header Toolbar) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 shadow-sm print:hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+    <div className="space-y-2 sm:space-y-4 pb-12 animate-fadeIn w-full">
+      {/* 1. THANH CHỌN GIÁO VIÊN & ĐIỀU KHIỂN */}
+
+      {/* A. BẢN MOBILE (sm:hidden) - Tinh giản, 1 dòng gọn gàng, loại bỏ hoàn toàn rối mắt */}
+      <div className="sm:hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2.5 shadow-sm space-y-2 print:hidden">
+        <div className="flex items-center justify-between gap-2">
+          {/* Nút bấm để chọn/đổi giáo viên */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchOpen(!isSearchOpen);
+              if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+            }}
+            className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer active:opacity-75 transition"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <UserCheck className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                  {selectedTeacher ? `Thầy/Cô: ${selectedTeacher}` : 'Chọn giáo viên'}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isSearchOpen ? 'rotate-180' : ''}`} />
+                {isMyTeacher && (
+                  <Bookmark className="w-3 h-3 fill-amber-500 text-amber-500 shrink-0" />
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                {teacherSubjects.length > 0 ? teacherSubjects.join(', ') : 'Lịch giảng dạy'}
+              </p>
+            </div>
+          </button>
+
+          {/* Các nút thao tác nhanh trên mobile */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Pill số tiết hôm nay */}
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+              <Clock className="w-3 h-3 text-emerald-500" />
+              <span>{todayEntries.length}t</span>
+            </span>
+
+            {/* Toggle Lưới / Ngày */}
+            <button
+              onClick={() => setDisplayMode(displayMode === 'grid' ? 'agenda' : 'grid')}
+              className={`p-1.5 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                displayMode === 'grid'
+                  ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+              }`}
+              title={displayMode === 'grid' ? 'Đang xem Lưới tuần (Bấm để xem Theo ngày)' : 'Đang xem Theo ngày (Bấm để xem Lưới tuần)'}
+            >
+              {displayMode === 'grid' ? <LayoutGrid className="w-3.5 h-3.5" /> : <ListOrdered className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* Menu More */}
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(!isMobileMenuOpen);
+                if (isSearchOpen) setIsSearchOpen(false);
+              }}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+              title="Tùy chọn khác"
+            >
+              <MoreVertical className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Dropdown tìm kiếm & đổi giáo viên trên mobile */}
+        {isSearchOpen && (
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 animate-in fade-in duration-150">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Tìm tên giáo viên..."
+                value={teacherSearch}
+                onChange={(e) => setTeacherSearch(e.target.value)}
+                autoFocus
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
+              />
+            </div>
+
+            {/* Gợi ý giáo viên nhanh */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              <span className="text-[10px] text-slate-400 shrink-0">Gợi ý:</span>
+              {timetable.teachers.slice(0, 10).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setSelectedTeacher(t);
+                    setIsSearchOpen(false);
+                    setTeacherSearch('');
+                  }}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold shrink-0 cursor-pointer ${
+                    t === selectedTeacher
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* Danh sách kết quả tìm kiếm */}
+            <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-lg">
+              {filteredTeachers.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setSelectedTeacher(t);
+                    setIsSearchOpen(false);
+                    setTeacherSearch('');
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between cursor-pointer ${
+                    t === selectedTeacher ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span>{t}</span>
+                  {t === selectedTeacher && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Menu More trên mobile */}
+        {isMobileMenuOpen && (
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-xs animate-in fade-in duration-150">
+            <div className="grid grid-cols-2 gap-1.5 pb-1">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
+                <p className="text-[10px] text-slate-400">Tiết trong tuần</p>
+                <p className="font-bold text-xs text-slate-800 dark:text-slate-200">{teacherAllEntries.length} tiết</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
+                <p className="text-[10px] text-slate-400">Lớp phụ trách</p>
+                <p className="font-bold text-xs text-slate-800 dark:text-slate-200">{teacherClasses.length} lớp</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                if (isMyTeacher) {
+                  setMyTeacher('');
+                } else {
+                  setMyTeacher(selectedTeacher);
+                }
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-medium cursor-pointer"
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${isMyTeacher ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`} />
+              <span>{isMyTeacher ? 'Bỏ ghim giáo viên này' : 'Ghim làm giáo viên mặc định của tôi'}</span>
+            </button>
+
+            {myTeacher && myTeacher !== selectedTeacher && (
+              <button
+                onClick={() => {
+                  setSelectedTeacher(myTeacher);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-600 font-semibold cursor-pointer"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Quay lại lịch của tôi ({myTeacher})</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                handlePrint();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5 text-blue-500" />
+              <span>In / Xem trước TKB A4</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* B. BẢN DESKTOP (hidden sm:block) */}
+      <div className={`hidden sm:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm print:hidden ${
+        isCompactView ? 'rounded-2xl p-2.5 sm:p-3' : 'rounded-2xl sm:rounded-3xl p-3 sm:p-4'
+      }`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
           {/* Cụm trái: Thông tin Giáo viên & Nút ghim */}
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+            <div className={`bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20 ${
+              isCompactView ? 'w-8 h-8 rounded-xl' : 'w-9 h-9 sm:w-11 sm:h-11 rounded-2xl'
+            }`}>
               <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
 
@@ -156,7 +347,7 @@ export const TeacherScheduleView: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 {selectedTeacher && (
                   <button
                     onClick={() => {
@@ -187,6 +378,27 @@ export const TeacherScheduleView: React.FC = () => {
                     >
                       Quay lại lịch của tôi ({myTeacher})
                     </button>
+                  </>
+                )}
+
+                {/* 3 Chỉ số KPI dạng mini badge (Hiện khi ở Chế độ xem gọn) */}
+                {isCompactView && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+                    <div className="inline-flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
+                        <CalendarDays className="w-3 h-3 text-blue-500" />
+                        <span>{teacherAllEntries.length} tiết/tuần</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                        <Clock className="w-3 h-3 text-emerald-500" />
+                        <span>Hôm nay: {todayEntries.length}t</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+                        <GraduationCap className="w-3 h-3 text-purple-500" />
+                        <span>{teacherClasses.length} lớp</span>
+                      </span>
+                    </div>
                   </>
                 )}
               </div>
@@ -302,26 +514,28 @@ export const TeacherScheduleView: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Teacher Chips (Horizontal Scroll) */}
-        <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 shrink-0 mr-0.5">
-            Gợi ý:
-          </span>
-          {timetable.teachers.slice(0, 15).map((t) => (
-            <button
-              key={t}
-              onClick={() => setSelectedTeacher(t)}
-              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold shrink-0 transition cursor-pointer ${
-                t === selectedTeacher
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {t}
-              {t === myTeacher && ' ★'}
-            </button>
-          ))}
-        </div>
+        {/* Quick Teacher Chips (Horizontal Scroll) - Ẩn khi xem gọn để tiết kiệm chiều dọc */}
+        {!isCompactView && (
+          <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 shrink-0 mr-0.5">
+              Gợi ý:
+            </span>
+            {timetable.teachers.slice(0, 15).map((t) => (
+              <button
+                key={t}
+                onClick={() => setSelectedTeacher(t)}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold shrink-0 transition cursor-pointer ${
+                  t === selectedTeacher
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {t}
+                {t === myTeacher && ' ★'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 2. Banner Trạng Thái Thực Tế (Live Tracker Widget) */}
@@ -336,44 +550,46 @@ export const TeacherScheduleView: React.FC = () => {
         />
       </div>
 
-      {/* 3. Thống kê KPI tóm tắt */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-4 print:hidden">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Tiết Trong Tuần
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-              {teacherAllEntries.length}
+      {/* 3. Thống kê KPI tóm tắt (Chỉ hiện khi ở Chế độ xem đầy đủ) */}
+      {!isCompactView && (
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-4 print:hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Tiết Trong Tuần
             </span>
-            <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+                {teacherAllEntries.length}
+              </span>
+              <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider truncate">
-            {todayDayOfWeek ? `Hôm Nay (${todayDayOfWeek})` : 'Hôm Nay'}
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-              {todayEntries.length}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
+            <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider truncate">
+              {todayDayOfWeek ? `Hôm Nay (${todayDayOfWeek})` : 'Hôm Nay'}
             </span>
-            <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+                {todayEntries.length}
+              </span>
+              <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            Lớp Phụ Trách
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-              {teacherClasses.length}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
+            <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+              Lớp Phụ Trách
             </span>
-            <span className="text-[11px] text-zinc-500 font-normal">lớp</span>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+                {teacherClasses.length}
+              </span>
+              <span className="text-[11px] text-zinc-500 font-normal">lớp</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 4. Khung Hiển Thị Chính: Lưới Cả Tuần (Grid) hoặc Theo Ngày (Agenda) */}
       {displayMode === 'grid' ? (
@@ -391,9 +607,11 @@ export const TeacherScheduleView: React.FC = () => {
         />
       ) : (
         /* CHẾ ĐỘ XEM THEO NGÀY (AGENDA) */
-        <div className="space-y-3 sm:space-y-4">
+        <div className={isCompactView ? 'space-y-2 sm:space-y-2.5' : 'space-y-3 sm:space-y-4'}>
           {/* Thanh chọn Thứ Hai -> Thứ Bảy */}
-          <div className="bg-slate-200/70 dark:bg-slate-800/60 p-1.5 rounded-2xl flex items-center justify-between gap-1 shadow-inner overflow-x-auto print:hidden">
+          <div className={`bg-slate-200/70 dark:bg-slate-800/60 rounded-2xl flex items-center justify-between gap-1 shadow-inner overflow-x-auto print:hidden ${
+            isCompactView ? 'p-1' : 'p-1.5'
+          }`}>
             {DAYS_OF_WEEK.map((d) => {
               const isActive = selectedDay === d.id;
               const isToday = d.id === todayDayOfWeek;
@@ -403,7 +621,9 @@ export const TeacherScheduleView: React.FC = () => {
                 <button
                   key={d.id}
                   onClick={() => setSelectedDay(d.id)}
-                  className={`flex-1 min-w-[50px] py-2 sm:py-2.5 px-1 sm:px-2 rounded-xl text-center transition flex flex-col items-center justify-center cursor-pointer select-none ${
+                  className={`flex-1 min-w-[44px] px-1 rounded-xl text-center transition flex flex-col items-center justify-center cursor-pointer select-none ${
+                    isCompactView ? 'py-1.5 sm:py-2' : 'py-2 sm:py-2.5 sm:px-2'
+                  } ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 font-bold scale-[1.02]'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/60'

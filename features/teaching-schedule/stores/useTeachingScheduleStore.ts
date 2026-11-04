@@ -42,6 +42,7 @@ interface TeachingScheduleState {
   selectedDay: DayOfWeek;
   viewMode: TeachingScheduleViewMode;
   displayMode: ScheduleDisplayMode;
+  isCompactView: boolean;
   searchQuery: string;
   isImportModalOpen: boolean;
   isLoading: boolean;
@@ -58,6 +59,8 @@ interface TeachingScheduleState {
   setSelectedDay: (day: DayOfWeek) => void;
   setViewMode: (mode: TeachingScheduleViewMode) => void;
   setDisplayMode: (mode: ScheduleDisplayMode) => void;
+  setIsCompactView: (compact: boolean) => void;
+  toggleCompactView: () => void;
   setSearchQuery: (query: string) => void;
   setIsImportModalOpen: (open: boolean) => void;
   setSelectedTimetable: (timetableId: string) => void;
@@ -73,6 +76,7 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
   selectedDay: getTodayDayOfWeek(),
   viewMode: 'teacher',
   displayMode: 'agenda',
+  isCompactView: true,
   searchQuery: '',
   isImportModalOpen: false,
   isLoading: false,
@@ -111,6 +115,7 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
           let className = parsedTimetable.classes[0] || '';
           let mode: TeachingScheduleViewMode = 'teacher';
           let displayMode: ScheduleDisplayMode = 'agenda';
+          let compactView = true;
 
           if (savedPrefs) {
             try {
@@ -131,6 +136,9 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
               if (prefs.displayMode) {
                 displayMode = prefs.displayMode;
               }
+              if (prefs.isCompactView !== undefined) {
+                compactView = Boolean(prefs.isCompactView);
+              }
             } catch (e) {
               console.error('Failed to parse saved prefs:', e);
             }
@@ -143,6 +151,7 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
             selectedClass: className,
             viewMode: mode,
             displayMode: displayMode,
+            isCompactView: compactView,
             selectedDay: getTodayDayOfWeek(),
           });
         }
@@ -421,10 +430,33 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
           selectedClass: get().selectedClass,
           viewMode: get().viewMode,
           displayMode: mode,
+          isCompactView: get().isCompactView,
         };
         localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
       } catch {}
     }
+  },
+
+  setIsCompactView: (compact: boolean) => {
+    set({ isCompactView: compact });
+    if (typeof window !== 'undefined') {
+      try {
+        const prefs = {
+          selectedTeacher: get().selectedTeacher,
+          myTeacher: get().myTeacher,
+          selectedClass: get().selectedClass,
+          viewMode: get().viewMode,
+          displayMode: get().displayMode,
+          isCompactView: compact,
+        };
+        localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      } catch {}
+    }
+  },
+
+  toggleCompactView: () => {
+    const nextState = !get().isCompactView;
+    get().setIsCompactView(nextState);
   },
 
   setSearchQuery: (query: string) => set({ searchQuery: query }),

@@ -20,6 +20,9 @@ import {
   Trash2,
   Bell,
   Bot,
+  Minimize2,
+  Maximize2,
+  MoreVertical,
 } from 'lucide-react';
 
 export const TeachingScheduleFeature: React.FC = () => {
@@ -34,9 +37,12 @@ export const TeachingScheduleFeature: React.FC = () => {
     initStore,
     clearTimetable,
     isLoading,
+    isCompactView,
+    toggleCompactView,
   } = useTeachingScheduleStore();
 
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
 
   useEffect(() => {
     const unsub = initStore(user?.uid);
@@ -99,85 +105,188 @@ export const TeachingScheduleFeature: React.FC = () => {
         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
           <button
             onClick={() => setViewMode('teacher')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'teacher'
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'teacher'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
           >
-            Lịch giáo viên
+            <span className="hidden sm:inline">Lịch </span>giáo viên
           </button>
 
           <button
             onClick={() => setViewMode('class')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'class'
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'class'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
           >
-            Lịch theo lớp
+            <span className="hidden sm:inline">Lịch </span>theo lớp
           </button>
 
           <button
             onClick={() => setViewMode('matrix')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'matrix'
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'matrix'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
           >
-            Lịch toàn trường
+            <span className="hidden sm:inline">Lịch </span>toàn trường
           </button>
         </div>
 
-        {/* Action Buttons on the right: Trợ lý AI, Nhắc lịch, Đổi / Nhập Excel & Xóa TKB */}
+        {/* Action Buttons */}
         {timetable && (
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('app-navigate-tab', { detail: { tab: 'ai_assistant' } }));
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-medium transition border border-zinc-200 dark:border-zinc-700 cursor-pointer"
-              title="Mở Trợ lý AI"
-            >
-              <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
-              <span className="hidden sm:inline">Trợ lý AI</span>
-              <span className="sm:hidden text-[11px]">AI</span>
-            </button>
+          <>
+            {/* A. BẢN DESKTOP (hidden sm:flex) */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              {/* Nút bật/tắt Chế độ xem gọn */}
+              <button
+                onClick={toggleCompactView}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer ${
+                  isCompactView
+                    ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-200/80 dark:border-blue-800/60 shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80'
+                }`}
+                title={isCompactView ? 'Đang bật Xem gọn (Bấm để xem đầy đủ)' : 'Đang bật Xem đầy đủ (Bấm để thu gọn)'}
+              >
+                {isCompactView ? (
+                  <>
+                    <Minimize2 className="w-3.5 h-3.5" />
+                    <span>Xem gọn</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Xem đầy đủ</span>
+                  </>
+                )}
+              </button>
 
-            <button
-              onClick={() => setIsReminderModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-xs font-semibold transition border border-blue-200/60 dark:border-blue-800/40 shadow-sm cursor-pointer"
-              title="Cài đặt thông báo Web Push nhắc tiết dạy"
-            >
-              <Bell className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Nhắc lịch</span>
-              <span className="sm:hidden text-[11px]">Nhắc</span>
-            </button>
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('app-navigate-tab', { detail: { tab: 'ai_assistant' } }));
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-medium transition border border-zinc-200 dark:border-zinc-700 cursor-pointer"
+                title="Mở Trợ lý AI"
+              >
+                <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                <span>Trợ lý AI</span>
+              </button>
 
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-semibold transition border border-slate-200/80 dark:border-slate-700/80 shadow-sm cursor-pointer"
-              title="Đổi hoặc nhập file TKB Excel mới"
-            >
-              <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span className="hidden sm:inline">Đổi / Nhập Excel</span>
-              <span className="sm:hidden text-[11px]">Đổi TKB</span>
-            </button>
+              <button
+                onClick={() => setIsReminderModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-xs font-semibold transition border border-blue-200/60 dark:border-blue-800/40 shadow-sm cursor-pointer"
+                title="Cài đặt thông báo Web Push nhắc tiết dạy"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>Nhắc lịch</span>
+              </button>
 
-            <button
-              onClick={handleDeleteTimetable}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-xs font-semibold transition border border-red-200/80 dark:border-red-900/40 shadow-sm cursor-pointer"
-              title="Xóa thời khóa biểu này"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-red-500" />
-              <span className="hidden sm:inline ml-1">Xóa TKB</span>
-            </button>
-          </div>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-semibold transition border border-slate-200/80 dark:border-slate-700/80 shadow-sm cursor-pointer"
+                title="Đổi hoặc nhập file TKB Excel mới"
+              >
+                <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Đổi / Nhập Excel</span>
+              </button>
+
+              <button
+                onClick={handleDeleteTimetable}
+                className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-xs font-semibold transition border border-red-200/80 dark:border-red-900/40 shadow-sm cursor-pointer"
+                title="Xóa thời khóa biểu này"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                <span className="ml-1">Xóa TKB</span>
+              </button>
+            </div>
+
+            {/* B. BẢN MOBILE (sm:hidden) - Gọn gàng không bị tràn thanh ngang */}
+            <div className="sm:hidden flex items-center gap-1.5 shrink-0 relative">
+              <button
+                onClick={toggleCompactView}
+                className={`p-1.5 rounded-xl border transition cursor-pointer ${
+                  isCompactView
+                    ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800'
+                    : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                }`}
+                title={isCompactView ? 'Đang Xem gọn (Bấm để xem đầy đủ)' : 'Đang Xem đầy đủ (Bấm để thu gọn)'}
+              >
+                {isCompactView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+
+              <button
+                onClick={() => setIsMobileActionsOpen(!isMobileActionsOpen)}
+                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                title="Tùy chọn khác"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {/* Menu dropdown trên mobile */}
+              {isMobileActionsOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsMobileActionsOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-1.5 space-y-1 text-xs animate-in fade-in duration-150">
+                    <button
+                      onClick={() => {
+                        setIsMobileActionsOpen(false);
+                        window.dispatchEvent(new CustomEvent('app-navigate-tab', { detail: { tab: 'ai_assistant' } }));
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
+                    >
+                      <Bot className="w-3.5 h-3.5 text-purple-500" />
+                      <span>Trợ lý AI</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMobileActionsOpen(false);
+                        setIsReminderModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
+                    >
+                      <Bell className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Cài đặt nhắc lịch</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMobileActionsOpen(false);
+                        setIsImportModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Đổi / Nhập Excel</span>
+                    </button>
+
+                    <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+
+                    <button
+                      onClick={() => {
+                        setIsMobileActionsOpen(false);
+                        handleDeleteTimetable();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 font-medium cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa thời khóa biểu</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
         )}
       </div>
 
       {/* 2. Main Tab Content View - Mở rộng full chiều ngang theo yêu cầu */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 min-h-0">
-        <div className="w-full space-y-4">
+      <div className={`flex-1 overflow-y-auto min-h-0 ${isCompactView ? 'px-3 sm:px-5 py-2.5 sm:py-3.5' : 'px-4 sm:px-6 py-4 sm:py-6'}`}>
+        <div className={`w-full ${isCompactView ? 'space-y-2 sm:space-y-2.5' : 'space-y-4'}`}>
           {!timetable ? (
             /* Empty State khi chưa có TKB: Mời người dùng import file Excel */
             <div className="max-w-md mx-auto my-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-4 shadow-sm">

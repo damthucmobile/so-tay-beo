@@ -15,6 +15,7 @@ import {
 import { TimetableEntry } from '../types';
 import { calculateLiveScheduleStatus, LivePeriodStatus } from '../utils/timetableLiveTracker';
 import { getSubjectTheme } from '../utils/subjectColors';
+import { useTeachingScheduleStore } from '../stores/useTeachingScheduleStore';
 
 interface LiveScheduleTrackerBannerProps {
   todayEntries: TimetableEntry[];
@@ -27,6 +28,7 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
   teacherName,
   onSelectClass,
 }) => {
+  const { isCompactView } = useTeachingScheduleStore();
   const [status, setStatus] = useState<LivePeriodStatus>(() =>
     calculateLiveScheduleStatus(todayEntries)
   );
@@ -46,6 +48,23 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
   }
 
   if (status.dayState === 'free_day') {
+    if (isCompactView) {
+      return (
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 text-xs text-emerald-800 dark:text-emerald-200 shadow-2xs">
+          <div className="flex items-center gap-2 truncate">
+            <Coffee className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="font-semibold text-emerald-900 dark:text-emerald-100">
+              Hôm nay ({status.todayDayOfWeek ? `Thứ ${status.todayDayOfWeek}` : 'Hôm nay'}): Thầy/Cô không có tiết lên lớp
+            </span>
+            <span className="text-emerald-400 hidden sm:inline">•</span>
+            <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 truncate hidden sm:inline">
+              Thư thả chấm bài, nghiên cứu tài liệu hoặc nghỉ ngơi.
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-200 shadow-sm">
         <div className="flex items-center gap-2.5">
@@ -69,6 +88,32 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
   if (status.dayState === 'in_class' && status.activePeriod) {
     const { activePeriod } = status;
     const theme = getSubjectTheme(activePeriod.entry.subject);
+
+    if (isCompactView) {
+      return (
+        <div className="bg-gradient-to-r from-emerald-500/15 to-blue-500/10 dark:from-emerald-950/40 dark:to-blue-950/20 border border-emerald-500/40 rounded-xl px-3 py-1.5 shadow-2xs flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="font-bold text-emerald-800 dark:text-emerald-200">Đang dạy:</span>
+            <span className="font-semibold text-slate-900 dark:text-white truncate">
+              Môn {activePeriod.entry.subject} - Lớp {activePeriod.entry.className}
+            </span>
+            <span className="text-slate-400 hidden sm:inline">•</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden sm:inline">
+              Tiết {activePeriod.period} ({activePeriod.startTime} - {activePeriod.endTime})
+            </span>
+          </div>
+          {onSelectClass && (
+            <button
+              onClick={() => onSelectClass(activePeriod.entry.className)}
+              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0 cursor-pointer"
+            >
+              Lớp {activePeriod.entry.className} →
+            </button>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div className="relative overflow-hidden bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-blue-500/10 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-blue-950/20 border-2 border-emerald-500/40 dark:border-emerald-500/50 rounded-2xl p-3.5 sm:p-4 shadow-sm animate-fadeIn">
@@ -137,6 +182,28 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
   if (status.dayState === 'break' && status.nextPeriod) {
     const { nextPeriod } = status;
 
+    if (isCompactView) {
+      return (
+        <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 rounded-xl px-3 py-1.5 shadow-2xs flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <Coffee className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="font-bold text-amber-800 dark:text-amber-200">Giải lao:</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+              Tiết kế tiếp: Tiết {nextPeriod.period} ({nextPeriod.entry.subject} - Lớp {nextPeriod.entry.className}) lúc {nextPeriod.startTime}
+            </span>
+          </div>
+          {onSelectClass && (
+            <button
+              onClick={() => onSelectClass(nextPeriod.entry.className)}
+              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline shrink-0 cursor-pointer"
+            >
+              Lớp {nextPeriod.entry.className} →
+            </button>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-yellow-500/5 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-yellow-950/10 border border-amber-300/80 dark:border-amber-700/60 rounded-2xl p-3 sm:p-3.5 shadow-sm animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -177,6 +244,22 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
   if (status.dayState === 'before_class' && status.nextPeriod) {
     const { nextPeriod } = status;
 
+    if (isCompactView) {
+      return (
+        <div className="bg-blue-50/80 dark:bg-blue-950/25 border border-blue-200/80 dark:border-blue-800/50 rounded-xl px-3 py-1.5 shadow-2xs flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="font-bold text-blue-900 dark:text-blue-100">
+              Hôm nay có {todayEntries.length} tiết lên lớp ({status.todayDayOfWeek ? `Thứ ${status.todayDayOfWeek}` : ''}):
+            </span>
+            <span className="text-[11px] text-blue-700/80 dark:text-blue-300/80 truncate">
+              Tiết đầu: Tiết {nextPeriod.period} ({nextPeriod.entry.subject} - Lớp {nextPeriod.entry.className}) lúc {nextPeriod.startTime}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-blue-50/80 dark:bg-blue-950/25 border border-blue-200/80 dark:border-blue-800/50 rounded-2xl p-3 sm:p-3.5 shadow-sm flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -198,6 +281,23 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
 
   // 4. Đã hoàn thành tất cả tiết hôm nay (Finished)
   if (status.dayState === 'finished') {
+    if (isCompactView) {
+      return (
+        <div className="bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 text-xs text-slate-700 dark:text-slate-300 shadow-2xs">
+          <div className="flex items-center gap-2 truncate">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span className="font-bold text-slate-900 dark:text-white">
+              Đã hoàn thành toàn bộ {todayEntries.length} tiết dạy hôm nay!
+            </span>
+            <span className="text-slate-400 hidden sm:inline">•</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden sm:inline">
+              Chúc Thầy/Cô có một buổi tối ấm áp, thư thái bên gia đình.
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-2.5 text-xs text-slate-700 dark:text-slate-300 shadow-sm">
         <div className="flex items-center gap-2.5">
