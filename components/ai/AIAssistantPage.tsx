@@ -53,6 +53,7 @@ import { useClassManager } from '@/features/class/hooks/useClassManager';
 import { useScheduleManager } from '@/features/schedule/hooks/useScheduleManager';
 import { useIncomeManager } from '@/features/income/hooks/useIncomeManager';
 import { useTravelStore } from '@/features/travel/stores/useTravelStore';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import { NavTabId } from '../layout/Sidebar';
 
 interface ChatSession {
@@ -787,7 +788,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                           : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-xs shadow-xs'
                           }`}
                       >
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <MarkdownRenderer content={msg.content} isUser={msg.role === 'user'} />
                         {msg.role !== 'user' && (
                           <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-end text-[11px] text-zinc-400">
                             <button
@@ -929,8 +930,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                       <span>{copiedId === 'lesson' ? 'Đã sao chép' : 'Sao chép'}</span>
                     </button>
                   </div>
-                  <div className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed max-h-[50vh] overflow-y-auto text-zinc-800 dark:text-zinc-200 font-sans">
-                    {generatedPlan}
+                  <div className="max-h-[50vh] overflow-y-auto pr-1">
+                    <MarkdownRenderer content={generatedPlan} />
                   </div>
                 </div>
               )}
