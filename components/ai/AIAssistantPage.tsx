@@ -29,6 +29,8 @@ import {
   CalendarDays,
   Cpu,
   Settings,
+  DollarSign,
+  Compass,
 } from 'lucide-react';
 import {
   useGeminiAI,
@@ -50,6 +52,7 @@ import { useTeachingScheduleStore } from '@/features/teaching-schedule/stores/us
 import { useClassManager } from '@/features/class/hooks/useClassManager';
 import { useScheduleManager } from '@/features/schedule/hooks/useScheduleManager';
 import { useIncomeManager } from '@/features/income/hooks/useIncomeManager';
+import { useTravelStore } from '@/features/travel/stores/useTravelStore';
 import { NavTabId } from '../layout/Sidebar';
 
 interface ChatSession {
@@ -68,10 +71,17 @@ interface AIAssistantPageProps {
 
 export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
-  const { timetable, selectedTeacher } = useTeachingScheduleStore();
-  const { classes, students, sessions: classSessions } = useClassManager(user?.uid);
+  const { timetable, selectedTeacher, myTeacher } = useTeachingScheduleStore();
+  const { classes, students, schedulePatterns, sessions: classSessions } = useClassManager(user?.uid);
   const { appointments, customers } = useScheduleManager(user?.uid);
   const { transactions } = useIncomeManager(user?.uid);
+  const { trips, fetchTrips } = useTravelStore();
+
+  useEffect(() => {
+    if (user?.uid) {
+      fetchTrips(user.uid);
+    }
+  }, [user?.uid, fetchTrips]);
 
   const [selectedScope, setSelectedScope] = useState<AIContextScope>('global');
   const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
@@ -164,33 +174,39 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     return CONTEXT_SCOPE_OPTIONS.find((o) => o.id === selectedScope) || CONTEXT_SCOPE_OPTIONS[0];
   }, [selectedScope]);
 
-  // Xây dựng system prompt đa bối cảnh toàn diện
+  // Xây dựng system prompt đa bối cảnh toàn diện cho AI Agent
   const systemInstruction = useMemo(() => {
     return buildSystemContextPrompt(selectedScope, {
       user: {
-        name: user?.displayName || selectedTeacher || 'Thầy/Cô',
+        name: user?.displayName || myTeacher || selectedTeacher || 'Thầy/Cô',
         email: user?.email,
       },
       timetable,
       selectedTeacher,
+      myTeacher,
       classes,
       students,
+      schedulePatterns,
       sessions: classSessions,
       appointments,
       customers,
       transactions,
+      trips,
     });
   }, [
     selectedScope,
     user,
     timetable,
     selectedTeacher,
+    myTeacher,
     classes,
     students,
+    schedulePatterns,
     classSessions,
     appointments,
     customers,
     transactions,
+    trips,
   ]);
 
   const {
@@ -208,24 +224,24 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     switch (selectedScope) {
       case 'global':
         return [
-          'Tuần này tôi có bị trùng ca dạy gia sư nào với thời khóa biểu trường không?',
-          'Tổng hợp tình hình: số tiết dạy trường, số ca gia sư và danh sách lớp học',
-          'Thống kê các lớp còn học sinh chưa nộp học phí và các khoản công nợ',
-          'Hôm nay tôi có những lịch trình và tiết dạy nào cần lưu ý?',
+          'Xem cho tôi ngày nào ít tiết học nhất để tôi xin nghỉ',
+          'Tuần này tôi có những buổi nào hoàn toàn trống lịch để nhận thêm việc?',
+          'Đối chiếu lịch dạy trường với các ca gia sư xem có bị trùng giờ không?',
+          'Tổng hợp 360 độ: TKB trường, lớp học, học sinh, thù lao và lịch trình',
         ];
       case 'teaching':
         return [
-          'Tuần này tôi có những buổi nào trống tiết?',
-          'Hôm nay tôi dạy những lớp nào, tiết mấy?',
-          'Soạn tin nhắn dặn dò học sinh chuẩn bị bài cho ngày mai',
-          'Thống kê tổng số tiết môn Toán tôi dạy tuần này',
+          'Xem cho tôi ngày nào ít tiết học nhất để tôi xin nghỉ',
+          'Tuần này tôi có những buổi nào trống tiết (sáng/chiều)?',
+          'Hôm nay tôi dạy những lớp nào, môn gì và tiết mấy?',
+          'Thống kê tổng số tiết dạy và các lớp tôi phụ trách trong tuần',
         ];
       case 'classes':
         return [
           'Danh sách các lớp tôi đang quản lý và sĩ số từng lớp',
-          'Có bao nhiêu học sinh chưa nộp học phí trong tháng này?',
-          'Soạn thông báo nhắc đóng học phí gửi phụ huynh học sinh',
-          'Thống kê tổng doanh thu học phí dự kiến từ tất cả các lớp',
+          'Lịch học cố định trong tuần của các lớp ra sao?',
+          'Danh sách học sinh của các lớp và thông tin phụ huynh',
+          'Thống kê các buổi dạy và điểm danh gần nhất',
         ];
       case 'schedule':
         return [
@@ -233,6 +249,20 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
           'Thống kê tổng số ca dạy tự do đã hoàn thành và chưa hoàn thành',
           'Ca hẹn tiếp theo diễn ra ở đâu, vào lúc mấy giờ?',
           'Tổng tiền thù lao từ các ca dạy tự do sắp tới là bao nhiêu?',
+        ];
+      case 'income':
+        return [
+          'Tổng hợp thù lao đã thực nhận và các khoản công nợ đang chờ',
+          'Thống kê doanh thu từ các lớp học và các ca gia sư',
+          'Chi tiết các giao dịch thu nhập gần nhất',
+          'Tình hình tài chính tổng thể của tôi trong tháng này',
+        ];
+      case 'travel':
+        return [
+          'Tôi có những chuyến đi du lịch nào sắp diễn ra?',
+          'Lịch du lịch có bị trùng buổi dạy nào ở trường hay lớp học không?',
+          'Tổng ngân sách và chi phí đã chi cho các chuyến đi',
+          'Gợi ý kế hoạch xin nghỉ hoặc dạy bù để chuẩn bị cho chuyến đi',
         ];
       case 'general':
         return [
@@ -304,7 +334,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       currentTitle = text.slice(0, 38) + (text.length > 38 ? '...' : '');
     }
 
-    const res = await sendMessage(text, { model: selectedModel as any });
+    const res = await sendMessage(text, {
+      systemInstruction,
+      model: selectedModel as any,
+    });
 
     if (res) {
       const userMsg: ChatMessage = {
@@ -397,9 +430,6 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
               Trợ Lý AI
             </h2>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate hidden sm:block">
-              Hỗ trợ thời khóa biểu, quản lý lớp học và giải đáp thông tin
-            </p>
           </div>
         </div>
 
@@ -559,6 +589,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                   {selectedScope === 'teaching' && <CalendarDays className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   {selectedScope === 'classes' && <GraduationCap className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   {selectedScope === 'schedule' && <Clock className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
+                  {selectedScope === 'income' && <DollarSign className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
+                  {selectedScope === 'travel' && <Compass className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   {selectedScope === 'general' && <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   <span>Bối cảnh: <span className="font-semibold">{currentScopeConfig.shortLabel}</span></span>
                   <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform shrink-0 ${isScopeMenuOpen ? 'rotate-180' : ''}`} />
@@ -595,6 +627,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                               {opt.id === 'teaching' && <CalendarDays className="w-4 h-4" />}
                               {opt.id === 'classes' && <GraduationCap className="w-4 h-4" />}
                               {opt.id === 'schedule' && <Clock className="w-4 h-4" />}
+                              {opt.id === 'income' && <DollarSign className="w-4 h-4" />}
+                              {opt.id === 'travel' && <Compass className="w-4 h-4" />}
                               {opt.id === 'general' && <Bot className="w-4 h-4" />}
                             </div>
                             <div className="min-w-0 flex-1">
