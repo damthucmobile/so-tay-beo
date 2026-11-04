@@ -83,7 +83,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'teaching_schedule', label: 'Lịch dạy học', icon: CalendarDays },
       { id: 'schedule', label: 'Lịch tự do', icon: Calendar },
       { id: 'income', label: 'Thù lao', icon: DollarSign },
-      { id: 'ai_assistant', label: 'Trợ lý AI', icon: Bot },
     ],
   },
   {

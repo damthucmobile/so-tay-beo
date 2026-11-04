@@ -45,7 +45,7 @@ const TAB_DEFAULT_TITLES: Record<NavTabId, { title: string; subtitle: string }> 
     subtitle: 'Theo dõi dòng tiền sinh hoạt, mua sắm và hạn mức ngân sách tháng',
   },
   ai_assistant: {
-    title: 'Trợ Lý Gemini AI',
+    title: 'Trợ Lý AI',
     subtitle: 'Không gian hỏi đáp thông minh, phân tích thời khóa biểu & soạn giáo án',
   },
   settings: {

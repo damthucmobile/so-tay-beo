@@ -312,10 +312,10 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                  Không Gian Trợ Lý Gemini AI
+                  Không Gian Trợ Lý AI
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                  Gemini 3.5 Flash
+                  AI Tiêu chuẩn
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
@@ -532,7 +532,7 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
                           <div className="whitespace-pre-wrap">{msg.content}</div>
                           {msg.role !== 'user' && (
                             <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
-                              <span>Mô hình: Gemini 3.5 Flash</span>
+                              <span>Mô hình: AI Tiêu chuẩn</span>
                               <button
                                 onClick={() => handleCopy(msg.content, `chat_${i}`)}
                                 className="inline-flex items-center gap-1 hover:text-purple-600 cursor-pointer"
@@ -554,7 +554,7 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
                   {isLoading && (
                     <div className="flex items-center gap-2 max-w-3xl mx-auto text-xs text-purple-600 dark:text-purple-400 pl-11">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Gemini đang phân tích và soạn câu trả lời...</span>
+                      <span>Trợ lý AI đang phân tích và soạn câu trả lời...</span>
                     </div>
                   )}
 
@@ -573,7 +573,7 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
                   <div className="max-w-3xl mx-auto flex items-end gap-2.5">
                     <textarea
                       rows={2}
-                      placeholder="Nhập câu hỏi cho trợ lý Gemini AI (Nhấn Enter để xuống dòng thoải mái)..."
+                      placeholder="Nhập câu hỏi cho trợ lý AI (Nhấn Enter để xuống dòng thoải mái)..."
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       className="flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 resize-none max-h-36 min-h-[48px]"
@@ -646,7 +646,7 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
                   {isGeneratingPlan ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Gemini đang soạn giáo án 4 bước theo GDPT 2018...</span>
+                      <span>Trợ lý AI đang soạn giáo án 4 bước theo GDPT 2018...</span>
                     </>
                   ) : (
                     <>
@@ -684,17 +684,17 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
                 <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-3xl p-5 text-xs space-y-2 text-blue-900 dark:text-blue-200">
                   <span className="font-bold flex items-center gap-1.5 text-sm">
                     <Key className="w-4 h-4 text-blue-600" />
-                    Cơ chế quản lý API Key Gemini
+                    Cơ chế quản lý API Key AI
                   </span>
                   <p className="text-xs leading-relaxed text-blue-800/80 dark:text-blue-300/80">
-                    Hệ thống ưu tiên sử dụng biến môi trường <code className="bg-white/80 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">GEMINI_API_KEY</code> trên máy chủ.
+                    Hệ thống ưu tiên sử dụng biến môi trường bảo mật trên máy chủ.
                     Nếu muốn dùng API Key riêng của cá nhân bạn (Bring Your Own Key), hãy nhập vào bên dưới:
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    API Key Gemini Cá Nhân (Tùy chọn)
+                    Khóa dịch vụ AI cá nhân (Tùy chọn)
                   </label>
                   <input
                     type="password"

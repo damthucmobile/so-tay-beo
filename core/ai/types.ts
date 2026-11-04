@@ -28,28 +28,28 @@ export interface GeminiModelInfo {
 export const AVAILABLE_GEMINI_MODELS: GeminiModelInfo[] = [
   {
     id: 'gemini-3.5-flash',
-    name: 'Gemini 3.5 Flash',
+    name: 'Mô hình Tiêu chuẩn',
     badge: 'Khuyên dùng',
-    description: 'Thế hệ mới nhất: cực nhanh, phản hồi sâu sắc và hạn mức dồi dào',
+    description: 'Thế hệ mới nhất: cực nhanh, phản hồi thông minh, sâu sắc và tối ưu',
     recommended: true,
   },
   {
     id: 'gemini-3.5-flash-lite',
-    name: 'Gemini 3.5 Flash-Lite',
-    badge: 'Tiết kiệm Quota',
-    description: 'Tốc độ siêu nhanh, tiết kiệm tối đa hạn mức gọi API hàng ngày',
+    name: 'Mô hình Siêu tốc',
+    badge: 'Tiết kiệm tài nguyên',
+    description: 'Tốc độ xử lý siêu nhanh, tiết kiệm tối đa hạn mức gọi dịch vụ hàng ngày',
   },
   {
     id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
+    name: 'Mô hình Cân bằng',
     badge: 'Ổn định',
-    description: 'Mô hình thế hệ 2.5 (chú ý: Free Tier giới hạn 20 lượt/ngày)',
+    description: 'Mô hình tiêu chuẩn ổn định cho các tác vụ hỏi đáp thông thường',
   },
   {
     id: 'gemini-3.8-flash',
-    name: 'Gemini 3.8 Flash',
-    badge: 'Tư duy nâng cao',
-    description: 'Khả năng suy luận logic chuyên sâu cho bài toán phức tạp',
+    name: 'Mô hình Nâng cao',
+    badge: 'Tư duy chuyên sâu',
+    description: 'Khả năng suy luận logic chuyên sâu cho phân tích dữ liệu phức tạp',
   },
 ];
 
