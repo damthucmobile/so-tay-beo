@@ -5,7 +5,7 @@
  */
 
 import { doc, setDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { COLLECTIONS } from '../firebase/db/constants';
 import { 
   NotificationPermissionState, 
@@ -368,6 +368,12 @@ export class PushNotificationService {
   ): Promise<void> {
     if (!db || !userId || !settings) return;
     try {
+      // Chỉ đồng bộ lên Cloud Firestore khi Firebase Auth đã xác thực khớp với userId
+      const currentAuthUser = auth?.currentUser;
+      if (!currentAuthUser || currentAuthUser.uid !== userId) {
+        return;
+      }
+
       const payload: Record<string, any> = {
         ...settings,
         userId,
@@ -383,8 +389,10 @@ export class PushNotificationService {
 
       const docRef = doc(db, COLLECTIONS.REMINDER_SETTINGS, `${userId}_${settingId}`);
       await setDoc(docRef, payload, { merge: true });
-    } catch (err) {
-      console.warn('[PushNotificationService] Could not sync settings to Cloud, saved locally:', err);
+    } catch (err: any) {
+      if (err?.code !== 'permission-denied') {
+        console.warn('[PushNotificationService] Could not sync settings to Cloud, saved locally:', err);
+      }
     }
   }
 
@@ -397,13 +405,21 @@ export class PushNotificationService {
   ): Promise<T | null> {
     if (!db || !userId) return null;
     try {
+      // Chỉ fetch từ Cloud Firestore khi Firebase Auth đã xác thực khớp với userId
+      const currentAuthUser = auth?.currentUser;
+      if (!currentAuthUser || currentAuthUser.uid !== userId) {
+        return null;
+      }
+
       const docRef = doc(db, COLLECTIONS.REMINDER_SETTINGS, `${userId}_${settingId}`);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         return snap.data() as T;
       }
-    } catch (err) {
-      console.warn('[PushNotificationService] Could not fetch remote settings, using local fallback:', err);
+    } catch (err: any) {
+      if (err?.code !== 'permission-denied') {
+        console.warn('[PushNotificationService] Could not fetch remote settings, using local fallback:', err);
+      }
     }
     return null;
   }
@@ -416,7 +432,11 @@ export class PushNotificationService {
     userId: string,
     callback: (data: T | null) => void
   ): () => void {
-    if (!db) return () => {};
+    if (!db || !userId) return () => {};
+    const currentAuthUser = auth?.currentUser;
+    if (!currentAuthUser || currentAuthUser.uid !== userId) {
+      return () => {};
+    }
     const docRef = doc(db, COLLECTIONS.REMINDER_SETTINGS, `${userId}_${settingId}`);
     return onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
@@ -424,8 +444,10 @@ export class PushNotificationService {
       } else {
         callback(null);
       }
-    }, (err) => {
-      console.error('[PushNotificationService] Error listening to settings:', err);
+    }, (err: any) => {
+      if (err?.code !== 'permission-denied') {
+        console.error('[PushNotificationService] Error listening to settings:', err);
+      }
     });
   }
 
