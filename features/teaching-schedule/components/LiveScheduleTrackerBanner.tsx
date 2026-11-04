@@ -81,21 +81,21 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
 
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                   Đang trong tiết dạy
                 </span>
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {activePeriod.session} • Tiết {activePeriod.period} ({activePeriod.startTime} - {activePeriod.endTime})
                 </span>
               </div>
 
               <div className="mt-1 flex items-baseline gap-2 flex-wrap">
-                <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                <span className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
                   Môn {activePeriod.entry.subject}
                 </span>
                 <span className="text-xs text-slate-400">•</span>
-                <span className="text-xs sm:text-sm font-extrabold text-blue-600 dark:text-blue-400">
+                <span className="text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400">
                   Lớp {activePeriod.entry.className}
                 </span>
                 {activePeriod.entry.room && (
@@ -109,11 +109,11 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
 
           <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200/60 dark:border-slate-800">
             <div className="text-left sm:text-right">
-              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center sm:justify-end gap-1">
+              <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center sm:justify-end gap-1">
                 <Clock className="w-3.5 h-3.5 text-emerald-500" />
                 Thời gian còn lại
               </div>
-              <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
+              <span className="text-base sm:text-lg font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
                 ~ {activePeriod.minutesLeft} phút
               </span>
             </div>
@@ -150,7 +150,7 @@ export const LiveScheduleTrackerBanner: React.FC<LiveScheduleTrackerBannerProps>
                   Giờ giải lao
                 </span>
                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  Tiết tiếp theo: <strong className="font-extrabold text-slate-900 dark:text-white">Tiết {nextPeriod.period} ({nextPeriod.entry.subject} - Lớp {nextPeriod.entry.className})</strong>
+                  Tiết tiếp theo: <strong className="font-semibold text-slate-900 dark:text-white">Tiết {nextPeriod.period} ({nextPeriod.entry.subject} - Lớp {nextPeriod.entry.className})</strong>
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">

@@ -161,7 +161,7 @@ export const UserGuidePage: React.FC<UserGuidePageProps> = ({ onNavigateTab }) =
             <span>Cẩm Nang & Tài Liệu Trực Quan</span>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight leading-tight">
             Hướng Dẫn Sử Dụng Sổ Tay Béo 2.0
           </h1>
 

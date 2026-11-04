@@ -19,21 +19,14 @@ export const AIFloatingButton: React.FC<AIFloatingButtonProps> = ({
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 select-none print:hidden animate-fadeIn">
+    <div className="fixed bottom-6 right-6 z-40 select-none print:hidden">
       <button
         onClick={onOpenAI}
-        className="group relative flex items-center gap-2.5 py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white font-black text-xs sm:text-sm shadow-xl shadow-purple-500/35 hover:shadow-2xl hover:shadow-purple-500/50 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border border-white/20 backdrop-blur-md"
-        title="Mở Không gian Trợ lý Gemini AI"
+        className="flex items-center gap-2 py-2.5 px-4 rounded-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-medium shadow-md border border-zinc-700/20 dark:border-zinc-300/20 transition-all hover:scale-102 active:scale-98 cursor-pointer"
+        title="Mở Trợ lý AI"
       >
-        {/* Glowing Ping Effect */}
-        <span className="animate-ping absolute -top-1 -right-1 inline-flex h-3 w-3 rounded-full bg-purple-400 opacity-75" />
-        <span className="absolute -top-1 -right-1 inline-flex h-3 w-3 rounded-full bg-purple-500" />
-
-        <div className="w-6 h-6 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-        </div>
-
-        <span className="tracking-wide">Trợ lý AI</span>
+        <Bot className="w-4 h-4 text-zinc-300 dark:text-zinc-700" />
+        <span className="tracking-normal">Trợ lý AI</span>
       </button>
     </div>
   );

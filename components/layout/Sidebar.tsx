@@ -24,6 +24,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Sparkles,
+  Bot,
 } from 'lucide-react';
 
 export type NavTabId =
@@ -81,7 +82,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'teaching_schedule', label: 'Lịch dạy học', icon: CalendarDays },
       { id: 'schedule', label: 'Lịch tự do', icon: Calendar },
       { id: 'income', label: 'Thù lao', icon: DollarSign },
-      { id: 'ai_assistant', label: 'Trợ lý AI', icon: Sparkles, badge: 'AI' },
+      { id: 'ai_assistant', label: 'Trợ lý AI', icon: Bot },
     ],
   },
   {
@@ -228,6 +229,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               collapsed={collapsed && !mobileOpen}
               onClick={() => {
                 onSelectTab('income');
+                onCloseMobile();
+              }}
+            />
+            <NavItemButton
+              icon={Bot}
+              label="Trợ lý AI"
+              active={currentTab === 'ai_assistant'}
+              collapsed={collapsed && !mobileOpen}
+              onClick={() => {
+                onSelectTab('ai_assistant');
                 onCloseMobile();
               }}
             />

@@ -283,7 +283,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({
             </div>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+            <span className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               {consolidation.totalEarned.toLocaleString('vi-VN')}
             </span>
             <span className="text-xs text-slate-400 font-medium">VNĐ</span>
@@ -303,7 +303,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({
             </div>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
+            <span className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               {consolidation.classIncomeTotal.toLocaleString('vi-VN')}
             </span>
             <span className="text-xs text-slate-400 font-medium">VNĐ</span>
@@ -322,7 +322,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({
             </div>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+            <span className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               {consolidation.freelanceIncomeTotal.toLocaleString('vi-VN')}
             </span>
             <span className="text-xs text-slate-400 font-medium">VNĐ</span>
@@ -341,7 +341,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({
             </div>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
+            <span className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               {consolidation.pendingIncomeTotal.toLocaleString('vi-VN')}
             </span>
             <span className="text-xs text-slate-400 font-medium">VNĐ</span>
@@ -448,7 +448,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({
                           {item.details}
                         </td>
                         <td className="px-5 py-3.5 font-mono text-slate-500">{item.date}</td>
-                        <td className="px-5 py-3.5 text-right font-mono font-extrabold text-amber-600 dark:text-amber-400 text-sm">
+                        <td className="px-5 py-3.5 text-right font-mono font-semibold text-amber-600 dark:text-amber-400 text-sm">
                           {item.amount.toLocaleString('vi-VN')} đ
                         </td>
                         <td className="px-5 py-3.5 text-center">
@@ -513,7 +513,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({
                         <td className="px-5 py-3.5 text-slate-500 font-mono">
                           {s.baseFeePerSession.toLocaleString('vi-VN')} đ + {s.ratePerStudent.toLocaleString('vi-VN')} đ/HS
                         </td>
-                        <td className="px-5 py-3.5 text-right font-mono font-extrabold text-blue-600 dark:text-blue-400 text-sm">
+                        <td className="px-5 py-3.5 text-right font-mono font-semibold text-blue-600 dark:text-blue-400 text-sm">
                           {s.totalSalaryInPeriod.toLocaleString('vi-VN')} đ
                         </td>
                       </tr>
@@ -558,7 +558,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({
                           {tx.notes && <p className="text-[11px] text-slate-400 italic mt-0.5">{tx.notes}</p>}
                         </td>
                         <td className="px-5 py-3.5 font-mono text-slate-500">{tx.date}</td>
-                        <td className="px-5 py-3.5 text-right font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                        <td className="px-5 py-3.5 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400 text-sm">
                           {tx.amount.toLocaleString('vi-VN')} đ
                         </td>
                         <td className="px-5 py-3.5 text-center">

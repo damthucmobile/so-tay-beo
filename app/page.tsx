@@ -24,7 +24,6 @@ import {
   Settings,
   LogOut,
   Sparkles,
-  Copy,
   Check,
   Monitor,
   Moon,
@@ -221,8 +220,6 @@ export default function HomePage() {
     }
   };
 
-  const [copiedUid, setCopiedUid] = useState(false);
-
   // Áp dụng class dark ban đầu vào document
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -230,14 +227,6 @@ export default function HomePage() {
       document.documentElement.style.colorScheme = theme;
     }
   }, [theme]);
-
-  const handleCopyUid = () => {
-    if (user?.uid) {
-      navigator.clipboard.writeText(user.uid);
-      setCopiedUid(true);
-      setTimeout(() => setCopiedUid(false), 2000);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -320,7 +309,7 @@ export default function HomePage() {
         <div className="absolute bottom-10 right-10 w-[350px] h-[350px] bg-purple-500/10 dark:bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="text-center mb-8 relative z-10">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
             Đăng Nhập Tài Khoản
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto">
@@ -496,22 +485,6 @@ export default function HomePage() {
                   </span>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-300">{user.email}</p>
-
-                <div className="pt-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="font-mono text-slate-400 dark:text-slate-500">UID:</span>
-                    <span className="font-mono text-slate-800 dark:text-slate-200 truncate max-w-[200px] sm:max-w-[260px]">
-                      {user.uid}
-                    </span>
-                    <button
-                      onClick={handleCopyUid}
-                      className="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition text-[11px] font-semibold ml-1 cursor-pointer flex items-center gap-1"
-                    >
-                      {copiedUid ? <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedUid ? 'Đã chép' : 'Chép'}</span>
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
 

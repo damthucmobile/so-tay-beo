@@ -121,9 +121,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
         </div>
       )}
-      {/* Background Glows */}
-      <div className="fixed top-0 left-1/4 -translate-x-1/2 w-[600px] h-[350px] bg-blue-500/5 dark:bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="fixed bottom-0 right-1/4 w-[500px] h-[350px] bg-purple-500/5 dark:bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Left Sidebar như app gốc Tauri */}
       <Sidebar

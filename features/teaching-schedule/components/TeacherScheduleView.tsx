@@ -138,13 +138,13 @@ export const TeacherScheduleView: React.FC = () => {
 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h3 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white truncate">
+                <h3 className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                   {selectedTeacher ? `Thầy/Cô: ${selectedTeacher}` : 'Chưa chọn giáo viên'}
                 </h3>
 
                 {isMyTeacher && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-300/60 dark:border-blue-700">
-                    <BookmarkCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                    <BookmarkCheck className="w-3 h-3 text-zinc-600 dark:text-zinc-400" />
                     Lịch của tôi
                   </span>
                 )}
@@ -343,34 +343,34 @@ export const TeacherScheduleView: React.FC = () => {
             Tiết Trong Tuần
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400">
+            <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               {teacherAllEntries.length}
             </span>
-            <span className="text-[11px] text-slate-500 font-medium">tiết</span>
+            <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider truncate">
             {todayDayOfWeek ? `Hôm Nay (${todayDayOfWeek})` : 'Hôm Nay'}
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
+            <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               {todayEntries.length}
             </span>
-            <span className="text-[11px] text-slate-500 font-medium">tiết</span>
+            <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
             Lớp Phụ Trách
           </span>
           <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400">
+            <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               {teacherClasses.length}
             </span>
-            <span className="text-[11px] text-slate-500 font-medium">lớp</span>
+            <span className="text-[11px] text-zinc-500 font-normal">lớp</span>
           </div>
         </div>
       </div>
@@ -534,8 +534,8 @@ const PeriodCard: React.FC<PeriodCardProps> = ({ entry, onSelectClass }) => {
       {/* Cột trái: Tiết & Thời gian */}
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200/60 dark:border-slate-700">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Tiết</span>
-          <span className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 leading-none">
+          <span className="text-[10px] font-medium text-slate-400 uppercase">Tiết</span>
+          <span className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 leading-none">
             {entry.period}
           </span>
         </div>

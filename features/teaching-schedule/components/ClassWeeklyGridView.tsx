@@ -88,7 +88,7 @@ export const ClassWeeklyGridView: React.FC<ClassWeeklyGridViewProps> = ({
         <table className="w-full border-collapse text-left min-w-[700px] sm:min-w-[850px]">
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300">
-              <th className="py-3 px-3 sm:px-4 text-xs font-black uppercase tracking-wider w-24 sm:w-28 text-center border-r border-slate-200/80 dark:border-slate-800">
+              <th className="py-3 px-3 sm:px-4 text-xs font-semibold uppercase tracking-wider w-24 sm:w-28 text-center border-r border-slate-200/80 dark:border-slate-800">
                 Tiết / Giờ
               </th>
               {displayDays.map((d) => {
@@ -101,15 +101,15 @@ export const ClassWeeklyGridView: React.FC<ClassWeeklyGridViewProps> = ({
                     onClick={() => onSelectDay && onSelectDay(d.id)}
                     className={`py-2.5 sm:py-3 px-2 sm:px-3 text-center border-r last:border-r-0 border-slate-200/80 dark:border-slate-800 transition cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 ${
                       isToday
-                        ? 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-black'
+                        ? 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold'
                         : ''
                     }`}
                   >
                     <div className="flex flex-col items-center justify-center gap-0.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs sm:text-sm font-extrabold">{d.label}</span>
+                        <span className="text-xs sm:text-sm font-semibold">{d.label}</span>
                         {isToday && (
-                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-600 text-white shadow-xs">
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-medium uppercase tracking-wider bg-indigo-600 text-white shadow-xs">
                             Hôm nay
                           </span>
                         )}
@@ -135,7 +135,7 @@ export const ClassWeeklyGridView: React.FC<ClassWeeklyGridViewProps> = ({
             <tr className="bg-amber-500/10 dark:bg-amber-500/15 border-y border-amber-500/20 text-amber-800 dark:text-amber-300">
               <td
                 colSpan={displayDays.length + 1}
-                className="py-1.5 px-3 sm:px-4 text-[11px] font-extrabold uppercase tracking-wider"
+                className="py-1.5 px-3 sm:px-4 text-[11px] font-semibold uppercase tracking-wider"
               >
                 ☀️ Buổi Sáng (Tiết 1 đến Tiết 5)
               </td>
@@ -153,7 +153,7 @@ export const ClassWeeklyGridView: React.FC<ClassWeeklyGridViewProps> = ({
                   className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                 >
                   <td className="py-2.5 px-2 sm:px-3 text-center border-r border-slate-200/70 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
-                    <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200">
+                    <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
                       Tiết {period}
                     </span>
                     <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 dark:text-slate-500">
@@ -204,7 +204,7 @@ export const ClassWeeklyGridView: React.FC<ClassWeeklyGridViewProps> = ({
             <tr className="bg-indigo-500/10 dark:bg-indigo-500/15 border-y border-indigo-500/20 text-indigo-800 dark:text-indigo-300">
               <td
                 colSpan={displayDays.length + 1}
-                className="py-1.5 px-3 sm:px-4 text-[11px] font-extrabold uppercase tracking-wider"
+                className="py-1.5 px-3 sm:px-4 text-[11px] font-semibold uppercase tracking-wider"
               >
                 🌙 Buổi Chiều (Tiết 1 đến Tiết 5)
                 {!hasAfternoon && (
@@ -227,7 +227,7 @@ export const ClassWeeklyGridView: React.FC<ClassWeeklyGridViewProps> = ({
                   className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                 >
                   <td className="py-2.5 px-2 sm:px-3 text-center border-r border-slate-200/70 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
-                    <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200">
+                    <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
                       Tiết {period}
                     </span>
                     <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 dark:text-slate-500">
@@ -306,7 +306,7 @@ const ClassPeriodCell: React.FC<ClassPeriodCellProps> = ({
       {/* Tên Môn học */}
       <div className="flex items-start justify-between gap-1">
         <span
-          className={`text-xs sm:text-[13px] font-black leading-tight line-clamp-2 ${theme.text}`}
+          className={`text-xs sm:text-[13px] font-semibold leading-tight line-clamp-2 ${theme.text}`}
           title={entry.subject}
         >
           {entry.subject}
@@ -320,7 +320,7 @@ const ClassPeriodCell: React.FC<ClassPeriodCellProps> = ({
             e.stopPropagation();
             if (onSelectTeacher && entry.teacher) onSelectTeacher(entry.teacher);
           }}
-          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/90 dark:bg-slate-900/90 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700/80 text-[10px] sm:text-[11px] font-extrabold transition cursor-pointer shadow-2xs group/btn truncate max-w-[120px]"
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/90 dark:bg-slate-900/90 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700/80 text-[10px] sm:text-[11px] font-medium transition cursor-pointer shadow-2xs group/btn truncate max-w-[120px]"
           title={`Xem lịch dạy của Thầy/Cô ${entry.teacher}`}
         >
           <UserCheck className="w-3 h-3 text-indigo-500 group-hover/btn:text-white transition-colors shrink-0" />

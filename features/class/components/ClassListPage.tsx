@@ -212,7 +212,7 @@ export const ClassListPage: React.FC<ClassListPageProps> = ({
               <GraduationCap className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <div className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
             {overallKPI.totalClasses}
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Đang trực tiếp quản lý</p>
@@ -226,7 +226,7 @@ export const ClassListPage: React.FC<ClassListPageProps> = ({
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <div className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
             {overallKPI.totalActiveStudents}
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Sỹ số hiệu lực tháng {selectedMonth}</p>
@@ -240,7 +240,7 @@ export const ClassListPage: React.FC<ClassListPageProps> = ({
               <CalendarDays className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <div className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
             {overallKPI.totalCompletedSessions}
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Trong tháng {selectedMonth}</p>
@@ -254,7 +254,7 @@ export const ClassListPage: React.FC<ClassListPageProps> = ({
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight truncate">
+          <div className="text-xl sm:text-2xl font-semibold text-emerald-600 dark:text-emerald-400 tracking-tight truncate">
             {overallKPI.totalAccumulatedSalary.toLocaleString('vi-VN')} đ
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 truncate">

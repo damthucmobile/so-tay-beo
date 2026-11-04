@@ -72,8 +72,15 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
   const [activeTab, setActiveTab] = useState<'chat' | 'lesson' | 'config'>('chat');
   const [inputText, setInputText] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
+
+  // Tự động mở sidebar trên desktop (>= 768px), thu gọn trên mobile
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
 
   // Quản lý sessions lịch sử hội thoại
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -346,33 +353,28 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
   );
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-background min-h-0 overflow-hidden animate-fadeIn">
+    <div className="w-full flex-1 flex flex-col bg-white dark:bg-zinc-950 min-h-0 overflow-hidden">
       {/* 1. Thanh Tiêu Đề Phân Hệ Trợ Lý AI */}
-      <div className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 overflow-x-auto">
+      <div className="shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 overflow-x-auto">
         <div className="flex items-center gap-2.5 min-w-0">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
             title={isSidebarOpen ? 'Thu gọn lịch sử' : 'Mở thanh lịch sử'}
           >
-            {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeft className="w-5 h-5 text-purple-600" />}
+            {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />}
           </button>
 
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20 shrink-0">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center shrink-0">
+            <Bot className="w-4 h-4" />
           </div>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                Trợ Lý Gemini AI
-              </h2>
-              <span className="px-2 py-0.2 rounded-full text-[10px] font-black uppercase bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                Gemini 2.5 Flash
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden sm:block">
-              Hỗ trợ thời khóa biểu, soạn giáo án & lưu trữ lịch sử hỏi đáp
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+              Trợ Lý AI
+            </h2>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate hidden sm:block">
+              Hỗ trợ thời khóa biểu, quản lý lớp học và giải đáp thông tin
             </p>
           </div>
         </div>
@@ -381,9 +383,9 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
         {onNavigateTab && (
           <button
             onClick={() => onNavigateTab('teaching_schedule')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-slate-700 transition cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition cursor-pointer shrink-0"
           >
-            <Calendar className="w-3.5 h-3.5 text-blue-500" />
+            <Calendar className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
             <span className="hidden sm:inline">Xem Lịch dạy học</span>
             <span className="sm:hidden text-[11px]">Lịch dạy</span>
           </button>
@@ -392,103 +394,118 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
       {/* 2. Thân chính: Bố cục 2 cột (Left Sidebar: Lịch sử, Right Area: Nội dung) */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* CỘT TRÁI: SIDEBAR LỊCH SỬ HỘI THOẠI */}
+        {/* CỘT TRÁI: SIDEBAR LỊCH SỬ HỘI THOẠI (Drawer trên Mobile, Cột cố định trên Desktop) */}
         {isSidebarOpen && (
-          <div className="w-72 sm:w-80 border-r border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 flex flex-col shrink-0">
-            {/* Nút Cuộc trò chuyện mới */}
-            <div className="p-3 border-b border-slate-200/80 dark:border-slate-800 space-y-2">
-              <button
-                onClick={handleCreateNewChat}
-                className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Cuộc trò chuyện mới</span>
-              </button>
+          <>
+            {/* Backdrop trên màn hình nhỏ */}
+            <div
+              className="fixed inset-0 bg-black/40 z-30 md:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+            <div className="fixed inset-y-0 left-0 z-40 md:static md:z-auto w-72 max-w-[85vw] border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col shrink-0 shadow-xl md:shadow-none">
+              {/* Nút Cuộc trò chuyện mới */}
+              <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 space-y-2">
+                <button
+                  onClick={() => {
+                    handleCreateNewChat();
+                    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                      setIsSidebarOpen(false);
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-medium text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Cuộc trò chuyện mới</span>
+                </button>
 
-              {/* Ô tìm kiếm lịch sử */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Tìm trong lịch sử..."
-                  value={searchHistoryQuery}
-                  onChange={(e) => setSearchHistoryQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-[11px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-800 dark:text-slate-200"
-                />
-              </div>
-            </div>
-
-            {/* Danh sách các phiên trò chuyện */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                <span>Lịch sử hỏi đáp ({filteredSessions.length})</span>
-              </div>
-
-              {filteredSessions.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400">
-                  Chưa có cuộc trò chuyện nào
+                {/* Ô tìm kiếm lịch sử */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm trong lịch sử..."
+                    value={searchHistoryQuery}
+                    onChange={(e) => setSearchHistoryQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-300 text-zinc-900 dark:text-zinc-100 font-normal"
+                  />
                 </div>
-              ) : (
-                filteredSessions.map((session) => {
-                  const isActive = session.id === currentSessionId;
-                  return (
-                    <div
-                      key={session.id}
-                      onClick={() => {
-                        setCurrentSessionId(session.id);
-                        setActiveTab('chat');
-                      }}
-                      className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none ${
-                        isActive
-                          ? 'bg-purple-100/90 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 border border-purple-200/80 dark:border-purple-800'
-                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0 pr-6">
-                        <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-purple-600' : 'text-slate-400'}`} />
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-bold leading-tight">{session.title}</p>
-                          <p className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
-                            {session.messages?.length || 0} tin nhắn • {new Date(session.updatedAt).toLocaleDateString('vi-VN')}
-                          </p>
-                        </div>
-                      </div>
+              </div>
 
-                      {/* Nút xóa session */}
-                      <button
-                        onClick={(e) => handleDeleteSession(session.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 text-slate-400 hover:text-red-600 transition cursor-pointer shrink-0 absolute right-2"
-                        title="Xóa cuộc trò chuyện này"
+              {/* Danh sách các phiên trò chuyện */}
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                <div className="px-2 py-1 text-[11px] font-medium text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Lịch sử ({filteredSessions.length})</span>
+                </div>
+
+                {filteredSessions.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-zinc-400">
+                    Chưa có cuộc trò chuyện nào
+                  </div>
+                ) : (
+                  filteredSessions.map((session) => {
+                    const isActive = session.id === currentSessionId;
+                    return (
+                      <div
+                        key={session.id}
+                        onClick={() => {
+                          setCurrentSessionId(session.id);
+                          setActiveTab('chat');
+                          if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                            setIsSidebarOpen(false);
+                          }
+                        }}
+                        className={`group relative flex items-center justify-between px-3 py-2 rounded-lg text-xs transition cursor-pointer select-none ${
+                          isActive
+                            ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium'
+                            : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 font-normal'
+                        }`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
+                        <div className="flex items-center gap-2 min-w-0 pr-6">
+                          <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`} />
+                          <div className="min-w-0">
+                            <p className="truncate text-xs leading-tight">{session.title}</p>
+                            <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                              {session.messages?.length || 0} tin nhắn • {new Date(session.updatedAt).toLocaleDateString('vi-VN')}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Nút xóa session */}
+                        <button
+                          onClick={(e) => handleDeleteSession(session.id, e)}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-red-600 transition cursor-pointer shrink-0 absolute right-2"
+                          title="Xóa cuộc trò chuyện này"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* CỘT PHẢI: KHUNG LÀM VIỆC CHÍNH (CHAT / SOẠN GIÁO ÁN / CẤU HÌNH) */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
+        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-950">
           {/* Thanh điều hướng Tab bên phải & Bộ chọn Bối cảnh Dữ liệu */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-xs shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs shrink-0">
             <div className="flex items-center gap-2 flex-wrap">
               {/* BỘ CHỌN BỐI CẢNH DỮ LIỆU ĐỘNG */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setIsScopeMenuOpen(!isScopeMenuOpen)}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-600/10 hover:bg-purple-600/20 text-purple-700 dark:text-purple-300 border border-purple-300/80 dark:border-purple-800/80 font-bold transition shadow-2xs cursor-pointer"
-                  title="Nhấn để đổi phạm vi bối cảnh dữ liệu nạp cho AI"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-medium transition cursor-pointer"
+                  title="Nhấn để đổi phạm vi bối cảnh dữ liệu"
                 >
-                  {selectedScope === 'global' && <Globe className="w-3.5 h-3.5 text-purple-600" />}
-                  {selectedScope === 'teaching' && <CalendarDays className="w-3.5 h-3.5 text-blue-600" />}
-                  {selectedScope === 'classes' && <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />}
-                  {selectedScope === 'schedule' && <Clock className="w-3.5 h-3.5 text-amber-600" />}
-                  {selectedScope === 'general' && <Sparkles className="w-3.5 h-3.5 text-pink-600" />}
-                  <span>Bối cảnh: <strong className="font-extrabold">{currentScopeConfig.shortLabel}</strong></span>
+                  {selectedScope === 'global' && <Globe className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
+                  {selectedScope === 'teaching' && <CalendarDays className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
+                  {selectedScope === 'classes' && <GraduationCap className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
+                  {selectedScope === 'schedule' && <Clock className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
+                  {selectedScope === 'general' && <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
+                  <span>Bối cảnh: <span className="font-semibold">{currentScopeConfig.shortLabel}</span></span>
                   <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform ${isScopeMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -498,9 +515,9 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                       className="fixed inset-0 z-40"
                       onClick={() => setIsScopeMenuOpen(false)}
                     />
-                    <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 space-y-1 animate-fadeIn">
-                      <div className="px-3 py-1 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                        Phạm vi bối cảnh dữ liệu
+                    <div className="absolute left-0 top-full mt-1.5 w-80 sm:w-88 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-lg p-1.5 z-50 space-y-0.5">
+                      <div className="px-2.5 py-1 text-[10px] font-semibold uppercase text-zinc-400 tracking-wider">
+                        Phạm vi bối cảnh
                       </div>
                       {CONTEXT_SCOPE_OPTIONS.map((opt) => {
                         const isSelected = opt.id === selectedScope;
@@ -512,31 +529,31 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                               setSelectedScope(opt.id);
                               setIsScopeMenuOpen(false);
                             }}
-                            className={`w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left transition cursor-pointer ${
+                            className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition cursor-pointer ${
                               isSelected
-                                ? 'bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800'
-                                : 'hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-transparent'
+                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium'
+                                : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 font-normal'
                             }`}
                           >
-                            <div className="mt-0.5 shrink-0">
-                              {opt.id === 'global' && <Globe className="w-4 h-4 text-purple-600" />}
-                              {opt.id === 'teaching' && <CalendarDays className="w-4 h-4 text-blue-600" />}
-                              {opt.id === 'classes' && <GraduationCap className="w-4 h-4 text-emerald-600" />}
-                              {opt.id === 'schedule' && <Clock className="w-4 h-4 text-amber-600" />}
-                              {opt.id === 'general' && <Sparkles className="w-4 h-4 text-pink-600" />}
+                            <div className="mt-0.5 shrink-0 text-zinc-500 dark:text-zinc-400">
+                              {opt.id === 'global' && <Globe className="w-4 h-4" />}
+                              {opt.id === 'teaching' && <CalendarDays className="w-4 h-4" />}
+                              {opt.id === 'classes' && <GraduationCap className="w-4 h-4" />}
+                              {opt.id === 'schedule' && <Clock className="w-4 h-4" />}
+                              {opt.id === 'general' && <Bot className="w-4 h-4" />}
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                <span className="text-xs text-zinc-900 dark:text-zinc-100 font-medium">
                                   {opt.label}
                                 </span>
                                 {opt.badge && (
-                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-purple-600 text-white">
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
                                     {opt.badge}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">
                                 {opt.description}
                               </p>
                             </div>
@@ -548,39 +565,39 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 )}
               </div>
 
-              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+              <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 mx-1 hidden sm:block" />
 
               {/* Chế độ tương tác */}
               <button
                 onClick={() => setActiveTab('chat')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === 'chat'
-                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                 }`}
               >
                 <Bot className="w-3.5 h-3.5" />
-                <span>Trò chuyện AI</span>
+                <span>Trò chuyện</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('lesson')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === 'lesson'
-                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>Soạn Giáo Án 2018</span>
+                <span>Soạn Giáo Án</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('config')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                   activeTab === 'config'
-                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                 }`}
               >
                 <Key className="w-3.5 h-3.5" />
@@ -589,44 +606,41 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
             </div>
 
             {currentSession && activeTab === 'chat' && (
-              <span className="text-[11px] text-slate-400 font-medium truncate max-w-[200px] hidden md:block">
-                Đang mở: <strong className="text-slate-700 dark:text-slate-200">{currentSession.title}</strong>
+              <span className="text-[11px] text-zinc-400 font-normal truncate max-w-[200px] hidden md:block">
+                Đang mở: <span className="text-zinc-700 dark:text-zinc-300 font-medium">{currentSession.title}</span>
               </span>
             )}
           </div>
 
           {/* TAB 1: KHUNG CHAT TOÀN DIỆN */}
           {activeTab === 'chat' && (
-            <div className="flex-1 flex flex-col min-h-0 bg-slate-50/40 dark:bg-slate-950/20">
+            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950">
               {/* Vùng Tin Nhắn */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {chatMessages.length === 0 ? (
-                  <div className="max-w-4xl 2xl:max-w-5xl mx-auto py-12 text-center space-y-4">
-                    <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-purple-500/15 to-indigo-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto shadow-sm">
-                      {selectedScope === 'global' ? <Globe className="w-7 h-7" /> : <Bot className="w-7 h-7" />}
+                  <div className="max-w-3xl 2xl:max-w-4xl mx-auto py-12 text-center space-y-4">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 flex items-center justify-center mx-auto">
+                      <Bot className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100">
-                        Xin chào {user?.displayName || selectedTeacher || 'Thầy/Cô'}!
+                      <h4 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                        Xin chào {user?.displayName || selectedTeacher || 'Thầy/Cô'}
                       </h4>
-                      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl mx-auto leading-relaxed">
-                        Đang kích hoạt bối cảnh: <strong className="text-purple-600 dark:text-purple-400">{currentScopeConfig.label}</strong>.
-                        {selectedScope === 'global'
-                          ? ' Trợ lý đã nắm toàn bộ dữ liệu TKB trường, Lớp học, Lịch tự do và Thu nhập để sẵn sàng đối soát chéo cho bạn:'
-                          : ' Thầy/Cô có thể đặt câu hỏi hoặc yêu cầu bất kỳ điều gì:'}
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-lg mx-auto leading-relaxed">
+                        Bối cảnh đang chọn: <span className="font-medium text-zinc-800 dark:text-zinc-200">{currentScopeConfig.label}</span>.
+                        Bạn có thể chọn các câu hỏi mẫu bên dưới hoặc nhập yêu cầu trực tiếp:
                       </p>
                     </div>
 
                     {/* Câu hỏi gợi ý theo bối cảnh */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-left">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 text-left">
                       {scopeSuggestions.map((q) => (
                         <button
                           key={q}
                           onClick={() => setInputText(q)}
-                          className="text-xs p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-purple-400 hover:text-purple-600 transition cursor-pointer text-left shadow-2xs leading-relaxed group flex items-start gap-2"
+                          className="text-xs p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer text-left leading-relaxed font-normal"
                         >
-                          <span className="text-purple-500 mt-0.5">💡</span>
-                          <span className="group-hover:text-purple-600 transition-colors">{q}</span>
+                          {q}
                         </button>
                       ))}
                     </div>
@@ -635,30 +649,29 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                   chatMessages.map((msg, i) => (
                     <div
                       key={msg.id || i}
-                      className={`flex gap-3 max-w-5xl 2xl:max-w-6xl mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex gap-3 max-w-4xl 2xl:max-w-5xl mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       {msg.role !== 'user' && (
-                        <div className="w-8 h-8 rounded-2xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                          <Sparkles className="w-4 h-4" />
+                        <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 mt-0.5">
+                          <Bot className="w-3.5 h-3.5" />
                         </div>
                       )}
                       <div
-                        className={`max-w-[85%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
+                        className={`max-w-[85%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed ${
                           msg.role === 'user'
-                            ? 'bg-purple-600 text-white rounded-tr-xs shadow-sm font-medium'
-                            : 'bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-xs shadow-xs'
+                            ? 'bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 rounded-tr-xs font-normal shadow-xs'
+                            : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-xs shadow-xs'
                         }`}
                       >
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                         {msg.role !== 'user' && (
-                          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
-                            <span>Mô hình: Gemini 2.5 Flash</span>
+                          <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-end text-[11px] text-zinc-400">
                             <button
                               onClick={() => handleCopy(msg.content, `chat_${i}`)}
-                              className="inline-flex items-center gap-1 hover:text-purple-600 cursor-pointer"
+                              className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer"
                             >
                               {copiedId === `chat_${i}` ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
                               ) : (
                                 <Copy className="w-3.5 h-3.5" />
                               )}
@@ -672,14 +685,14 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 )}
 
                 {isLoading && (
-                  <div className="flex items-center gap-2 max-w-5xl 2xl:max-w-6xl mx-auto text-xs text-purple-600 dark:text-purple-400 pl-11">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Gemini đang phân tích và soạn câu trả lời...</span>
+                  <div className="flex items-center gap-2 max-w-4xl 2xl:max-w-5xl mx-auto text-xs text-zinc-500 dark:text-zinc-400 pl-10">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang xử lý câu trả lời...</span>
                   </div>
                 )}
 
                 {error && (
-                  <div className="max-w-5xl 2xl:max-w-6xl mx-auto p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+                  <div className="max-w-4xl 2xl:max-w-5xl mx-auto p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -689,22 +702,22 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
               </div>
 
               {/* Input Bar Rộng Rãi */}
-              <div className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
-                <div className="max-w-5xl 2xl:max-w-6xl mx-auto flex items-end gap-2.5">
+              <div className="p-3 sm:p-4 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+                <div className="max-w-4xl 2xl:max-w-5xl mx-auto flex items-end gap-2">
                   <textarea
                     rows={2}
-                    placeholder="Nhập câu hỏi cho trợ lý Gemini AI (Nhấn Enter để xuống dòng thoải mái)..."
+                    placeholder="Nhập câu hỏi... (Nhấn Enter để xuống dòng)"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    className="flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 resize-none max-h-36 min-h-[48px]"
+                    className="flex-1 px-3.5 py-2 text-xs sm:text-sm rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-zinc-900 dark:text-zinc-100 resize-none max-h-36 min-h-[44px] font-normal"
                   />
                   <button
                     type="button"
                     onClick={handleSend}
                     disabled={!inputText.trim() || isLoading}
-                    className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white font-bold text-xs sm:text-sm transition cursor-pointer flex items-center gap-2 shadow-md shadow-purple-500/20 shrink-0 mb-0.5"
+                    className="px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-medium text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5 shrink-0 mb-0.5 shadow-xs"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-3.5 h-3.5" />
                     <span>Gửi</span>
                   </button>
                 </div>
@@ -714,28 +727,28 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
           {/* TAB 2: SOẠN KẾ HOẠCH BÀI DẠY (GIÁO ÁN) */}
           {activeTab === 'lesson' && (
-            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-5 max-w-5xl 2xl:max-w-6xl mx-auto w-full">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 max-w-4xl 2xl:max-w-5xl mx-auto w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1 block">
                     Môn học
                   </label>
                   <input
                     type="text"
                     value={lessonSubject}
                     onChange={(e) => setLessonSubject(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
+                    className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1 block">
                     Khối lớp
                   </label>
                   <select
                     value={lessonGrade}
                     onChange={(e) => setLessonGrade(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
+                    className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                   >
                     <option value="6">Khối 6</option>
                     <option value="7">Khối 7</option>
@@ -745,7 +758,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1 block">
                     Tên bài học / Chủ đề
                   </label>
                   <input
@@ -753,7 +766,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                     placeholder="Ví dụ: Phép cộng phân số"
                     value={lessonTopic}
                     onChange={(e) => setLessonTopic(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
+                    className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                   />
                 </div>
               </div>
@@ -761,36 +774,36 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
               <button
                 onClick={handleGenerateLessonPlan}
                 disabled={!lessonTopic.trim() || isGeneratingPlan}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs sm:text-sm shadow-md shadow-purple-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 transition shadow-xs"
               >
                 {isGeneratingPlan ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Gemini đang soạn giáo án 4 bước theo GDPT 2018...</span>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang soạn giáo án...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
-                    <span>Sinh Kế Hoạch Bài Dạy Chuẩn 4 Hoạt Động</span>
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Tạo Kế Hoạch Bài Dạy Chuẩn 4 Hoạt Động</span>
                   </>
                 )}
               </button>
 
               {generatedPlan && (
-                <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2.5">
-                    <span className="font-extrabold text-sm text-purple-700 dark:text-purple-300">
+                <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                    <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
                       Kế hoạch bài dạy đã tạo:
                     </span>
                     <button
                       onClick={() => handleCopy(generatedPlan, 'lesson')}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold hover:text-purple-600 cursor-pointer shadow-xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-normal hover:text-zinc-900 cursor-pointer"
                     >
-                      {copiedId === 'lesson' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedId === 'lesson' ? 'Đã sao chép' : 'Sao chép giáo án'}</span>
+                      {copiedId === 'lesson' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedId === 'lesson' ? 'Đã sao chép' : 'Sao chép'}</span>
                     </button>
                   </div>
-                  <div className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed max-h-[50vh] overflow-y-auto text-slate-800 dark:text-slate-200 font-sans">
+                  <div className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed max-h-[50vh] overflow-y-auto text-zinc-800 dark:text-zinc-200 font-sans">
                     {generatedPlan}
                   </div>
                 </div>
@@ -800,48 +813,39 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
           {/* TAB 3: CẤU HÌNH API KEY */}
           {activeTab === 'config' && (
-            <div className="p-6 sm:p-8 space-y-5 max-w-4xl 2xl:max-w-5xl mx-auto w-full">
-              <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-3xl p-5 text-xs space-y-2 text-blue-900 dark:text-blue-200">
-                <span className="font-bold flex items-center gap-1.5 text-sm">
-                  <Key className="w-4 h-4 text-blue-600" />
-                  Cơ chế quản lý API Key Gemini
+            <div className="p-4 sm:p-6 space-y-4 max-w-3xl 2xl:max-w-4xl mx-auto w-full">
+              <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-xs space-y-1.5 text-zinc-800 dark:text-zinc-200">
+                <span className="font-semibold flex items-center gap-1.5 text-xs">
+                  <Key className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                  Cấu hình khóa API cá nhân
                 </span>
-                <p className="text-xs leading-relaxed text-blue-800/80 dark:text-blue-300/80">
-                  Hệ thống ưu tiên sử dụng biến môi trường <code className="bg-white/80 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">GEMINI_API_KEY</code> trên máy chủ.
-                  Nếu muốn dùng API Key riêng của cá nhân bạn (Bring Your Own Key), hãy nhập vào bên dưới:
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Mặc định hệ thống đã được cấu hình sẵn. Nếu muốn sử dụng hạn mức API cá nhân riêng của bạn, hãy nhập khóa vào bên dưới:
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  API Key Gemini Cá Nhân (Tùy chọn)
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Khóa API (Tùy chọn)
                 </label>
                 <input
                   type="password"
-                  placeholder="AIzaSy..."
+                  placeholder="Nhập API Key cá nhân..."
                   value={customKey}
                   onChange={(e) => setCustomKey(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                 />
-                <p className="text-[11px] text-slate-400">
-                  Nhận khóa API miễn phí từ Google tại{' '}
-                  <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-purple-600 dark:text-purple-400 underline font-semibold"
-                  >
-                    Google AI Studio
-                  </a>.
+                <p className="text-[11px] text-zinc-400">
+                  Khóa được lưu cục bộ trên trình duyệt của bạn và bảo mật tuyệt đối.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2.5 pt-2">
+              <div className="flex items-center gap-2 pt-2">
                 <button
                   onClick={handleSaveApiKey}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition cursor-pointer shadow-sm"
+                  className="px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs transition cursor-pointer shadow-xs"
                 >
-                  Lưu Khóa API
+                  Lưu cấu hình
                 </button>
 
                 {customKey && (
@@ -850,16 +854,16 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                       setCustomKey('');
                       setCustomUserApiKey('');
                     }}
-                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer"
+                    className="px-3 py-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs font-normal cursor-pointer"
                   >
-                    Xóa Key cá nhân (Dùng mặc định hệ thống)
+                    Dùng mặc định hệ thống
                   </button>
                 )}
 
                 {savedKeySuccess && (
-                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Đã lưu cấu hình thành công!
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Đã lưu thành công
                   </span>
                 )}
               </div>

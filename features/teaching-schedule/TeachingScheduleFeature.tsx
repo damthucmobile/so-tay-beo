@@ -19,7 +19,7 @@ import {
   LayoutGrid,
   Trash2,
   Bell,
-  Sparkles,
+  Bot,
 } from 'lucide-react';
 
 export const TeachingScheduleFeature: React.FC = () => {
@@ -135,10 +135,10 @@ export const TeachingScheduleFeature: React.FC = () => {
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('app-navigate-tab', { detail: { tab: 'ai_assistant' } }));
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 text-purple-700 dark:text-purple-300 text-xs font-bold transition border border-purple-200/80 dark:border-purple-800/60 shadow-xs cursor-pointer"
-              title="Mở Không gian Trợ lý Gemini AI toàn màn hình"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-medium transition border border-zinc-200 dark:border-zinc-700 cursor-pointer"
+              title="Mở Trợ lý AI"
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
+              <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
               <span className="hidden sm:inline">Trợ lý AI</span>
               <span className="sm:hidden text-[11px]">AI</span>
             </button>
@@ -179,25 +179,25 @@ export const TeachingScheduleFeature: React.FC = () => {
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 min-h-0">
         <div className="w-full space-y-4">
           {!timetable ? (
-            /* Empty State khi chưa có TKB: Mời người dùng import file Excel thật */
-            <div className="max-w-md mx-auto my-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-5 shadow-xl">
-              <div className="w-16 h-16 rounded-3xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
-                <CalendarDays className="w-8 h-8" />
+            /* Empty State khi chưa có TKB: Mời người dùng import file Excel */
+            <div className="max-w-md mx-auto my-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-4 shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center mx-auto">
+                <CalendarDays className="w-6 h-6" />
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Chưa Có Thời Khóa Biểu
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Vui lòng tải lên tệp Excel (.xlsx) thời khóa biểu toàn trường để xem lịch giảng dạy cá nhân và thời khóa biểu từng lớp.
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Vui lòng tải lên tệp Excel (.xlsx) thời khóa biểu để xem lịch giảng dạy cá nhân và các lớp.
                 </p>
               </div>
 
               <div className="pt-2">
                 <button
                   onClick={() => setIsImportModalOpen(true)}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-500/25 transition cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
                   <Upload className="w-4 h-4" />
                   <span>Nhập File Excel Thời Khóa Biểu</span>

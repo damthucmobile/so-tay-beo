@@ -99,7 +99,7 @@ export const PrintTimetableModal: React.FC<PrintTimetableModalProps> = ({
                 <Printer className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                   Xem Trước & In Thời Khóa Biểu (A4 Ngang)
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">

@@ -140,7 +140,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         )}
 
         <div className="flex flex-col min-w-0 justify-center">
-          <h1 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate tracking-tight">
+          <h1 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white truncate tracking-tight">
             {displayTitle}
           </h1>
           {displaySubtitle && (

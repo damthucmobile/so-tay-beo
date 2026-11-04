@@ -109,7 +109,7 @@ export const ClassScheduleView: React.FC = () => {
               <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white truncate">
+              <h3 className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-white truncate">
                 Lớp {selectedClass || 'Chưa chọn'}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -369,7 +369,7 @@ const ClassPeriodCard: React.FC<ClassPeriodCardProps> = ({ entry, onSelectTeache
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200/60 dark:border-slate-700">
           <span className="text-[10px] font-bold text-slate-400 uppercase">Tiết</span>
-          <span className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 leading-none">
+          <span className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100 leading-none">
             {entry.period}
           </span>
         </div>
