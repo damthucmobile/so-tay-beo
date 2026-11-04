@@ -94,6 +94,18 @@ export const COLLECTIONS = {
   TRAVEL_DOCUMENTS: 'travel_documents',
 
   // ============================================================================
+  // PHÂN HỆ QUẢN LÝ CHI TIÊU ĐỜI SỐNG (SPENDING & EXPENSES MODULE)
+  // ============================================================================
+  /** Các khoản chi tiêu sinh hoạt, cá nhân & gia đình */
+  EXPENSES: 'expenses',
+
+  /** Hạn mức ngân sách chi tiêu theo tháng */
+  EXPENSE_BUDGETS: 'expense_budgets',
+
+  /** Danh mục chi tiêu tùy chỉnh của người dùng */
+  EXPENSE_CATEGORIES: 'expense_categories',
+
+  // ============================================================================
   // PHÂN HỆ THEO DÕI HOẠT ĐỘNG & XEM GẦN ĐÂY (ACTIVITY & RECENT VIEWS)
   // ============================================================================
   /** Danh sách nội dung đã xem gần đây (subcollection: users/{uid}/recentViews) */

@@ -31,6 +31,7 @@ import {
   Settings,
   DollarSign,
   Compass,
+  Wallet,
 } from 'lucide-react';
 import {
   useGeminiAI,
@@ -46,6 +47,8 @@ import {
   AIContextScope,
   CONTEXT_SCOPE_OPTIONS,
   buildSystemContextPrompt,
+  extractAgentActions,
+  executeAgentAction,
 } from '@/core';
 import { useAuth } from '@/core/firebase';
 import { useTeachingScheduleStore } from '@/features/teaching-schedule/stores/useTeachingScheduleStore';
@@ -53,6 +56,7 @@ import { useClassManager } from '@/features/class/hooks/useClassManager';
 import { useScheduleManager } from '@/features/schedule/hooks/useScheduleManager';
 import { useIncomeManager } from '@/features/income/hooks/useIncomeManager';
 import { useTravelStore } from '@/features/travel/stores/useTravelStore';
+import { useSpendingStore } from '@/features/spending/stores/useSpendingStore';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { NavTabId } from '../layout/Sidebar';
 
@@ -77,12 +81,17 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
   const { appointments, customers } = useScheduleManager(user?.uid);
   const { transactions } = useIncomeManager(user?.uid);
   const { trips, fetchTrips } = useTravelStore();
+  const { expenses, monthlyBudget, initStore: initSpendingStore } = useSpendingStore();
 
   useEffect(() => {
     if (user?.uid) {
       fetchTrips(user.uid);
+      const unsub = initSpendingStore(user.uid);
+      return () => {
+        unsub();
+      };
     }
-  }, [user?.uid, fetchTrips]);
+  }, [user?.uid, fetchTrips, initSpendingStore]);
 
   const [selectedScope, setSelectedScope] = useState<AIContextScope>('global');
   const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
@@ -193,6 +202,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       customers,
       transactions,
       trips,
+      expenses,
+      monthlyBudget,
     });
   }, [
     selectedScope,
@@ -208,6 +219,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     customers,
     transactions,
     trips,
+    expenses,
+    monthlyBudget,
   ]);
 
   const {
@@ -227,8 +240,8 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
         return [
           'Xem cho tôi ngày nào ít tiết học nhất để tôi xin nghỉ',
           'Tuần này tôi có những buổi nào hoàn toàn trống lịch để nhận thêm việc?',
-          'Đối chiếu lịch dạy trường với các ca gia sư xem có bị trùng giờ không?',
-          'Tổng hợp 360 độ: TKB trường, lớp học, học sinh, thù lao và lịch trình',
+          'Tháng này tôi đã chi tiêu bao nhiêu tiền, còn trong hạn mức không?',
+          'Tổng hợp 360 độ: TKB trường, lớp học, học sinh, thù lao, chi tiêu và du lịch',
         ];
       case 'teaching':
         return [
@@ -257,6 +270,13 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
           'Thống kê doanh thu từ các lớp học và các ca gia sư',
           'Chi tiết các giao dịch thu nhập gần nhất',
           'Tình hình tài chính tổng thể của tôi trong tháng này',
+        ];
+      case 'spending':
+        return [
+          'Ghi nhận chi tiêu: Vừa đổ xăng xe máy 80 nghìn',
+          'Tháng này tôi đã chi tiêu hết bao nhiêu tiền rồi?',
+          'So sánh chi tiêu thực tế với hạn mức ngân sách tháng',
+          'Nhóm chi tiêu nào đang chiếm tỷ trọng lớn nhất?',
         ];
       case 'travel':
         return [
@@ -341,6 +361,28 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     });
 
     if (res) {
+      // 1. Phân tích và thực thi các hành động dữ liệu do AI Agent yêu cầu
+      const { cleanContent, commands } = extractAgentActions(res);
+      let actionNotification = '';
+
+      if (commands.length > 0) {
+        for (const cmd of commands) {
+          const actionResult = await executeAgentAction(cmd, user?.uid);
+          if (actionResult.success) {
+            actionNotification += `\n\n> ✅ **Hệ thống xác nhận:** ${actionResult.message}`;
+          } else {
+            actionNotification += `\n\n> ⚠️ **Thông báo:** ${actionResult.message}`;
+          }
+        }
+        // Làm mới dữ liệu chuyến đi và chi tiêu
+        if (user?.uid) {
+          fetchTrips(user.uid);
+          initSpendingStore(user.uid);
+        }
+      }
+
+      const finalModelText = (cleanContent || res) + actionNotification;
+
       const userMsg: ChatMessage = {
         id: `user_${Date.now()}`,
         role: 'user',
@@ -351,9 +393,15 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       const modelMsg: ChatMessage = {
         id: `model_${Date.now()}`,
         role: 'model',
-        content: res,
+        content: finalModelText,
         timestamp: new Date().toISOString(),
       };
+
+      // Cập nhật lại model message cuối cùng trong chatMessages để loại bỏ code block và gắn xác nhận
+      setChatMessages((prev) => {
+        const withoutLast = prev.slice(0, -1);
+        return [...withoutLast, modelMsg];
+      });
 
       const newMessages = [...chatMessages, userMsg, modelMsg];
 
@@ -591,6 +639,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                   {selectedScope === 'classes' && <GraduationCap className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   {selectedScope === 'schedule' && <Clock className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   {selectedScope === 'income' && <DollarSign className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
+                  {selectedScope === 'spending' && <Wallet className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   {selectedScope === 'travel' && <Compass className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   {selectedScope === 'general' && <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   <span>Bối cảnh: <span className="font-semibold">{currentScopeConfig.shortLabel}</span></span>
@@ -629,6 +678,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                               {opt.id === 'classes' && <GraduationCap className="w-4 h-4" />}
                               {opt.id === 'schedule' && <Clock className="w-4 h-4" />}
                               {opt.id === 'income' && <DollarSign className="w-4 h-4" />}
+                              {opt.id === 'spending' && <Wallet className="w-4 h-4" />}
                               {opt.id === 'travel' && <Compass className="w-4 h-4" />}
                               {opt.id === 'general' && <Bot className="w-4 h-4" />}
                             </div>

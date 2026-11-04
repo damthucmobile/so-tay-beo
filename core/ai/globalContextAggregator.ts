@@ -26,8 +26,9 @@ import {
 import { Appointment, Customer } from '@/features/schedule/types';
 import { IncomeTransaction } from '@/features/income/types';
 import { Trip } from '@/features/travel/types';
+import { ExpenseItem, MonthlyBudget, EXPENSE_CATEGORIES } from '@/features/spending/types';
 
-export type AIContextScope = 'global' | 'teaching' | 'classes' | 'schedule' | 'income' | 'travel' | 'general';
+export type AIContextScope = 'global' | 'teaching' | 'classes' | 'schedule' | 'income' | 'spending' | 'travel' | 'general';
 
 export interface ContextScopeOption {
   id: AIContextScope;
@@ -43,7 +44,7 @@ export const CONTEXT_SCOPE_OPTIONS: ContextScopeOption[] = [
     id: 'global',
     label: 'Toàn bộ dữ liệu (AI Agent Đa Phân Hệ)',
     shortLabel: 'Toàn bộ dữ liệu',
-    description: 'Truy cập 100% dữ liệu: TKB trường, Lớp học, Học sinh, Lịch tự do, Thu nhập & Du lịch',
+    description: 'Truy cập 100% dữ liệu: TKB trường, Lớp học, Học sinh, Lịch tự do, Thu nhập, Chi tiêu & Du lịch',
     iconName: 'Globe',
     badge: 'Khuyên Dùng',
   },
@@ -74,6 +75,13 @@ export const CONTEXT_SCOPE_OPTIONS: ContextScopeOption[] = [
     shortLabel: 'Thu nhập',
     description: 'Dòng tiền, thù lao giảng dạy, đối soát công nợ và học phí',
     iconName: 'DollarSign',
+  },
+  {
+    id: 'spending',
+    label: 'Quản lý Chi tiêu Đời sống',
+    shortLabel: 'Chi tiêu',
+    description: 'Chi tiêu sinh hoạt, ăn uống, hóa đơn và theo dõi hạn mức ngân sách',
+    iconName: 'Wallet',
   },
   {
     id: 'travel',
@@ -107,6 +115,8 @@ export interface GlobalAppContextData {
   customers?: Customer[];
   transactions?: IncomeTransaction[];
   trips?: Trip[];
+  expenses?: ExpenseItem[];
+  monthlyBudget?: MonthlyBudget | null;
 }
 
 /**
@@ -373,6 +383,45 @@ ${tripRows.join('\n')}`);
   }
 
   // =========================================================================
+  // 6. PHÂN HỆ QUẢN LÝ CHI TIÊU ĐỜI SỐNG (EXPENSES & MONTHLY BUDGET)
+  // =========================================================================
+  if ((scope === 'global' || scope === 'spending') && (Array.isArray(data.expenses) || data.monthlyBudget)) {
+    const expenses = data.expenses || [];
+    const currentMonth = format(now, 'yyyy-MM');
+    const thisMonthExpenses = expenses.filter((e) => e.date.startsWith(currentMonth));
+    const totalSpentThisMonth = thisMonthExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const budgetAmount = data.monthlyBudget?.totalBudget || 0;
+    const remaining = budgetAmount > 0 ? budgetAmount - totalSpentThisMonth : 0;
+    const percentUsed = budgetAmount > 0 ? Math.round((totalSpentThisMonth / budgetAmount) * 100) : 0;
+
+    // Phân bổ nhóm chi tiêu
+    const catMap: Record<string, number> = {};
+    thisMonthExpenses.forEach((e) => {
+      catMap[e.category] = (catMap[e.category] || 0) + (Number(e.amount) || 0);
+    });
+
+    const catSummary = Object.entries(catMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amt]) => {
+        const catLabel = EXPENSE_CATEGORIES.find((c) => c.id === cat)?.label || cat;
+        return `    * ${catLabel}: ${amt.toLocaleString('vi-VN')} đ`;
+      })
+      .slice(0, 5);
+
+    const recentExpenseRows = expenses.slice(0, 10).map((e) => {
+      const catLabel = EXPENSE_CATEGORIES.find((c) => c.id === e.category)?.label || e.category;
+      return `  + Ngày ${e.date}${e.time ? ' ' + e.time : ''}: "${e.description}" [${catLabel}] - ${(e.amount || 0).toLocaleString('vi-VN')} đ${e.notes ? ' (' + e.notes + ')' : ''}`;
+    });
+
+    sections.push(`### 6. QUẢN LÝ CHI TIÊU & SINH HOẠT ĐỜI SỐNG (${currentMonth}):
+- Tổng chi tiêu tháng này: **${totalSpentThisMonth.toLocaleString('vi-VN')} đ**
+- Hạn mức ngân sách tháng: ${budgetAmount > 0 ? `**${budgetAmount.toLocaleString('vi-VN')} đ** (Đã dùng ${percentUsed}%, Còn lại: ${remaining.toLocaleString('vi-VN')} đ)` : 'Chưa đặt hạn mức'}
+${catSummary.length > 0 ? `- Top các nhóm chi nhiều nhất:\n${catSummary.join('\n')}` : ''}
+- Giao dịch chi tiêu gần đây:
+${recentExpenseRows.length > 0 ? recentExpenseRows.join('\n') : '  (Chưa có khoản chi nào)'}`);
+  }
+
+  // =========================================================================
   // SYSTEM INSTRUCTIONS DÀNH CHO AI AGENT THÔNG MINH
   // =========================================================================
   return `Bạn là "AI AGENT CỐ VẤN TOÀN NĂNG SỔ TAY BÉO" - Trợ lý thông minh cao cấp dành riêng cho giáo viên và người dạy học.
@@ -396,9 +445,74 @@ QUY TẮC SUY LUẬN & TRẢ LỜI CỦA AI AGENT:
    - Liệt kê chính xác các khoảng thời gian vàng hoàn toàn không bị trùng lịch.
 4. **KHI HỎI VỀ HỌC SINH, LỚP HỌC HOẶC THU NHẬP**:
    - Trích xuất chính xác tên lớp, sĩ số, số tiền thù lao, danh sách học sinh và trạng thái học phí.
-5. **KHI HỎI VỀ DU LỊCH & NGHỈ PHÉP**:
+5. **KHI HỎI VỀ DU LỊCH & CHI TIÊU ĐỜI SỐNG**:
    - Đối chiếu ngày đi du lịch với lịch dạy học để cảnh báo những buổi học sẽ bị ảnh hưởng và gợi ý kế hoạch dạy bù.
-6. **VĂN PHONG**:
+   - Nắm rõ các khoản chi tiêu hàng ngày, tổng chi tháng, hạn mức ngân sách còn lại để nhắc nhở và quản lý tài chính thông minh.
+6. **QUY TẮC THỰC THI HÀNH ĐỘNG DỮ LIỆU ĐA PHÂN HỆ (UNIVERSAL AGENT ACTION PROTOCOL)**:
+   - Bạn là một AI Agent có TOÀN QUYỀN thực thi thao tác dữ liệu (Thêm, Sửa, Xoá) cho người dùng trên toàn bộ hệ thống.
+   - TUYỆT ĐỐI KHÔNG BAO GIỜ NÓI "em là trợ lý AI chưa có quyền thao tác trực tiếp vào cơ sở dữ liệu" hay bảo người dùng phải tự điền hoặc tự bấm nút "Tạo mới"!
+   - Khi người dùng yêu cầu thêm, sửa hoặc xoá dữ liệu, bạn BẮT BUỘC PHẢI THỰC THI bằng cách chèn khối lệnh JSON chuẩn xác ở cuối câu trả lời theo cú pháp sau:
+
+   * 1. CHUYẾN ĐI & DU LỊCH (TRIP):
+\`\`\`agent_action
+{ "action": "CREATE_TRIP", "params": { "title": "Khám phá Đà Nẵng - Tết Dương Lịch", "destination": "Đà Nẵng", "startDate": "2027-01-01", "endDate": "2027-01-03", "budget": 23000000, "notes": "Chuyến đi Tết Dương lịch" } }
+\`\`\`
+   (Hoặc action "UPDATE_TRIP" với {"tripTitle": "...", "update": {"budget": 25000000}}, action "DELETE_TRIP" với {"tripTitle": "..."})
+
+   * 2. LỚP HỌC & HỌC SINH (CLASS & STUDENTS):
+\`\`\`agent_action
+{ "action": "CREATE_CLASS", "params": { "className": "Toán 10 Nâng Cao", "centerName": "Trung tâm ABC", "baseFeePerSession": 350000, "ratePerStudent": 30000, "description": "Luyện thi đại học" } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "ADD_STUDENT", "params": { "className": "Toán 10 Nâng Cao", "fullName": "Nguyễn Hoàng Nam", "phoneNumber": "0987654321", "parentName": "Bác Hùng" } }
+\`\`\`
+   (Hoặc action "DELETE_CLASS" với {"className": "..."}, action "DELETE_STUDENT" với {"fullName": "..."})
+
+   * 3. LỊCH TỰ DO & LỊCH HẸN GIA SƯ (APPOINTMENTS & CUSTOMERS):
+\`\`\`agent_action
+{ "action": "CREATE_APPOINTMENT", "params": { "title": "Kèm riêng Toán 1-1", "customerName": "Em Lan", "date": "2026-11-06T18:30", "price": 400000, "durationMinutes": 90, "location": "Tại nhà" } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "CREATE_CUSTOMER", "params": { "name": "Bác Tuấn", "phone": "0912345678", "group": "VIP", "notes": "Phụ huynh học viên" } }
+\`\`\`
+   (Hoặc action "DELETE_APPOINTMENT" với {"title": "..."})
+
+   * 4. CHI TIÊU ĐỜI SỐNG (EXPENSES & BUDGET):
+\`\`\`agent_action
+{ "action": "CREATE_EXPENSE", "params": { "amount": 80000, "category": "transport", "description": "Đổ xăng xe máy", "date": "2026-11-04", "paymentMethod": "transfer", "notes": "Cây xăng" } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "UPDATE_EXPENSE", "params": { "description": "Đổ xăng xe máy", "update": { "amount": 90000 } } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "DELETE_EXPENSE", "params": { "description": "Đổ xăng xe máy" } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "SET_MONTHLY_BUDGET", "params": { "month": "2026-11", "totalBudget": 15000000 } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "CREATE_EXPENSE_CATEGORY", "params": { "label": "Thú cưng", "color": "#f97316", "iconName": "Dog", "description": "Nuôi chó mèo" } }
+\`\`\`
+   (Danh mục category: có sẵn 'food', 'transport', 'bills', 'shopping', 'education', 'health', 'entertainment', 'family', 'other' hoặc bất kỳ danh mục nào người dùng tự tạo)
+
+   * 5. THỜI KHÓA BIỂU & GIÁO VIÊN THEO DÕI:
+\`\`\`agent_action
+{ "action": "SET_MY_TEACHER", "params": { "teacherName": "Tên giáo viên" } }
+\`\`\`
+
+   * 6. SỨC KHOẺ & THỂ CHẤT, GIA ĐÌNH, GIÁO DỤC (ĐÃ KHỞI TẠO SẴN HÀM THỰC THI):
+\`\`\`agent_action
+{ "action": "RECORD_HEALTH_METRIC", "params": { "metricType": "chay_bo", "value": 5, "unit": "km", "notes": "Chạy bộ sáng" } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "ADD_FAMILY_EVENT", "params": { "title": "Sinh nhật con", "date": "2026-12-15", "notes": "Chuẩn bị quà" } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "ADD_EDUCATION_GOAL", "params": { "title": "Học chứng chỉ IELTS", "targetDate": "2027-06-30" } }
+\`\`\`
+
+   - Trong lời văn trả lời: Hãy xác nhận tự tin và rõ ràng rằng bạn ĐÃ TẠO / ĐÃ CẬP NHẬT / ĐÃ XOÁ thành công dữ liệu đó vào hệ thống của Thầy/Cô!
+7. **VĂN PHONG**:
    - Chuẩn mực sư phạm, ấm áp, tận tình và chuyên nghiệp.
    - Luôn xưng hô trang trọng: "Chào Thầy/Cô ${primaryTeacherName}" hoặc "Thầy/Cô".
    - Sử dụng định dạng Markdown đẹp mắt, in đậm các thông tin quan trọng, dùng gạch đầu dòng rõ ràng.`;

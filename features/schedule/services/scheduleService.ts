@@ -95,7 +95,7 @@ export async function saveAppointment(
     title: data.title?.trim() || '',
     customerId: data.customerId || 'cust_guest',
     customerName: data.customerName?.trim() || 'Khách vãng lai',
-    customerAvatar: data.customerAvatar,
+    customerAvatar: data.customerAvatar || '',
     date: data.date || now.slice(0, 16),
     durationMinutes: Number(data.durationMinutes) || 60,
     price: Number(data.price) || 0,
@@ -115,7 +115,15 @@ export async function saveAppointment(
     updatedAt: now,
   };
 
-  await setDoc(doc(db, COLLECTIONS.APPOINTMENTS, appId), entity, { merge: true });
+  // Làm sạch dữ liệu để tránh lỗi Firestore Unsupported field value: undefined
+  const cleanEntity: Record<string, any> = {};
+  for (const [key, value] of Object.entries(entity)) {
+    if (value !== undefined) {
+      cleanEntity[key] = value;
+    }
+  }
+
+  await setDoc(doc(db, COLLECTIONS.APPOINTMENTS, appId), cleanEntity, { merge: true });
 
   // Đồng bộ với Thu nhập hợp nhất nếu đã hoàn thành
   if (entity.isCompleted || entity.status === 'Đã hoàn thành') {
@@ -228,7 +236,14 @@ export async function saveCustomer(
     updatedAt: now,
   };
 
-  await setDoc(doc(db, COLLECTIONS.CUSTOMERS, custId), entity, { merge: true });
+  const cleanEntity: Record<string, any> = {};
+  for (const [key, value] of Object.entries(entity)) {
+    if (value !== undefined) {
+      cleanEntity[key] = value;
+    }
+  }
+
+  await setDoc(doc(db, COLLECTIONS.CUSTOMERS, custId), cleanEntity, { merge: true });
   return custId;
 }
 

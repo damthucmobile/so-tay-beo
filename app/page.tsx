@@ -7,6 +7,7 @@ import { TeachingScheduleFeature } from '../features/teaching-schedule';
 import { FreelanceScheduleFeature } from '../features/schedule';
 import { IncomeFeature } from '../features/income';
 import { UserGuidePage } from '../features/guide';
+import { SpendingFeature } from '../features/spending';
 import { TravelFeature, JournalFeature, BudgetFeature, ChecklistFeature } from '../features/travel';
 import { SharedTripView } from '../features/travel/components/SharedTripView';
 import { useTravelStore } from '../features/travel/stores/useTravelStore';
@@ -93,7 +94,7 @@ export default function HomePage() {
         const tab = params.get('tab') as NavTabId | null;
         const teacher = params.get('teacher');
 
-        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'settings', 'guide', 'health', 'travel', 'travel_journal', 'travel_budget', 'travel_checklist', 'family', 'education', 'ai_assistant'].includes(tab)) {
+        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'spending', 'settings', 'guide', 'health', 'travel', 'travel_journal', 'travel_budget', 'travel_checklist', 'family', 'education', 'ai_assistant'].includes(tab)) {
           setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
           if (teacher && tab === 'teaching_schedule') {
             useTeachingScheduleStore.getState().setSelectedTeacher(decodeURIComponent(teacher));
@@ -189,6 +190,7 @@ export default function HomePage() {
       teaching_schedule: { title: 'Lịch Dạy Học', subtitle: 'Thời khóa biểu nhà trường & Lịch giảng dạy cá nhân' },
       schedule: { title: 'Lịch Tự Do & Khách Hàng', subtitle: 'Lịch hẹn gia sư & học viên' },
       income: { title: 'Báo Cáo Thu Nhập & Thù Lao', subtitle: 'Đối soát thù lao giảng dạy' },
+      spending: { title: 'Quản Lý Chi Tiêu', subtitle: 'Kiểm soát ngân sách sinh hoạt, ăn uống và đời sống hàng ngày' },
       settings: { title: 'Cài Đặt Hệ Thống', subtitle: 'Hồ sơ & giao diện' },
       guide: { title: 'Hướng Dẫn Sử Dụng', subtitle: 'Tài liệu hướng dẫn & mẹo sử dụng phần mềm' },
       health: { title: 'Sức Khỏe & Thể Chất', subtitle: 'Theo dõi chỉ số sinh học, thể thao & chế độ dinh dưỡng' },
@@ -512,6 +514,9 @@ export default function HomePage() {
 
       {/* 5. HƯỚNG DẪN SỬ DỤNG */}
       {currentTab === 'guide' && <UserGuidePage onNavigateTab={handleSelectTab} />}
+
+      {/* 5.1 QUẢN LÝ CHI TIÊU ĐỜI SỐNG */}
+      {currentTab === 'spending' && <SpendingFeature onNavigateTab={handleSelectTab} />}
 
       {/* 6. SỨC KHỎE & THỂ CHẤT */}
       {currentTab === 'health' && (

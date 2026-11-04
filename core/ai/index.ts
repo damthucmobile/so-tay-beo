@@ -3,3 +3,4 @@ export * from './geminiClient';
 export * from './promptTemplates';
 export * from './hooks/useGeminiAI';
 export * from './globalContextAggregator';
+export * from './agentActionDispatcher';

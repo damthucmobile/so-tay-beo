@@ -32,6 +32,7 @@ export type NavTabId =
   | 'teaching_schedule'
   | 'schedule'
   | 'income'
+  | 'spending'
   | 'ai_assistant'
   | 'settings'
   | 'guide'
@@ -90,6 +91,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Đời sống',
     icon: HeartPulse,
     items: [
+      { id: 'spending', label: 'Chi tiêu', icon: Wallet },
       { id: 'health', label: 'Sức khoẻ & Thể chất', icon: HeartPulse },
       { id: 'travel', label: 'Chuyến đi', icon: Compass },
       { id: 'family', label: 'Gia đình', icon: Home },
@@ -98,7 +100,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'system',
-    label: 'Hệ thống',
+    label: 'Tiện ích',
     icon: Settings,
     items: [
       { id: 'guide', label: 'Hướng dẫn sử dụng', icon: BookOpen },
@@ -185,149 +187,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Content Area */}
         <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
-          {/* PHÂN HỆ: CÔNG VIỆC */}
-          <div className="space-y-0.5">
-            {(!collapsed || mobileOpen) && (
-              <div className="px-2 pt-1 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-                Công việc
-              </div>
-            )}
-            <NavItemButton
-              icon={GraduationCap}
-              label="Lớp học"
-              active={currentTab === 'classes'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('classes');
-                onCloseMobile();
-              }}
-            />
-            <NavItemButton
-              icon={CalendarDays}
-              label="Lịch dạy học"
-              active={currentTab === 'teaching_schedule'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('teaching_schedule');
-                onCloseMobile();
-              }}
-            />
-            <NavItemButton
-              icon={Calendar}
-              label="Lịch tự do"
-              active={currentTab === 'schedule'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('schedule');
-                onCloseMobile();
-              }}
-            />
-            <NavItemButton
-              icon={DollarSign}
-              label="Thù lao"
-              active={currentTab === 'income'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('income');
-                onCloseMobile();
-              }}
-            />
-            <NavItemButton
-              icon={Bot}
-              label="Trợ lý AI"
-              active={currentTab === 'ai_assistant'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('ai_assistant');
-                onCloseMobile();
-              }}
-            />
-          </div>
+          {NAV_GROUPS.map((group) => (
+            <div key={group.id} className="space-y-0.5">
+              {(!collapsed || mobileOpen) && (
+                <div className="px-2 pt-1 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
+                  {group.label}
+                </div>
+              )}
+              {group.items.map((item) => {
+                const isItemActive =
+                  item.id === 'travel'
+                    ? isTravelActive
+                    : currentTab === item.id;
 
-          {/* PHÂN HỆ: ĐỜI SỐNG */}
-          <div className="space-y-0.5">
-            {(!collapsed || mobileOpen) && (
-              <div className="px-2 pt-1 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-                Đời sống
-              </div>
-            )}
-            {/* Sức khoẻ */}
-            <NavItemButton
-              icon={HeartPulse}
-              label="Sức khoẻ & Thể chất"
-              active={currentTab === 'health'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('health');
-                onCloseMobile();
-              }}
-            />
-
-            {/* Chuyến đi */}
-            <NavItemButton
-              icon={Compass}
-              label="Chuyến đi"
-              active={isTravelActive}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('travel');
-                onCloseMobile();
-              }}
-            />
-
-            {/* Gia đình */}
-            <NavItemButton
-              icon={Home}
-              label="Gia đình"
-              active={currentTab === 'family'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('family');
-                onCloseMobile();
-              }}
-            />
-
-            {/* Giáo dục */}
-            <NavItemButton
-              icon={BookOpenCheck}
-              label="Giáo dục"
-              active={currentTab === 'education'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('education');
-                onCloseMobile();
-              }}
-            />
-          </div>
-
-          {/* PHÂN HỆ: TIỆN ÍCH / HỆ THỐNG */}
-          <div className="space-y-0.5">
-            {(!collapsed || mobileOpen) && (
-              <div className="px-2 pt-1 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-                Tiện ích
-              </div>
-            )}
-            <NavItemButton
-              icon={BookOpen}
-              label="Hướng dẫn sử dụng"
-              active={currentTab === 'guide'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('guide');
-                onCloseMobile();
-              }}
-            />
-            <NavItemButton
-              icon={Settings}
-              label="Cài đặt hồ sơ"
-              active={currentTab === 'settings'}
-              collapsed={collapsed && !mobileOpen}
-              onClick={() => {
-                onSelectTab('settings');
-                onCloseMobile();
-              }}
-            />
-          </div>
+                return (
+                  <NavItemButton
+                    key={item.id}
+                    icon={item.icon}
+                    label={item.label}
+                    active={isItemActive}
+                    collapsed={collapsed && !mobileOpen}
+                    onClick={() => {
+                      onSelectTab(item.id);
+                      onCloseMobile();
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* User Profile / Status Footer (macOS Minimal Footer) */}

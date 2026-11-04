@@ -245,6 +245,72 @@ service cloud.firestore {
       );
     }
 
+    // ==============================================================================
+    // 15. PHÂN HỆ QUẢN LÝ CHI TIÊU ĐỜI SỐNG (EXPENSES & EXPENSE_BUDGETS)
+    // ==============================================================================
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated() && (
+        resource == null || 
+        resource.data.get('userId', '') == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.get('userId', '') == request.auth.uid
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid
+      );
+    }
+
+    match /expense_budgets/{budgetId} {
+      allow read: if isAuthenticated() && (
+        resource == null || 
+        resource.data.get('userId', '') == request.auth.uid ||
+        budgetId.matches('^' + request.auth.uid + '_.*')
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        budgetId.matches('^' + request.auth.uid + '_.*')
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        budgetId.matches('^' + request.auth.uid + '_.*')
+      );
+    }
+
+    match /expense_categories/{catId} {
+      allow read: if isAuthenticated() && (
+        resource == null || 
+        resource.data.get('userId', '') == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.get('userId', '') == request.auth.uid
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid
+      );
+    }
+
+    // ==============================================================================
+    // 16. CÁC TÍNH NĂNG MỞ RỘNG (HEALTH, FAMILY, EDUCATION)
+    // ==============================================================================
+    match /health_metrics/{metricId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /family_events/{eventId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /education_goals/{goalId} {
+      allow read, write: if isAuthenticated();
+    }
 
     // ==============================================================================
     // QUY TẮC MẶC ĐỊNH: TỪ CHỐI TẤT CẢ CÁC TRUY CẬP KHÔNG ĐƯỢC ĐỊNH NGHĨA RÕ RÀNG
