@@ -221,11 +221,78 @@ export async function chatServer(
   options: ChatCompletionOptions
 ): Promise<AIResponse<string>> {
   try {
-    // Chuẩn hóa lịch sử hội thoại cho SDK
-    const contents = options.messages.map((m) => ({
-      role: m.role === 'model' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
+    // Chuẩn hóa lịch sử hội thoại cho SDK bao gồm hình ảnh và tệp đính kèm
+    const contents = options.messages.map((m) => {
+      const parts: any[] = [];
+
+      // 1. Xử lý tệp đính kèm nếu có (ảnh, PDF, tài liệu, file code)
+      if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
+        for (const att of m.attachments) {
+          if (!att.data && !att.textContent) continue;
+
+          const isImage = att.type?.startsWith('image/');
+          const isPdf = att.type === 'application/pdf';
+          const isAudio = att.type?.startsWith('audio/');
+          const isVideo = att.type?.startsWith('video/');
+
+          if (isImage || isPdf || isAudio || isVideo) {
+            // Chuẩn hóa chuỗi Base64
+            const cleanBase64 = att.data.replace(/^data:[^;]+;base64,/, '');
+            parts.push({
+              inlineData: {
+                mimeType: att.type || (isImage ? 'image/jpeg' : 'application/pdf'),
+                data: cleanBase64,
+              },
+            });
+          } else if (
+            att.isText ||
+            att.type?.startsWith('text/') ||
+            att.type?.includes('json') ||
+            att.type?.includes('csv') ||
+            att.type?.includes('xml')
+          ) {
+            // Tệp văn bản / code / dữ liệu text
+            let textData = att.textContent;
+            if (!textData && att.data) {
+              if (att.data.startsWith('data:')) {
+                try {
+                  const b64 = att.data.split(',')[1];
+                  textData = Buffer.from(b64, 'base64').toString('utf-8');
+                } catch {
+                  textData = att.data;
+                }
+              } else {
+                textData = att.data;
+              }
+            }
+            parts.push({
+              text: `[Tệp đính kèm: ${att.name}]\n\`\`\`\n${textData || ''}\n\`\`\``,
+            });
+          } else {
+            // Các định dạng tệp khác
+            const cleanBase64 = att.data.replace(/^data:[^;]+;base64,/, '');
+            parts.push({
+              inlineData: {
+                mimeType: att.type || 'application/octet-stream',
+                data: cleanBase64,
+              },
+            });
+          }
+        }
+      }
+
+      // 2. Nội dung văn bản của tin nhắn
+      if (m.content && m.content.trim()) {
+        parts.push({ text: m.content });
+      } else if (parts.length === 0) {
+        parts.push({ text: ' ' });
+      }
+
+      return {
+        role: m.role === 'model' ? 'model' : 'user',
+        parts,
+      };
+    });
 
     const { result: response, modelUsed } = await executeWithModelFallback(
       options.model,

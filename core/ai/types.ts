@@ -53,11 +53,23 @@ export const AVAILABLE_GEMINI_MODELS: GeminiModelInfo[] = [
   },
 ];
 
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  type: string; // MIME type (image/png, image/jpeg, application/pdf, etc.)
+  size: number; // bytes
+  data: string; // Base64 Data URL hoặc raw Base64
+  previewUrl?: string; // Preview URL cho hình ảnh
+  isText?: boolean;
+  textContent?: string;
+}
+
 export interface ChatMessage {
   id?: string;
   role: 'user' | 'model' | 'system';
   content: string;
   timestamp?: string;
+  attachments?: ChatAttachment[];
 }
 
 export interface BaseAIOptions {

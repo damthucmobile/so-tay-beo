@@ -127,7 +127,7 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
   const isCurrentMonth = selectedMonth === format(new Date(), 'yyyy-MM');
 
   return (
-    <div className="min-h-screen bg-background/50 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="w-full space-y-6 animate-fadeIn pb-10">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/50">
         <div>

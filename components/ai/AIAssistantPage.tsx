@@ -32,6 +32,13 @@ import {
   DollarSign,
   Compass,
   Wallet,
+  Paperclip,
+  Image as ImageIcon,
+  FileText,
+  File,
+  X,
+  Maximize2,
+  UploadCloud,
 } from 'lucide-react';
 import {
   useGeminiAI,
@@ -44,6 +51,7 @@ import {
   AVAILABLE_GEMINI_MODELS,
   DEFAULT_GEMINI_MODEL,
   ChatMessage,
+  ChatAttachment,
   AIContextScope,
   CONTEXT_SCOPE_OPTIONS,
   buildSystemContextPrompt,
@@ -69,6 +77,71 @@ interface ChatSession {
 }
 
 const CHAT_SESSIONS_STORAGE_KEY = 'so_tay_beo_gemini_chat_sessions_v1';
+const MAX_ATTACHMENT_SIZE = 15 * 1024 * 1024; // 15MB
+
+function formatFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readFileAsAttachment(file: File): Promise<ChatAttachment> {
+  return new Promise((resolve, reject) => {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      reject(new Error(`Tệp "${file.name}" quá lớn (${formatFileSize(file.size)}). Giới hạn tối đa là 15MB.`));
+      return;
+    }
+
+    const isImage = file.type.startsWith('image/');
+    const isText =
+      file.type.startsWith('text/') ||
+      file.name.endsWith('.txt') ||
+      file.name.endsWith('.md') ||
+      file.name.endsWith('.csv') ||
+      file.name.endsWith('.json') ||
+      file.name.endsWith('.js') ||
+      file.name.endsWith('.ts') ||
+      file.name.endsWith('.tsx') ||
+      file.name.endsWith('.html') ||
+      file.name.endsWith('.css') ||
+      file.name.endsWith('.py');
+
+    const reader = new FileReader();
+
+    if (isText) {
+      reader.onload = () => {
+        const textContent = reader.result as string;
+        resolve({
+          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          type: file.type || 'text/plain',
+          size: file.size,
+          data: textContent,
+          isText: true,
+          textContent,
+        });
+      };
+      reader.onerror = () => reject(new Error(`Không thể đọc tệp "${file.name}"`));
+      reader.readAsText(file);
+    } else {
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        resolve({
+          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          type: file.type || (isImage ? 'image/jpeg' : 'application/octet-stream'),
+          size: file.size,
+          data: dataUrl,
+          previewUrl: isImage ? dataUrl : undefined,
+          isText: false,
+        });
+      };
+      reader.onerror = () => reject(new Error(`Không thể đọc tệp "${file.name}"`));
+      reader.readAsDataURL(file);
+    }
+  });
+}
 
 interface AIAssistantPageProps {
   onNavigateTab?: (tab: NavTabId) => void;
@@ -140,6 +213,79 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Attachment states cho AI Chat (Đính kèm tệp & Dán ảnh)
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
+
+  const handleAddFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
+    try {
+      const newAttachments: ChatAttachment[] = [];
+      for (const file of fileArray) {
+        const att = await readFileAsAttachment(file);
+        newAttachments.push(att);
+      }
+      setAttachments((prev) => [...prev, ...newAttachments]);
+    } catch (err: any) {
+      alert(err?.message || 'Lỗi khi tải tệp lên.');
+    }
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const items = Array.from(clipboardData.items || []);
+    const filesToUpload: File[] = [];
+
+    for (const item of items) {
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file) {
+          filesToUpload.push(file);
+        }
+      }
+    }
+
+    if (filesToUpload.length > 0) {
+      e.preventDefault();
+      await handleAddFiles(filesToUpload);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await handleAddFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   // 1. Tải danh sách sessions từ localStorage
   useEffect(() => {
@@ -171,8 +317,30 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     setSessions(updatedSessions);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(updatedSessions));
-      } catch { }
+        // Tối ưu hóa chuỗi Base64 lớn trước khi lưu vào localStorage để tránh lỗi QuotaExceededError
+        const storableSessions = updatedSessions.map((session) => ({
+          ...session,
+          messages: session.messages?.map((m) => {
+            if (!m.attachments || m.attachments.length === 0) return m;
+            return {
+              ...m,
+              attachments: m.attachments.map((a) => ({
+                id: a.id,
+                name: a.name,
+                type: a.type,
+                size: a.size,
+                data: a.data && a.data.length > 250000 ? '' : a.data,
+                previewUrl: a.previewUrl && a.previewUrl.length < 250000 ? a.previewUrl : undefined,
+                isText: a.isText,
+                textContent: a.textContent && a.textContent.length < 50000 ? a.textContent : undefined,
+              })),
+            };
+          }),
+        }));
+        localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(storableSessions));
+      } catch (e) {
+        console.warn('Lỗi lưu lịch sử chat vào localStorage:', e);
+      }
     }
   };
 
@@ -348,18 +516,25 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
   };
 
   const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if ((!inputText.trim() && attachments.length === 0) || isLoading) return;
     const text = inputText.trim();
+    const currentAttachments = [...attachments];
     setInputText('');
+    setAttachments([]);
 
     let currentTitle = currentSession?.title || 'Cuộc trò chuyện mới';
     if (currentTitle === 'Cuộc trò chuyện mới' || !currentTitle) {
-      currentTitle = text.slice(0, 38) + (text.length > 38 ? '...' : '');
+      if (text) {
+        currentTitle = text.slice(0, 38) + (text.length > 38 ? '...' : '');
+      } else if (currentAttachments.length > 0) {
+        currentTitle = `Tệp: ${currentAttachments[0].name.slice(0, 30)}`;
+      }
     }
 
     const res = await sendMessage(text, {
       systemInstruction,
       model: selectedModel as any,
+      attachments: currentAttachments,
     });
 
     if (res) {
@@ -388,8 +563,9 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       const userMsg: ChatMessage = {
         id: `user_${Date.now()}`,
         role: 'user',
-        content: text,
+        content: text || (currentAttachments.length > 0 ? 'Phân tích và giải thích nội dung trong tệp/hình ảnh đính kèm.' : ''),
         timestamp: new Date().toISOString(),
+        attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
       };
 
       const modelMsg: ChatMessage = {
@@ -792,11 +968,29 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
           {/* TAB 1: KHUNG CHAT TOÀN DIỆN */}
           {activeTab === 'chat' && (
-            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950">
+            <div
+              className="relative flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {/* Drag and Drop Overlay */}
+              {isDragging && (
+                <div className="absolute inset-0 z-40 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-xs border-2 border-dashed border-primary m-2 rounded-2xl flex flex-col items-center justify-center text-white pointer-events-none animate-in fade-in">
+                  <div className="p-4 rounded-full bg-primary/20 text-primary mb-3 shadow-lg">
+                    <UploadCloud className="w-10 h-10 animate-bounce" />
+                  </div>
+                  <p className="text-base font-bold">Thả ảnh hoặc tệp vào đây</p>
+                  <p className="text-xs text-zinc-300 mt-1 max-w-sm text-center">
+                    Hỗ trợ đính kèm hình ảnh (PNG, JPG, WEBP), tệp PDF, tài liệu Word/Excel và file văn bản
+                  </p>
+                </div>
+              )}
+
               {/* Vùng Tin Nhắn */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {chatMessages.length === 0 ? (
-                  <div className="max-w-3xl 2xl:max-w-4xl mx-auto py-12 text-center space-y-4">
+                  <div className="w-full py-10 text-center space-y-4 px-2 sm:px-4">
                     <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 flex items-center justify-center mx-auto">
                       <Bot className="w-6 h-6" />
                     </div>
@@ -804,14 +998,14 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                       <h4 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                         Xin chào {user?.displayName || selectedTeacher || 'Thầy/Cô'}
                       </h4>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-lg mx-auto leading-relaxed">
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-2xl mx-auto leading-relaxed">
                         Bối cảnh đang chọn: <span className="font-medium text-zinc-800 dark:text-zinc-200">{currentScopeConfig.label}</span>.
-                        Bạn có thể chọn các câu hỏi mẫu bên dưới hoặc nhập yêu cầu trực tiếp:
+                        Bạn có thể gửi tệp, dán ảnh chụp màn hình (Ctrl+V) hoặc chọn câu hỏi mẫu bên dưới:
                       </p>
                     </div>
 
                     {/* Câu hỏi gợi ý theo bối cảnh */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 text-left">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 text-left">
                       {scopeSuggestions.map((q) => (
                         <button
                           key={q}
@@ -827,7 +1021,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                   chatMessages.map((msg, i) => (
                     <div
                       key={msg.id || i}
-                      className={`flex gap-3 max-w-4xl 2xl:max-w-5xl mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex gap-3 w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       {msg.role !== 'user' && (
                         <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 mt-0.5">
@@ -835,12 +1029,66 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                         </div>
                       )}
                       <div
-                        className={`max-w-[85%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed ${msg.role === 'user'
-                          ? 'bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 rounded-tr-xs font-normal shadow-xs'
-                          : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-xs shadow-xs'
-                          }`}
+                        className={`max-w-[95%] sm:max-w-[90%] xl:max-w-[85%] rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed ${
+                          msg.role === 'user'
+                            ? 'bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 rounded-tr-xs font-normal shadow-xs'
+                            : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-xs shadow-xs'
+                        }`}
                       >
+                        {/* Hiển thị tệp đính kèm của người dùng */}
+                        {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mb-2.5 flex flex-wrap gap-2 justify-end">
+                            {msg.attachments.map((att) => {
+                              const isImg = att.type?.startsWith('image/') || !!att.previewUrl;
+                              const imgSrc = att.previewUrl || (att.data?.startsWith('data:image') ? att.data : undefined);
+
+                              if (isImg && imgSrc) {
+                                return (
+                                  <div
+                                    key={att.id}
+                                    onClick={() => setPreviewModalImage(imgSrc)}
+                                    className="relative group cursor-pointer overflow-hidden rounded-xl border border-zinc-700/40 bg-zinc-800/80 shadow-xs"
+                                    title="Nhấn để phóng to ảnh"
+                                  >
+                                    <img
+                                      src={imgSrc}
+                                      alt={att.name}
+                                      className="h-28 w-28 sm:h-36 sm:w-36 object-cover transition-transform group-hover:scale-105"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <Maximize2 className="w-5 h-5 text-white drop-shadow" />
+                                    </div>
+                                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[10px] text-zinc-200 truncate">
+                                      {att.name}
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div
+                                  key={att.id}
+                                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-850 border border-zinc-700/60 text-zinc-100 text-xs shadow-xs max-w-[260px]"
+                                >
+                                  <div className="p-1.5 rounded-lg bg-zinc-700 text-zinc-300 shrink-0">
+                                    {att.type === 'application/pdf' ? (
+                                      <FileText className="w-4 h-4 text-red-400" />
+                                    ) : (
+                                      <File className="w-4 h-4 text-blue-400" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1 text-left">
+                                    <p className="font-medium truncate text-xs text-white">{att.name}</p>
+                                    <p className="text-[10px] text-zinc-400">{formatFileSize(att.size)}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         <MarkdownRenderer content={msg.content} isUser={msg.role === 'user'} />
+
                         {msg.role !== 'user' && (
                           <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-end text-[11px] text-zinc-400">
                             <button
@@ -862,14 +1110,14 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 )}
 
                 {isLoading && (
-                  <div className="flex items-center gap-2 max-w-4xl 2xl:max-w-5xl mx-auto text-xs text-zinc-500 dark:text-zinc-400 pl-10">
+                  <div className="flex items-center gap-2 w-full text-xs text-zinc-500 dark:text-zinc-400 pl-10">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Đang xử lý câu trả lời...</span>
+                    <span>Gemini đang phân tích và xử lý câu trả lời...</span>
                   </div>
                 )}
 
                 {error && (
-                  <div className="max-w-4xl 2xl:max-w-5xl mx-auto p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+                  <div className="w-full p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -878,33 +1126,136 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Bar Rộng Rãi */}
+              {/* Input Bar Rộng Rãi với hỗ trợ đính kèm tệp & dán ảnh */}
               <div className="p-3 sm:p-4 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
-                <div className="max-w-4xl 2xl:max-w-5xl mx-auto flex items-end gap-2">
-                  <textarea
-                    rows={2}
-                    placeholder="Nhập câu hỏi... (Nhấn Enter để xuống dòng)"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    className="flex-1 px-3.5 py-2 text-base sm:text-sm rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-zinc-900 dark:text-zinc-100 resize-none max-h-36 min-h-[44px] font-normal"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSend}
-                    disabled={!inputText.trim() || isLoading}
-                    className="px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-medium text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5 shrink-0 mb-0.5 shadow-xs"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Gửi</span>
-                  </button>
+                <div className="w-full">
+                  {/* Preview danh sách tệp đính kèm trước khi gửi */}
+                  {attachments.length > 0 && (
+                    <div className="mb-2.5 flex flex-wrap gap-2 p-2 bg-zinc-50 dark:bg-zinc-900/70 rounded-xl border border-zinc-200 dark:border-zinc-800 max-h-36 overflow-y-auto">
+                      {attachments.map((att) => {
+                        const isImg = att.type?.startsWith('image/') || !!att.previewUrl;
+                        return (
+                          <div
+                            key={att.id}
+                            className="relative group flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-xs text-xs animate-in fade-in"
+                          >
+                            {isImg ? (
+                              <img
+                                src={att.previewUrl || att.data}
+                                alt={att.name}
+                                className="w-8 h-8 rounded-md object-cover border border-zinc-200 dark:border-zinc-700"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-md bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center text-zinc-600 dark:text-zinc-300">
+                                {att.type === 'application/pdf' ? (
+                                  <FileText className="w-4 h-4 text-red-500" />
+                                ) : (
+                                  <File className="w-4 h-4 text-blue-500" />
+                                )}
+                              </div>
+                            )}
+                            <div className="max-w-[130px] sm:max-w-[180px]">
+                              <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                                {att.name}
+                              </p>
+                              <p className="text-[10px] text-zinc-400">
+                                {formatFileSize(att.size)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAttachment(att.id)}
+                              className="p-1 rounded-md text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition cursor-pointer"
+                              title="Xóa tệp này"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Input Row */}
+                  <div className="flex items-end gap-2">
+                    {/* Hidden Native File Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.json,.md,.html,.py,.java,.cpp"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) handleAddFiles(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+
+                    {/* Nút Đính kèm Tệp */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer mb-0.5 shrink-0 border border-zinc-200 dark:border-zinc-800 relative group"
+                      title="Đính kèm ảnh hoặc tệp (hoặc dán Ctrl+V trực tiếp)"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                      <span className="sr-only">Đính kèm tệp</span>
+                    </button>
+
+                    {/* Textarea hỗ trợ Paste ảnh và bấm Enter gửi */}
+                    <textarea
+                      rows={2}
+                      placeholder="Nhập câu hỏi hoặc dán ảnh (Ctrl+V), kéo thả tệp vào đây... (Shift+Enter để xuống dòng)"
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onPaste={handlePaste}
+                      className="flex-1 px-3.5 py-2 text-base sm:text-sm rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-zinc-900 dark:text-zinc-100 resize-none max-h-36 min-h-[44px] font-normal"
+                    />
+
+                    {/* Nút Gửi */}
+                    <button
+                      type="button"
+                      onClick={handleSend}
+                      disabled={(!inputText.trim() && attachments.length === 0) || isLoading}
+                      className="px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-medium text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5 shrink-0 mb-0.5 shadow-xs"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Gửi</span>
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {/* Lightbox Modal phóng to ảnh xem chi tiết */}
+              {previewModalImage && (
+                <div
+                  className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+                  onClick={() => setPreviewModalImage(null)}
+                >
+                  <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+                    <button
+                      onClick={() => setPreviewModalImage(null)}
+                      className="absolute -top-10 right-0 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition cursor-pointer"
+                      title="Đóng xem ảnh"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                    <img
+                      src={previewModalImage}
+                      alt="Xem ảnh phóng to"
+                      className="max-h-[85vh] max-w-full rounded-xl object-contain shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* TAB 2: SOẠN KẾ HOẠCH BÀI DẠY (GIÁO ÁN) */}
           {activeTab === 'lesson' && (
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 max-w-4xl 2xl:max-w-5xl mx-auto w-full">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 w-full">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1 block">

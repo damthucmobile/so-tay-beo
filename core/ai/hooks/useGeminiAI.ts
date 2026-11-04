@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { gemini } from '../geminiClient';
-import { BaseAIOptions, ChatMessage } from '../types';
+import { BaseAIOptions, ChatMessage, ChatAttachment } from '../types';
 
 export interface UseGeminiAIOptions extends BaseAIOptions {
   initialMessages?: ChatMessage[];
@@ -85,14 +85,20 @@ export function useGeminiAI(defaultOptions: UseGeminiAIOptions = {}) {
    * 3. Gửi tin nhắn tiếp theo trong cuộc trò chuyện (Multi-turn chat)
    */
   const sendMessage = useCallback(
-    async (userContent: string, overrideOptions?: BaseAIOptions): Promise<string | null> => {
-      if (!userContent.trim()) return null;
+    async (
+      userContent: string,
+      overrideOptions?: BaseAIOptions & { attachments?: ChatAttachment[] }
+    ): Promise<string | null> => {
+      const trimmed = userContent.trim();
+      const attachments = overrideOptions?.attachments || [];
+      if (!trimmed && attachments.length === 0) return null;
 
       const newUserMsg: ChatMessage = {
         id: `user_${Date.now()}`,
         role: 'user',
-        content: userContent.trim(),
+        content: trimmed || (attachments.length > 0 ? 'Phân tích và giải thích nội dung trong tệp/hình ảnh đính kèm.' : ''),
         timestamp: new Date().toISOString(),
+        attachments: attachments.length > 0 ? attachments : undefined,
       };
 
       const updatedHistory = [...chatMessages, newUserMsg];
