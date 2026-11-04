@@ -403,17 +403,20 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
           </div>
         </div>
 
-        {/* Nút quay lại lịch dạy học */}
-        {onNavigateTab && (
-          <button
-            onClick={() => onNavigateTab('teaching_schedule')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition cursor-pointer shrink-0"
-          >
-            <Calendar className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
-            <span className="hidden sm:inline">Xem Lịch dạy học</span>
-            <span className="sm:hidden text-[11px]">Lịch dạy</span>
-          </button>
-        )}
+        {/* Nút Cài đặt (Icon bánh răng) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'config' ? 'chat' : 'config')}
+          className={`p-2 rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-center shrink-0 ${
+            activeTab === 'config'
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800'
+          }`}
+          title={activeTab === 'config' ? 'Quay lại Trò chuyện' : 'Cài đặt'}
+          aria-label="Cài đặt"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
 
       {/* 2. Thân chính: Bố cục 2 cột (Left Sidebar: Lịch sử, Right Area: Nội dung) */}
@@ -693,28 +696,11 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
               </div>
             </div>
 
-            {/* PHẦN FIX CỨNG BÊN PHẢI: ICON BÁNH RĂNG CÀI ĐẶT */}
-            <div className="flex items-center gap-2 shrink-0 pl-2 bg-white dark:bg-zinc-950 border-l border-zinc-100 dark:border-zinc-800/80">
-              {currentSession && activeTab === 'chat' && (
-                <span className="text-[11px] text-zinc-400 font-normal truncate max-w-[140px] xl:max-w-[200px] hidden md:block">
-                  Đang mở: <span className="text-zinc-700 dark:text-zinc-300 font-medium">{currentSession.title}</span>
-                </span>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setActiveTab(activeTab === 'config' ? 'chat' : 'config')}
-                className={`p-2 rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-center shrink-0 ${
-                  activeTab === 'config'
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800'
-                }`}
-                title={activeTab === 'config' ? 'Quay lại Trò chuyện' : 'Cài đặt'}
-                aria-label="Cài đặt"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            </div>
+            {currentSession && activeTab === 'chat' && (
+              <span className="text-[11px] text-zinc-400 font-normal truncate max-w-[140px] xl:max-w-[200px] hidden md:block shrink-0 pl-2">
+                Đang mở: <span className="text-zinc-700 dark:text-zinc-300 font-medium">{currentSession.title}</span>
+              </span>
+            )}
           </div>
 
           {/* TAB 1: KHUNG CHAT TOÀN DIỆN */}
