@@ -1,27 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Sparkles, Plus, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Sparkles, Plus, AlertCircle, Loader2, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CATEGORY_COLORS, AVAILABLE_CATEGORY_ICONS } from '../types';
+import { CATEGORY_COLORS, AVAILABLE_CATEGORY_ICONS, TransactionType } from '../types';
 import { CategoryIcon } from './CategoryIcon';
 
 interface CreateCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialType?: TransactionType;
   onSaveCategory: (data: {
     label: string;
     iconName?: string;
     color?: string;
     description?: string;
+    type?: TransactionType;
   }) => Promise<string>;
 }
 
-const PRESET_SUGGESTIONS = [
+const EXPENSE_PRESETS = [
   { label: 'Thú cưng', icon: 'Dog', color: '#f97316' },
-  { label: 'Đầu tư & Cổ phiếu', icon: 'TrendingUp', color: '#10b981' },
-  { label: 'Tiết kiệm', icon: 'PiggyBank', color: '#06b6d4' },
+  { label: 'Đầu tư & Tiết kiệm', icon: 'TrendingUp', color: '#10b981' },
   { label: 'Làm đẹp & Spa', icon: 'Sparkles', color: '#ec4899' },
   { label: 'Bảo hiểm', icon: 'Shield', color: '#3b82f6' },
   { label: 'Quà tặng & Hiếu hỷ', icon: 'Gift', color: '#a855f7' },
@@ -29,11 +30,23 @@ const PRESET_SUGGESTIONS = [
   { label: 'Du lịch & Nghỉ dưỡng', icon: 'Plane', color: '#eab308' },
 ];
 
+const INCOME_PRESETS = [
+  { label: 'Dạy kèm ngoài', icon: 'GraduationCap', color: '#10b981' },
+  { label: 'Dự án Freelance', icon: 'Laptop', color: '#06b6d4' },
+  { label: 'Tiền bản quyền', icon: 'Sparkles', color: '#8b5cf6' },
+  { label: 'Cổ tức & Lãi ngân hàng', icon: 'TrendingUp', color: '#10b981' },
+  { label: 'Cho thuê tài sản', icon: 'Building', color: '#f59e0b' },
+  { label: 'Bán đồ cũ', icon: 'ShoppingBag', color: '#ec4899' },
+  { label: 'Thù lao cố vấn', icon: 'Briefcase', color: '#3b82f6' },
+];
+
 export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   isOpen,
   onClose,
+  initialType = 'expense',
   onSaveCategory,
 }) => {
+  const [categoryType, setCategoryType] = useState<TransactionType>(initialType);
   const [label, setLabel] = useState('');
   const [color, setColor] = useState('#3b82f6');
   const [iconName, setIconName] = useState('Tag');
@@ -41,12 +54,20 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (isOpen) {
+      setCategoryType(initialType);
+      setColor(initialType === 'income' ? '#10b981' : '#3b82f6');
+      setIconName(initialType === 'income' ? 'Briefcase' : 'Tag');
+    }
+  }, [isOpen, initialType]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!label.trim()) {
-      setError('Vui lòng nhập tên danh mục chi tiêu');
+      setError(`Vui lòng nhập tên danh mục ${categoryType === 'income' ? 'thu nhập' : 'chi tiêu'}`);
       return;
     }
 
@@ -58,11 +79,12 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         color,
         iconName,
         description: description.trim(),
+        type: categoryType,
       });
       // Reset
       setLabel('');
-      setColor('#3b82f6');
-      setIconName('Tag');
+      setColor(categoryType === 'income' ? '#10b981' : '#3b82f6');
+      setIconName(categoryType === 'income' ? 'Briefcase' : 'Tag');
       setDescription('');
       onClose();
     } catch (err: any) {
@@ -79,15 +101,19 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
     setError('');
   };
 
+  const presets = categoryType === 'income' ? INCOME_PRESETS : EXPENSE_PRESETS;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
-            <h2 className="text-base font-bold text-foreground">Tạo Danh Mục Chi Tiêu Mới</h2>
+            <h2 className="text-base font-bold text-foreground">
+              Tạo Danh Mục {categoryType === 'income' ? 'Thu Nhập' : 'Chi Tiêu'} Mới
+            </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Tùy biến nhóm chi tiêu phù hợp với thói quen sinh hoạt của bạn
+              Tùy biến nhóm dòng tiền phù hợp với kế hoạch tài chính của bạn
             </p>
           </div>
           <button
@@ -95,6 +121,40 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
             className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Loai Danh Muc Switcher */}
+        <div className="mt-4 grid grid-cols-2 gap-2 p-1 bg-muted/30 rounded-xl border border-border/60">
+          <button
+            type="button"
+            onClick={() => {
+              setCategoryType('expense');
+              if (color === '#10b981') setColor('#3b82f6');
+            }}
+            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg transition-all ${
+              categoryType === 'expense'
+                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <ArrowDownRight className="h-3.5 w-3.5 text-rose-500" />
+            Danh mục Chi tiêu
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCategoryType('income');
+              if (color === '#3b82f6') setColor('#10b981');
+            }}
+            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg transition-all ${
+              categoryType === 'income'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+            Danh mục Thu nhập
           </button>
         </div>
 
@@ -114,10 +174,19 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
             <CategoryIcon name={iconName} className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-              Xem trước hiển thị
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Xem trước
+              </span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                categoryType === 'income'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+              }`}>
+                {categoryType === 'income' ? 'Khoản thu' : 'Khoản chi'}
+              </span>
             </div>
-            <div className="text-sm font-bold text-foreground truncate">
+            <div className="text-sm font-bold text-foreground truncate mt-0.5">
               {label || 'Tên danh mục của bạn'}
             </div>
             {description && (
@@ -131,10 +200,10 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         {/* Presets suggestions */}
         <div className="mt-4 space-y-1.5">
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Gợi ý nhanh
+            Gợi ý {categoryType === 'income' ? 'thu nhập' : 'chi tiêu'} nhanh
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {PRESET_SUGGESTIONS.map((p) => (
+            {presets.map((p) => (
               <button
                 type="button"
                 key={p.label}
@@ -161,7 +230,11 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Ví dụ: Thú cưng, Đầu tư, Làm đẹp, ..."
+              placeholder={
+                categoryType === 'income'
+                  ? 'Ví dụ: Dạy kèm ngoài, Tiền bản quyền, Dự án Freelance...'
+                  : 'Ví dụ: Thú cưng, Đầu tư, Làm đẹp...'
+              }
               className="h-10 text-sm"
               autoFocus
             />
@@ -183,7 +256,9 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
                     title={ic.label}
                     className={`p-2 rounded-lg flex flex-col items-center justify-center transition-all ${
                       isSelected
-                        ? 'bg-primary text-primary-foreground shadow-sm scale-105'
+                        ? categoryType === 'income'
+                          ? 'bg-emerald-600 text-white shadow-sm scale-105'
+                          : 'bg-primary text-primary-foreground shadow-sm scale-105'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
@@ -238,7 +313,15 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="gap-2">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className={`gap-2 ${
+                categoryType === 'income'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600'
+                  : ''
+              }`}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

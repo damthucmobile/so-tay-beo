@@ -12,7 +12,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { getDb, COLLECTIONS } from '@/core/firebase';
-import { ExpenseItem, MonthlyBudget, CategoryMeta } from '../types';
+import { ExpenseItem, MonthlyBudget, CategoryMeta, TransactionType } from '../types';
 
 const LOCAL_STORAGE_EXPENSES_KEY = 'so_tay_beo_expenses_cache_v1';
 const LOCAL_STORAGE_BUDGET_KEY = 'so_tay_beo_budget_cache_v1';
@@ -120,11 +120,12 @@ export async function saveExpense(
   const entity: ExpenseItem = {
     id: expId,
     userId: userId || 'anonymous',
+    type: data.type || 'expense',
     amount: Number(data.amount) || 0,
-    category: data.category || 'other',
+    category: data.category || (data.type === 'income' ? 'other_income' : 'other'),
     date: data.date || now.slice(0, 10),
     time: data.time || now.slice(11, 16),
-    description: data.description?.trim() || 'Chi tiêu sinh hoạt',
+    description: data.description?.trim() || (data.type === 'income' ? 'Khoản thu nhập' : 'Chi tiêu sinh hoạt'),
     paymentMethod: data.paymentMethod || 'transfer',
     notes: data.notes?.trim() || '',
     createdAt: data.createdAt || now,
@@ -296,7 +297,13 @@ export function subscribeToCustomCategories(
  * Thêm hoặc Cập nhật danh mục tùy chỉnh
  */
 export async function saveCustomCategory(
-  data: { label: string; iconName?: string; color?: string; description?: string },
+  data: {
+    label: string;
+    iconName?: string;
+    color?: string;
+    description?: string;
+    type?: TransactionType;
+  },
   userId: string
 ): Promise<CategoryMeta> {
   const db = getDb();
@@ -312,6 +319,7 @@ export async function saveCustomCategory(
     bgColor: `${data.color || '#3b82f6'}15`,
     description: data.description?.trim() || '',
     isCustom: true,
+    type: data.type || 'expense',
     userId: userId || 'anonymous',
     createdAt: now,
   };

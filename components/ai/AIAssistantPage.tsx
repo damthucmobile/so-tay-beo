@@ -81,7 +81,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
   const { appointments, customers } = useScheduleManager(user?.uid);
   const { transactions } = useIncomeManager(user?.uid);
   const { trips, fetchTrips } = useTravelStore();
-  const { expenses, monthlyBudget, initStore: initSpendingStore } = useSpendingStore();
+  const { expenses, monthlyBudget, customCategories, initStore: initSpendingStore } = useSpendingStore();
 
   useEffect(() => {
     if (user?.uid) {
@@ -203,6 +203,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       transactions,
       trips,
       expenses,
+      customCategories,
       monthlyBudget,
     });
   }, [
@@ -220,6 +221,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     transactions,
     trips,
     expenses,
+    customCategories,
     monthlyBudget,
   ]);
 

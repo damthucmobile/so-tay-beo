@@ -8,6 +8,10 @@ import {
   SpendingStats,
   CategoryMeta,
   DEFAULT_EXPENSE_CATEGORIES,
+  DEFAULT_INCOME_CATEGORIES,
+  DEFAULT_FINANCE_CATEGORIES,
+  TransactionType,
+  FinanceViewMode,
 } from '../types';
 import {
   subscribeToExpenses,
@@ -35,6 +39,9 @@ interface SpendingState {
   selectedMonth: string; // 'YYYY-MM'
   selectedCategory: ExpenseCategory | 'all';
   searchQuery: string;
+  viewMode: FinanceViewMode; // 'all' | 'expense' | 'income'
+  transactionModalType: TransactionType; // 'expense' | 'income'
+  categoryModalType: TransactionType; // 'expense' | 'income'
   isLoading: boolean;
   isSaving: boolean;
   isModalOpen: boolean;
@@ -48,12 +55,13 @@ interface SpendingState {
   setSelectedMonth: (month: string) => void;
   setSelectedCategory: (cat: ExpenseCategory | 'all') => void;
   setSearchQuery: (query: string) => void;
-  openCreateModal: () => void;
+  setViewMode: (mode: FinanceViewMode) => void;
+  openCreateModal: (type?: TransactionType) => void;
   openEditModal: (expense: ExpenseItem) => void;
   closeModal: () => void;
   openBudgetModal: () => void;
   closeBudgetModal: () => void;
-  openCategoryModal: () => void;
+  openCategoryModal: (type?: TransactionType) => void;
   closeCategoryModal: () => void;
 
   createExpense: (data: Omit<ExpenseItem, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => Promise<string>;
@@ -61,10 +69,16 @@ interface SpendingState {
   deleteExpense: (id: string) => Promise<void>;
   saveBudget: (amount: number) => Promise<void>;
 
-  addCustomCategory: (data: { label: string; iconName?: string; color?: string; description?: string }) => Promise<string>;
+  addCustomCategory: (data: {
+    label: string;
+    iconName?: string;
+    color?: string;
+    description?: string;
+    type?: TransactionType;
+  }) => Promise<string>;
   removeCustomCategory: (id: string) => Promise<void>;
 
-  getAllCategories: () => CategoryMeta[];
+  getAllCategories: (filterType?: TransactionType | 'all') => CategoryMeta[];
   getFilteredExpenses: () => ExpenseItem[];
   getComputedStats: () => SpendingStats;
 }
@@ -76,6 +90,9 @@ export const useSpendingStore = create<SpendingState>((set, get) => ({
   selectedMonth: format(new Date(), 'yyyy-MM'),
   selectedCategory: 'all',
   searchQuery: '',
+  viewMode: 'all',
+  transactionModalType: 'expense',
+  categoryModalType: 'expense',
   isLoading: false,
   isSaving: false,
   isModalOpen: false,
@@ -84,8 +101,12 @@ export const useSpendingStore = create<SpendingState>((set, get) => ({
   isCategoryModalOpen: false,
   userId: null,
 
-  getAllCategories: () => {
-    return [...DEFAULT_EXPENSE_CATEGORIES, ...get().customCategories];
+  getAllCategories: (filterType?: TransactionType | 'all') => {
+    const all = [...DEFAULT_FINANCE_CATEGORIES, ...get().customCategories];
+    if (filterType && filterType !== 'all') {
+      return all.filter((c) => (c.type || 'expense') === filterType);
+    }
+    return all;
   },
 
   initStore: (userId?: string | null) => {
@@ -152,15 +173,27 @@ export const useSpendingStore = create<SpendingState>((set, get) => ({
 
   setSelectedCategory: (cat) => set({ selectedCategory: cat }),
   setSearchQuery: (query) => set({ searchQuery: query }),
+  setViewMode: (mode) => set({ viewMode: mode, selectedCategory: 'all' }),
 
-  openCreateModal: () => set({ isModalOpen: true, editingExpense: null }),
-  openEditModal: (expense) => set({ isModalOpen: true, editingExpense: expense }),
+  openCreateModal: (type: TransactionType = 'expense') =>
+    set({
+      isModalOpen: true,
+      editingExpense: null,
+      transactionModalType: type,
+    }),
+  openEditModal: (expense) =>
+    set({
+      isModalOpen: true,
+      editingExpense: expense,
+      transactionModalType: expense.type || 'expense',
+    }),
   closeModal: () => set({ isModalOpen: false, editingExpense: null }),
 
   openBudgetModal: () => set({ isBudgetModalOpen: true }),
   closeBudgetModal: () => set({ isBudgetModalOpen: false }),
 
-  openCategoryModal: () => set({ isCategoryModalOpen: true }),
+  openCategoryModal: (type: TransactionType = 'expense') =>
+    set({ isCategoryModalOpen: true, categoryModalType: type }),
   closeCategoryModal: () => set({ isCategoryModalOpen: false }),
 
   createExpense: async (data) => {
@@ -270,17 +303,21 @@ export const useSpendingStore = create<SpendingState>((set, get) => ({
   },
 
   getFilteredExpenses: () => {
-    const { expenses, selectedMonth, selectedCategory, searchQuery, getAllCategories } = get();
+    const { expenses, selectedMonth, selectedCategory, searchQuery, viewMode, getAllCategories } = get();
     const allCategories = getAllCategories();
 
     return expenses.filter((e) => {
       // 1. Lọc theo tháng ('YYYY-MM')
       if (selectedMonth && !e.date.startsWith(selectedMonth)) return false;
 
-      // 2. Lọc theo danh mục
+      // 2. Lọc theo viewMode ('all' | 'expense' | 'income')
+      const itemType = e.type || 'expense';
+      if (viewMode !== 'all' && itemType !== viewMode) return false;
+
+      // 3. Lọc theo danh mục
       if (selectedCategory !== 'all' && e.category !== selectedCategory) return false;
 
-      // 3. Lọc theo từ khóa tìm kiếm
+      // 4. Lọc theo từ khóa tìm kiếm
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchDesc = e.description.toLowerCase().includes(q);
@@ -296,38 +333,52 @@ export const useSpendingStore = create<SpendingState>((set, get) => ({
 
   getComputedStats: (): SpendingStats => {
     const { expenses, selectedMonth, monthlyBudget, getAllCategories } = get();
-    const monthExpenses = expenses.filter((e) => e.date.startsWith(selectedMonth));
+    const monthItems = expenses.filter((e) => e.date.startsWith(selectedMonth));
     const allCategories = getAllCategories();
 
-    const totalSpent = monthExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-    const budget = monthlyBudget?.totalBudget || 0;
-    const remainingBudget = budget > 0 ? budget - totalSpent : 0;
-    const percentUsed = budget > 0 ? Math.min(Math.round((totalSpent / budget) * 100), 999) : 0;
+    let totalExpense = 0;
+    let totalIncome = 0;
 
-    // Tính trung bình mỗi ngày
+    const expenseMap: Record<string, number> = {};
+    const incomeMap: Record<string, number> = {};
+
+    monthItems.forEach((item) => {
+      const amt = Number(item.amount) || 0;
+      const isInc = item.type === 'income';
+      if (isInc) {
+        totalIncome += amt;
+        const cat = item.category || 'other_income';
+        incomeMap[cat] = (incomeMap[cat] || 0) + amt;
+      } else {
+        totalExpense += amt;
+        const cat = item.category || 'other';
+        expenseMap[cat] = (expenseMap[cat] || 0) + amt;
+      }
+    });
+
+    const netBalance = totalIncome - totalExpense;
+    const savingsRate =
+      totalIncome > 0 ? Math.max(0, Math.round((netBalance / totalIncome) * 100)) : 0;
+
+    const budget = monthlyBudget?.totalBudget || 0;
+    const remainingBudget = budget > 0 ? budget - totalExpense : 0;
+    const percentUsed = budget > 0 ? Math.min(Math.round((totalExpense / budget) * 100), 999) : 0;
+
+    // Tính trung bình chi tiêu mỗi ngày
     const now = new Date();
     const currentMonthStr = format(now, 'yyyy-MM');
     let daysPassed = 30;
     if (selectedMonth === currentMonthStr) {
       daysPassed = Math.max(now.getDate(), 1);
     }
-    const dailyAverage = Math.round(totalSpent / daysPassed);
+    const dailyAverage = Math.round(totalExpense / daysPassed);
 
-    // Phân bổ theo danh mục (tính động dựa trên allCategories)
-    const catMap: Record<string, number> = {};
-    allCategories.forEach((c) => {
-      catMap[c.id] = 0;
-    });
-
-    monthExpenses.forEach((e) => {
-      const cat = e.category || 'other';
-      catMap[cat] = (catMap[cat] || 0) + (Number(e.amount) || 0);
-    });
-
-    const categoryBreakdown = allCategories
+    // Phân bổ chi tiêu
+    const expenseCategories = allCategories.filter((c) => (c.type || 'expense') === 'expense');
+    const categoryBreakdown = expenseCategories
       .map((c) => {
-        const amount = catMap[c.id] || 0;
-        const percent = totalSpent > 0 ? Math.round((amount / totalSpent) * 100) : 0;
+        const amount = expenseMap[c.id] || 0;
+        const percent = totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0;
         return {
           category: c.id,
           label: c.label,
@@ -342,26 +393,55 @@ export const useSpendingStore = create<SpendingState>((set, get) => ({
 
     const topCategory = categoryBreakdown.length > 0 ? categoryBreakdown[0] : null;
 
+    // Phân bổ thu nhập
+    const incomeCategories = allCategories.filter((c) => c.type === 'income');
+    const incomeBreakdown = incomeCategories
+      .map((c) => {
+        const amount = incomeMap[c.id] || 0;
+        const percent = totalIncome > 0 ? Math.round((amount / totalIncome) * 100) : 0;
+        return {
+          category: c.id,
+          label: c.label,
+          amount,
+          percent,
+          color: c.color,
+          iconName: c.iconName,
+        };
+      })
+      .filter((item) => item.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+
+    const topIncomeCategory = incomeBreakdown.length > 0 ? incomeBreakdown[0] : null;
+
     return {
-      totalSpent,
+      totalSpent: totalExpense,
+      totalExpense,
+      totalIncome,
+      netBalance,
+      savingsRate,
       monthlyBudget: budget,
       remainingBudget,
       percentUsed,
       dailyAverage,
       topCategory,
+      topIncomeCategory,
       categoryBreakdown,
+      incomeBreakdown,
     };
   },
 }));
 
 /**
- * Hook memoized giúp React Component render ổn định danh sách tất cả category
- * mà không bị lặp vô hạn hay trigger re-render do tham chiếu mảng mới.
+ * Hook memoized giúp React Component render ổn định danh sách category
+ * có thể lọc theo loại: 'all', 'expense', hoặc 'income'.
  */
-export const useAllExpenseCategories = (): CategoryMeta[] => {
+export const useAllExpenseCategories = (filterType?: TransactionType | 'all'): CategoryMeta[] => {
   const customCategories = useSpendingStore((s) => s.customCategories);
-  return useMemo(
-    () => [...DEFAULT_EXPENSE_CATEGORIES, ...customCategories],
-    [customCategories]
-  );
+  return useMemo(() => {
+    const all = [...DEFAULT_FINANCE_CATEGORIES, ...customCategories];
+    if (filterType && filterType !== 'all') {
+      return all.filter((c) => (c.type || 'expense') === filterType);
+    }
+    return all;
+  }, [customCategories, filterType]);
 };

@@ -22,6 +22,12 @@ import {
   Tag,
   MoreHorizontal,
   Folder,
+  Briefcase,
+  GraduationCap,
+  Heart,
+  Coins,
+  Building,
+  Laptop,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -44,6 +50,12 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Film,
   Tag,
   MoreHorizontal,
+  Briefcase,
+  GraduationCap,
+  Heart,
+  Coins,
+  Building,
+  Laptop,
 };
 
 interface CategoryIconProps {

@@ -48,8 +48,9 @@ export type AgentActionType =
   // 4. Lịch dạy học (TKB)
   | 'SET_MY_TEACHER'
   | 'UPDATE_PERIOD_NOTE'
-  // 5. Quản lý Chi tiêu Đời sống
+  // 5. Quản lý Thu - Chi Đời sống
   | 'CREATE_EXPENSE'
+  | 'CREATE_INCOME'
   | 'UPDATE_EXPENSE'
   | 'DELETE_EXPENSE'
   | 'SET_MONTHLY_BUDGET'
@@ -753,6 +754,78 @@ async function handleSpendingAction(
       };
     }
 
+    case 'CREATE_INCOME': {
+      const rawAmount = params.amount ?? params.price ?? params.money ?? 0;
+      const amount = Number(rawAmount) || 0;
+      if (amount <= 0) {
+        return {
+          success: false,
+          action,
+          message: 'Vui lòng cung cấp số tiền thu nhập hợp lệ (lớn hơn 0).',
+        };
+      }
+
+      const description = params.description || params.title || params.content || 'Khoản thu nhập';
+
+      // Lấy danh mục thu nhập
+      const allCategories = spendingStore.getAllCategories();
+      let category = params.category || 'other_income';
+      const matchedCat = allCategories.find(
+        (c) => c.id.toLowerCase() === String(category).toLowerCase() || c.label.toLowerCase() === String(category).toLowerCase()
+      );
+
+      if (matchedCat) {
+        category = matchedCat.id;
+      } else {
+        const descLower = description.toLowerCase();
+        const foundInDesc = allCategories.find((c) => (c.type === 'income' || !c.type) && descLower.includes(c.label.toLowerCase()));
+        if (foundInDesc) {
+          category = foundInDesc.id;
+        } else if (descLower.includes('lương') || descLower.includes('salary')) {
+          category = 'salary';
+        } else if (descLower.includes('thưởng') || descLower.includes('hoa hồng') || descLower.includes('bonus')) {
+          category = 'bonus';
+        } else if (descLower.includes('dạy') || descLower.includes('gia sư') || descLower.includes('học phí') || descLower.includes('lớp')) {
+          category = 'tutoring';
+        } else if (descLower.includes('đầu tư') || descLower.includes('cổ tức') || descLower.includes('lãi')) {
+          category = 'investment';
+        } else if (descLower.includes('bán') || descLower.includes('kinh doanh') || descLower.includes('doanh thu') || descLower.includes('order')) {
+          category = 'business';
+        } else if (descLower.includes('quà') || descLower.includes('biếu') || descLower.includes('mừng') || descLower.includes('trợ cấp')) {
+          category = 'gift';
+        } else {
+          category = 'other_income';
+        }
+      }
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const nowTimeStr = new Date().toTimeString().slice(0, 5);
+      const date = params.date || todayStr;
+      const time = params.time || nowTimeStr;
+      const paymentMethod = params.paymentMethod || 'transfer';
+      const notes = params.notes || '';
+
+      const id = await spendingStore.createExpense({
+        amount,
+        category,
+        description,
+        date,
+        time,
+        paymentMethod,
+        notes,
+        type: 'income',
+      });
+
+      const catMeta = allCategories.find((c) => c.id === category);
+
+      return {
+        success: true,
+        action,
+        message: `Đã ghi nhận khoản thu nhập: "${description}" (+${amount.toLocaleString('vi-VN')} đ, nhóm: ${catMeta?.label || category}) vào ngày ${date} thành công!`,
+        data: { id, amount, category, description, date, type: 'income' },
+      };
+    }
+
     case 'UPDATE_EXPENSE': {
       const expenses = spendingStore.expenses;
       const target = expenses.find(
@@ -847,22 +920,24 @@ async function handleSpendingAction(
         return {
           success: false,
           action,
-          message: 'Vui lòng cung cấp tên danh mục chi tiêu muốn tạo.',
+          message: 'Vui lòng cung cấp tên danh mục muốn tạo.',
         };
       }
 
+      const categoryType = params.type || (params.isIncome ? 'income' : 'expense');
       const id = await spendingStore.addCustomCategory({
         label: label.trim(),
-        color: params.color || '#3b82f6',
-        iconName: params.iconName || params.icon || 'Tag',
+        color: params.color || (categoryType === 'income' ? '#10b981' : '#3b82f6'),
+        iconName: params.iconName || params.icon || (categoryType === 'income' ? 'Briefcase' : 'Tag'),
         description: params.description || '',
+        type: categoryType,
       });
 
       return {
         success: true,
         action,
-        message: `Đã tạo danh mục chi tiêu mới **${label.trim()}** thành công! Bạn có thể bắt đầu ghi nhận các khoản chi thuộc danh mục này ngay bây giờ.`,
-        data: { id, label: label.trim() },
+        message: `Đã tạo danh mục ${categoryType === 'income' ? 'thu nhập' : 'chi tiêu'} mới **${label.trim()}** thành công! Bạn có thể bắt đầu ghi nhận các khoản ${categoryType === 'income' ? 'thu' : 'chi'} thuộc danh mục này ngay bây giờ.`,
+        data: { id, label: label.trim(), type: categoryType },
       };
     }
 
@@ -1054,9 +1129,10 @@ export async function executeAgentAction(
       return await handleTeachingScheduleAction(command, effectiveUserId);
     }
 
-    // 4.1. Phân hệ Quản lý Chi tiêu Đời sống
+    // 4.1. Phân hệ Quản lý Thu - Chi Đời sống
     if (
       action === 'CREATE_EXPENSE' ||
+      action === 'CREATE_INCOME' ||
       action === 'UPDATE_EXPENSE' ||
       action === 'DELETE_EXPENSE' ||
       action === 'SET_MONTHLY_BUDGET' ||

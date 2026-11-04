@@ -9,7 +9,9 @@ import {
   ChevronRight,
   Target,
   Sparkles,
-  Filter,
+  ArrowDownRight,
+  ArrowUpRight,
+  Layers,
   X,
   Tag,
 } from 'lucide-react';
@@ -39,6 +41,9 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
     selectedMonth,
     selectedCategory,
     searchQuery,
+    viewMode,
+    transactionModalType,
+    categoryModalType,
     isModalOpen,
     editingExpense,
     isBudgetModalOpen,
@@ -47,6 +52,7 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
     setSelectedMonth,
     setSelectedCategory,
     setSearchQuery,
+    setViewMode,
     openCreateModal,
     openEditModal,
     closeModal,
@@ -83,8 +89,14 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
   const filteredExpenses = useMemo(
     () => getFilteredExpenses(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getFilteredExpenses, expenses, selectedMonth, selectedCategory, searchQuery, customCategories]
+    [getFilteredExpenses, expenses, selectedMonth, selectedCategory, searchQuery, viewMode, customCategories]
   );
+
+  // Filter categories displayed in the pill bar according to active viewMode
+  const displayedCategories = useMemo(() => {
+    if (viewMode === 'all') return allCategories;
+    return allCategories.filter((c) => (c.type || 'expense') === viewMode);
+  }, [allCategories, viewMode]);
 
   // Điều hướng tháng
   const handlePrevMonth = () => {
@@ -125,10 +137,10 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Quản Lý Chi Tiêu
+                Quản Lý Thu - Chi
               </h1>
               <p className="text-xs text-muted-foreground">
-                Kiểm soát ngân sách sinh hoạt, ăn uống và đời sống hàng ngày
+                Kiểm soát ngân sách, theo dõi dòng tiền và tối ưu tích lũy tài chính
               </p>
             </div>
           </div>
@@ -178,13 +190,24 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
             <span>Hạn mức</span>
           </Button>
 
+          {/* Nút Ghi Thu Nhập */}
           <Button
             size="sm"
-            onClick={openCreateModal}
+            onClick={() => openCreateModal('income')}
+            className="text-xs h-9 gap-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+            <span>+ Ghi thu</span>
+          </Button>
+
+          {/* Nút Ghi Chi Tiêu */}
+          <Button
+            size="sm"
+            onClick={() => openCreateModal('expense')}
             className="text-xs h-9 gap-1.5 shadow-sm"
           >
-            <Plus className="h-4 w-4" />
-            <span>Thêm khoản chi</span>
+            <ArrowDownRight className="h-4 w-4" />
+            <span>+ Ghi chi</span>
           </Button>
         </div>
       </div>
@@ -193,7 +216,8 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
       <SpendingOverviewCards
         stats={stats}
         onOpenBudgetModal={openBudgetModal}
-        onOpenCreateExpense={openCreateModal}
+        onOpenCreateExpense={() => openCreateModal('expense')}
+        onOpenCreateIncome={() => openCreateModal('income')}
       />
 
       {/* Category Breakdown Chart */}
@@ -206,12 +230,58 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
       {/* Filter and Search Bar */}
       <div className="space-y-3 pt-2">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* View Mode Toggle: [Tất cả | Chi tiêu | Thu nhập] */}
+          <div className="flex items-center p-1 bg-muted/40 rounded-xl border border-border/60 self-start sm:self-auto">
+            <button
+              onClick={() => {
+                setViewMode('all');
+                setSelectedCategory('all');
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                viewMode === 'all'
+                  ? 'bg-card text-foreground shadow-xs font-bold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>Tất cả</span>
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('expense');
+                setSelectedCategory('all');
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                viewMode === 'expense'
+                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20 shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ArrowDownRight className="h-3.5 w-3.5 text-rose-500" />
+              <span>Khoản chi</span>
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('income');
+                setSelectedCategory('all');
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                viewMode === 'income'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20 shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+              <span>Khoản thu</span>
+            </button>
+          </div>
+
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Tìm kiếm nội dung chi tiêu, ghi chú..."
+              placeholder="Tìm kiếm nội dung, ghi chú giao dịch..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-9 text-xs"
@@ -219,7 +289,8 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
           </div>
 
           <div className="text-xs text-muted-foreground font-medium self-center">
-            Hiển thị <span className="font-bold text-foreground">{filteredExpenses.length}</span> khoản chi
+            Hiển thị <span className="font-bold text-foreground">{filteredExpenses.length}</span>{' '}
+            {viewMode === 'income' ? 'khoản thu' : viewMode === 'expense' ? 'khoản chi' : 'giao dịch'}
           </div>
         </div>
 
@@ -233,9 +304,9 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
                 : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/40'
             }`}
           >
-            Tất cả
+            Tất cả danh mục
           </button>
-          {allCategories.map((cat) => {
+          {displayedCategories.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <div key={cat.id} className="relative group shrink-0 flex items-center">
@@ -280,23 +351,24 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
 
           {/* + Thêm danh mục pill */}
           <button
-            onClick={openCategoryModal}
+            onClick={() => openCategoryModal(viewMode === 'income' ? 'income' : 'expense')}
             className="px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all border border-dashed border-primary/50 text-primary hover:bg-primary/10 hover:border-primary flex items-center gap-1.5 shadow-xs shrink-0"
-            title="Tự tạo danh mục chi tiêu mới"
+            title="Tự tạo danh mục mới"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>Thêm danh mục</span>
+            <span>Thêm danh mục {viewMode === 'income' ? 'thu' : 'chi'}</span>
           </button>
         </div>
       </div>
 
-      {/* Main Expense List */}
+      {/* Main Expense / Income List */}
       <ExpenseList
         expenses={filteredExpenses}
         categories={allCategories}
         onEditExpense={openEditModal}
         onDeleteExpense={deleteExpense}
-        onOpenCreate={openCreateModal}
+        onOpenCreate={() => openCreateModal(viewMode === 'income' ? 'income' : 'expense')}
+        onOpenCreateIncome={() => openCreateModal('income')}
       />
 
       {/* Modals */}
@@ -308,7 +380,8 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
         editingExpense={editingExpense}
         isSaving={isSaving}
         categories={allCategories}
-        onOpenCreateCategory={openCategoryModal}
+        initialType={transactionModalType}
+        onOpenCreateCategory={(type) => openCategoryModal(type || transactionModalType)}
       />
 
       <BudgetModal
@@ -322,6 +395,7 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
       <CreateCategoryModal
         isOpen={isCategoryModalOpen}
         onClose={closeCategoryModal}
+        initialType={categoryModalType}
         onSaveCategory={addCustomCategory}
       />
     </div>

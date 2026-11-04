@@ -20,6 +20,7 @@ interface ExpenseListProps {
   onEditExpense: (expense: ExpenseItem) => void;
   onDeleteExpense: (id: string) => void;
   onOpenCreate: () => void;
+  onOpenCreateIncome?: () => void;
   categories?: CategoryMeta[];
 }
 
@@ -28,6 +29,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   onEditExpense,
   onDeleteExpense,
   onOpenCreate,
+  onOpenCreateIncome,
   categories: propCategories,
 }) => {
   const storeCategories = useAllExpenseCategories();
@@ -48,14 +50,25 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
           <Wallet className="h-7 w-7" />
         </div>
         <h3 className="font-semibold text-base text-foreground mb-1">
-          Chưa có khoản chi tiêu nào
+          Chưa có giao dịch nào
         </h3>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-5">
-          Ghi nhận các khoản chi tiêu hàng ngày để theo dõi ngân sách hoặc bạn có thể bảo Trợ lý AI ghi hộ bất kỳ lúc nào!
+          Ghi nhận các khoản thu nhập và chi tiêu hàng ngày để kiểm soát tài chính cá nhân hoặc nhờ Trợ lý AI ghi hộ!
         </p>
-        <Button onClick={onOpenCreate} className="gap-2">
-          + Ghi nhận chi tiêu
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          <Button onClick={onOpenCreate} className="gap-2">
+            + Ghi nhận chi tiêu
+          </Button>
+          {onOpenCreateIncome && (
+            <Button
+              onClick={onOpenCreateIncome}
+              variant="outline"
+              className="gap-2 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+            >
+              + Ghi nhận thu nhập
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
@@ -85,7 +98,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     <div className="space-y-6">
       {sortedDates.map((dateStr) => {
         const dayItems = grouped[dateStr];
-        const dayTotal = dayItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+        const dayIncome = dayItems
+          .filter((i) => i.type === 'income')
+          .reduce((s, it) => s + (Number(it.amount) || 0), 0);
+        const dayExpense = dayItems
+          .filter((i) => i.type !== 'income')
+          .reduce((s, it) => s + (Number(it.amount) || 0), 0);
 
         return (
           <div key={dateStr} className="space-y-2">
@@ -94,14 +112,24 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
               <span className="text-xs font-semibold text-muted-foreground capitalize">
                 {formatDateHeader(dateStr)}
               </span>
-              <span className="text-xs font-bold text-foreground">
-                Tổng ngày: {formatVND(dayTotal)}
-              </span>
+              <div className="flex items-center gap-2 text-xs font-bold">
+                {dayIncome > 0 && (
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    +{formatVND(dayIncome)}
+                  </span>
+                )}
+                {dayExpense > 0 && (
+                  <span className="text-rose-600 dark:text-rose-400">
+                    -{formatVND(dayExpense)}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Day Items List */}
             <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40 shadow-sm">
               {dayItems.map((expense) => {
+                const isIncome = expense.type === 'income';
                 const catMeta = allCategories.find((c) => c.id === expense.category);
                 const pmLabel = PAYMENT_METHODS.find((p) => p.id === expense.paymentMethod)?.label;
 
@@ -114,7 +142,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
-                        style={{ backgroundColor: catMeta?.color || '#71717a' }}
+                        style={{ backgroundColor: catMeta?.color || (isIncome ? '#10b981' : '#71717a') }}
                       >
                         <CategoryIcon name={catMeta?.iconName} className="h-5 w-5" />
                       </div>
@@ -130,11 +158,11 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                           <span
                             className="px-2 py-0.5 rounded-full text-[11px] font-medium"
                             style={{
-                              backgroundColor: `${catMeta?.color || '#71717a'}18`,
-                              color: catMeta?.color || '#71717a',
+                              backgroundColor: `${catMeta?.color || (isIncome ? '#10b981' : '#71717a')}18`,
+                              color: catMeta?.color || (isIncome ? '#10b981' : '#71717a'),
                             }}
                           >
-                            {catMeta?.label || 'Khác'}
+                            {catMeta?.label || (isIncome ? 'Thu nhập khác' : 'Khác')}
                           </span>
 
                           {expense.time && (
@@ -163,8 +191,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                     {/* Right: Amount & Actions */}
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       <div className="text-right">
-                        <div className="font-bold text-sm sm:text-base text-rose-600 dark:text-rose-400">
-                          -{formatVND(expense.amount)}
+                        <div className={`font-bold text-sm sm:text-base ${
+                          isIncome
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}>
+                          {isIncome ? '+' : '-'}{formatVND(expense.amount)}
                         </div>
                       </div>
 

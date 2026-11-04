@@ -26,7 +26,7 @@ import {
 import { Appointment, Customer } from '@/features/schedule/types';
 import { IncomeTransaction } from '@/features/income/types';
 import { Trip } from '@/features/travel/types';
-import { ExpenseItem, MonthlyBudget, EXPENSE_CATEGORIES } from '@/features/spending/types';
+import { ExpenseItem, MonthlyBudget, CategoryMeta, DEFAULT_FINANCE_CATEGORIES } from '@/features/spending/types';
 
 export type AIContextScope = 'global' | 'teaching' | 'classes' | 'schedule' | 'income' | 'spending' | 'travel' | 'general';
 
@@ -116,6 +116,7 @@ export interface GlobalAppContextData {
   transactions?: IncomeTransaction[];
   trips?: Trip[];
   expenses?: ExpenseItem[];
+  customCategories?: CategoryMeta[];
   monthlyBudget?: MonthlyBudget | null;
 }
 
@@ -383,42 +384,78 @@ ${tripRows.join('\n')}`);
   }
 
   // =========================================================================
-  // 6. PHÂN HỆ QUẢN LÝ CHI TIÊU ĐỜI SỐNG (EXPENSES & MONTHLY BUDGET)
+  // 6. PHÂN HỆ QUẢN LÝ THU - CHI & DÒNG TIỀN TÀI CHÍNH (CASH FLOW & BUDGET)
   // =========================================================================
   if ((scope === 'global' || scope === 'spending') && (Array.isArray(data.expenses) || data.monthlyBudget)) {
-    const expenses = data.expenses || [];
+    const allCategories = [...DEFAULT_FINANCE_CATEGORIES, ...(data.customCategories || [])];
+    const transactions = data.expenses || [];
     const currentMonth = format(now, 'yyyy-MM');
-    const thisMonthExpenses = expenses.filter((e) => e.date.startsWith(currentMonth));
+    const thisMonthTransactions = transactions.filter((e) => e.date.startsWith(currentMonth));
+
+    // Phân loại rạch ròi Thu nhập và Chi tiêu
+    const thisMonthExpenses = thisMonthTransactions.filter((e) => (e.type || 'expense') === 'expense');
+    const thisMonthIncomes = thisMonthTransactions.filter((e) => e.type === 'income');
+
     const totalSpentThisMonth = thisMonthExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalIncomeThisMonth = thisMonthIncomes.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const netBalanceThisMonth = totalIncomeThisMonth - totalSpentThisMonth;
+    const savingsRate = totalIncomeThisMonth > 0 ? Math.round((netBalanceThisMonth / totalIncomeThisMonth) * 100) : 0;
+
     const budgetAmount = data.monthlyBudget?.totalBudget || 0;
-    const remaining = budgetAmount > 0 ? budgetAmount - totalSpentThisMonth : 0;
-    const percentUsed = budgetAmount > 0 ? Math.round((totalSpentThisMonth / budgetAmount) * 100) : 0;
+    const remainingBudget = budgetAmount > 0 ? budgetAmount - totalSpentThisMonth : 0;
+    const budgetPercentUsed = budgetAmount > 0 ? Math.round((totalSpentThisMonth / budgetAmount) * 100) : 0;
 
     // Phân bổ nhóm chi tiêu
-    const catMap: Record<string, number> = {};
+    const expenseCatMap: Record<string, number> = {};
     thisMonthExpenses.forEach((e) => {
-      catMap[e.category] = (catMap[e.category] || 0) + (Number(e.amount) || 0);
+      expenseCatMap[e.category] = (expenseCatMap[e.category] || 0) + (Number(e.amount) || 0);
     });
 
-    const catSummary = Object.entries(catMap)
+    const expenseCatSummary = Object.entries(expenseCatMap)
       .sort((a, b) => b[1] - a[1])
       .map(([cat, amt]) => {
-        const catLabel = EXPENSE_CATEGORIES.find((c) => c.id === cat)?.label || cat;
+        const catLabel = allCategories.find((c) => c.id === cat)?.label || cat;
         return `    * ${catLabel}: ${amt.toLocaleString('vi-VN')} đ`;
       })
       .slice(0, 5);
 
-    const recentExpenseRows = expenses.slice(0, 10).map((e) => {
-      const catLabel = EXPENSE_CATEGORIES.find((c) => c.id === e.category)?.label || e.category;
-      return `  + Ngày ${e.date}${e.time ? ' ' + e.time : ''}: "${e.description}" [${catLabel}] - ${(e.amount || 0).toLocaleString('vi-VN')} đ${e.notes ? ' (' + e.notes + ')' : ''}`;
+    // Phân bổ nhóm thu nhập
+    const incomeCatMap: Record<string, number> = {};
+    thisMonthIncomes.forEach((e) => {
+      incomeCatMap[e.category] = (incomeCatMap[e.category] || 0) + (Number(e.amount) || 0);
     });
 
-    sections.push(`### 6. QUẢN LÝ CHI TIÊU & SINH HOẠT ĐỜI SỐNG (${currentMonth}):
-- Tổng chi tiêu tháng này: **${totalSpentThisMonth.toLocaleString('vi-VN')} đ**
-- Hạn mức ngân sách tháng: ${budgetAmount > 0 ? `**${budgetAmount.toLocaleString('vi-VN')} đ** (Đã dùng ${percentUsed}%, Còn lại: ${remaining.toLocaleString('vi-VN')} đ)` : 'Chưa đặt hạn mức'}
-${catSummary.length > 0 ? `- Top các nhóm chi nhiều nhất:\n${catSummary.join('\n')}` : ''}
-- Giao dịch chi tiêu gần đây:
-${recentExpenseRows.length > 0 ? recentExpenseRows.join('\n') : '  (Chưa có khoản chi nào)'}`);
+    const incomeCatSummary = Object.entries(incomeCatMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amt]) => {
+        const catLabel = allCategories.find((c) => c.id === cat)?.label || cat;
+        return `    * ${catLabel}: +${amt.toLocaleString('vi-VN')} đ`;
+      })
+      .slice(0, 5);
+
+    const recentTxRows = transactions.slice(0, 15).map((e) => {
+      const isIncome = e.type === 'income';
+      const catLabel = allCategories.find((c) => c.id === e.category)?.label || e.category;
+      return `  + Ngày ${e.date}${e.time ? ' ' + e.time : ''}: [${isIncome ? 'KHOẢN THU (+)' : 'KHOẢN CHI (-)'}] "${e.description}" (${catLabel}) ${isIncome ? '+' : '-'}${(e.amount || 0).toLocaleString('vi-VN')} đ${e.notes ? ' - Ghi chú: ' + e.notes : ''}`;
+    });
+
+    sections.push(`### 6. QUẢN LÝ THU - CHI & DÒNG TIỀN TÀI CHÍNH THÁNG ${currentMonth}:
+- **TỔNG CHI TIÊU THÁNG NÀY**: **${totalSpentThisMonth.toLocaleString('vi-VN')} đ** (Đây là số tiền THỰC TẾ ĐÃ TIÊU RA: ăn uống, xăng xe, nhà cửa, hóa đơn, sinh hoạt...)
+- **TỔNG THU NHẬP THÁNG NÀY**: **+${totalIncomeThisMonth.toLocaleString('vi-VN')} đ** (Tiền nhận vào: lương cố định, thù lao dạy thêm, tiền thưởng, lợi nhuận...)
+- **SỐ DƯ TÍCH LŨY (DÒNG TIỀN RÒNG = THU - CHI)**: **${netBalanceThisMonth >= 0 ? '+' : ''}${netBalanceThisMonth.toLocaleString('vi-VN')} đ** (Tỷ lệ tiết kiệm: ${savingsRate}%)
+- **HẠN MỨC NGÂN SÁCH CHI TIÊU**: ${
+      budgetAmount > 0
+        ? `**${budgetAmount.toLocaleString('vi-VN')} đ** (Thực tế đã chi: ${totalSpentThisMonth.toLocaleString('vi-VN')} đ = ${budgetPercentUsed}% hạn mức. ${
+            totalSpentThisMonth > budgetAmount
+              ? `VƯỢT NGÂN SÁCH ${(totalSpentThisMonth - budgetAmount).toLocaleString('vi-VN')} đ!`
+              : `Còn lại trong ngân sách: ${remainingBudget.toLocaleString('vi-VN')} đ`
+          })`
+        : 'Chưa đặt hạn mức'
+    }
+${expenseCatSummary.length > 0 ? `- Top các khoản chi nhiều nhất:\n${expenseCatSummary.join('\n')}` : '- Chưa có khoản chi tiêu nào trong tháng'}
+${incomeCatSummary.length > 0 ? `- Top các nguồn thu nhập lớn nhất:\n${incomeCatSummary.join('\n')}` : '- Chưa có khoản thu nhập nào trong tháng'}
+- Lịch sử giao dịch thu - chi gần đây:
+${recentTxRows.length > 0 ? recentTxRows.join('\n') : '  (Chưa có giao dịch thu/chi nào)'}`);
   }
 
   // =========================================================================
@@ -445,9 +482,15 @@ QUY TẮC SUY LUẬN & TRẢ LỜI CỦA AI AGENT:
    - Liệt kê chính xác các khoảng thời gian vàng hoàn toàn không bị trùng lịch.
 4. **KHI HỎI VỀ HỌC SINH, LỚP HỌC HOẶC THU NHẬP**:
    - Trích xuất chính xác tên lớp, sĩ số, số tiền thù lao, danh sách học sinh và trạng thái học phí.
-5. **KHI HỎI VỀ DU LỊCH & CHI TIÊU ĐỜI SỐNG**:
-   - Đối chiếu ngày đi du lịch với lịch dạy học để cảnh báo những buổi học sẽ bị ảnh hưởng và gợi ý kế hoạch dạy bù.
-   - Nắm rõ các khoản chi tiêu hàng ngày, tổng chi tháng, hạn mức ngân sách còn lại để nhắc nhở và quản lý tài chính thông minh.
+5. **KHI HỎI VỀ TÀI CHÍNH, THU NHẬP & CHI TIÊU ĐỜI SỐNG**:
+   - **PHÂN BIỆT RẠCH RÒI THU NHẬP VÀ CHI TIÊU**:
+     + **Chi tiêu (Khoản chi)**: Tiền người dùng tiêu ra (Ăn uống, xăng xe, tiền nhà, mua sắm...).
+     + **Thu nhập (Khoản thu)**: Tiền người dùng nhận vào (Lương cơ quan, tiền dạy thêm, thưởng...).
+   - **KHI NGƯỜI DÙNG HỎI "THÁNG NÀY TÔI TIÊU HẾT BAO NHIÊU?"**:
+     + Chỉ báo cáo số tiền **TỔNG CHI TIÊU THỰC TẾ** (ví dụ: các khoản tiền nhà, ăn uống, xăng xe).
+     + **TUYỆT ĐỐI KHÔNG ĐƯỢC CỘNG TIỀN LƯƠNG HOẶC THU NHẬP VÀO TỔNG CHI TIÊU!** Lương là tiền nhận vào tài khoản, không phải là chi tiêu.
+     + Tuyệt đối không nói rằng người dùng đã chi tiêu vượt ngân sách chỉ vì nhận được tiền lương!
+   - **BÁO CÁO TOÀN DIỆN**: Nếu người dùng hỏi tổng thể tài chính, hãy nêu rõ cả 3 chỉ số: Tổng thu nhập (+), Tổng chi tiêu (-) và Số dư tích lũy (= Thu - Chi).
 6. **QUY TẮC THỰC THI HÀNH ĐỘNG DỮ LIỆU ĐA PHÂN HỆ (UNIVERSAL AGENT ACTION PROTOCOL)**:
    - Bạn là một AI Agent có TOÀN QUYỀN thực thi thao tác dữ liệu (Thêm, Sửa, Xoá) cho người dùng trên toàn bộ hệ thống.
    - TUYỆT ĐỐI KHÔNG BAO GIỜ NÓI "em là trợ lý AI chưa có quyền thao tác trực tiếp vào cơ sở dữ liệu" hay bảo người dùng phải tự điền hoặc tự bấm nút "Tạo mới"!
@@ -477,9 +520,12 @@ QUY TẮC SUY LUẬN & TRẢ LỜI CỦA AI AGENT:
 \`\`\`
    (Hoặc action "DELETE_APPOINTMENT" với {"title": "..."})
 
-   * 4. CHI TIÊU ĐỜI SỐNG (EXPENSES & BUDGET):
+   * 4. THU NHẬP & CHI TIÊU ĐỜI SỐNG (INCOME, EXPENSES & BUDGET):
 \`\`\`agent_action
 { "action": "CREATE_EXPENSE", "params": { "amount": 80000, "category": "transport", "description": "Đổ xăng xe máy", "date": "2026-11-04", "paymentMethod": "transfer", "notes": "Cây xăng" } }
+\`\`\`
+\`\`\`agent_action
+{ "action": "CREATE_INCOME", "params": { "amount": 15000000, "category": "salary", "description": "Nhận lương tháng 11", "date": "2026-11-04", "paymentMethod": "transfer", "notes": "Chuyển khoản cơ quan" } }
 \`\`\`
 \`\`\`agent_action
 { "action": "UPDATE_EXPENSE", "params": { "description": "Đổ xăng xe máy", "update": { "amount": 90000 } } }
@@ -491,9 +537,9 @@ QUY TẮC SUY LUẬN & TRẢ LỜI CỦA AI AGENT:
 { "action": "SET_MONTHLY_BUDGET", "params": { "month": "2026-11", "totalBudget": 15000000 } }
 \`\`\`
 \`\`\`agent_action
-{ "action": "CREATE_EXPENSE_CATEGORY", "params": { "label": "Thú cưng", "color": "#f97316", "iconName": "Dog", "description": "Nuôi chó mèo" } }
+{ "action": "CREATE_EXPENSE_CATEGORY", "params": { "label": "Dạy kèm ngoài", "type": "income", "color": "#10b981", "iconName": "GraduationCap", "description": "Thu nhập gia sư ngoài giờ" } }
 \`\`\`
-   (Danh mục category: có sẵn 'food', 'transport', 'bills', 'shopping', 'education', 'health', 'entertainment', 'family', 'other' hoặc bất kỳ danh mục nào người dùng tự tạo)
+   (Danh mục chi tiêu có sẵn: 'food', 'transport', 'bills', 'shopping', 'education', 'health', 'entertainment', 'family', 'other'. Danh mục thu nhập có sẵn: 'salary', 'bonus', 'tutoring', 'investment', 'business', 'gift', 'other_income'. Bạn cũng có thể dùng bất kỳ danh mục người dùng tự tạo)
 
    * 5. THỜI KHÓA BIỂU & GIÁO VIÊN THEO DÕI:
 \`\`\`agent_action

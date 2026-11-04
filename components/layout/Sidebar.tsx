@@ -91,7 +91,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Đời sống',
     icon: HeartPulse,
     items: [
-      { id: 'spending', label: 'Chi tiêu', icon: Wallet },
+      { id: 'spending', label: 'Thu - Chi', icon: Wallet },
       { id: 'health', label: 'Sức khoẻ & Thể chất', icon: HeartPulse },
       { id: 'travel', label: 'Chuyến đi', icon: Compass },
       { id: 'family', label: 'Gia đình', icon: Home },
