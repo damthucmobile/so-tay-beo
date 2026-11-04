@@ -7,6 +7,7 @@ import {
 } from './types';
 
 const USER_API_KEY_STORAGE = 'so_tay_beo_custom_gemini_api_key';
+const USER_MODEL_STORAGE = 'so_tay_beo_custom_gemini_model';
 
 /**
  * Lấy Custom API Key người dùng tự nhập (nếu có)
@@ -29,6 +30,26 @@ export function setCustomUserApiKey(apiKey: string): void {
 }
 
 /**
+ * Lấy Mô hình AI người dùng tự chọn (nếu có)
+ */
+export function getCustomUserModel(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(USER_MODEL_STORAGE);
+}
+
+/**
+ * Lưu Mô hình AI người dùng tự chọn
+ */
+export function setCustomUserModel(model: string): void {
+  if (typeof window === 'undefined') return;
+  if (!model.trim()) {
+    localStorage.removeItem(USER_MODEL_STORAGE);
+  } else {
+    localStorage.setItem(USER_MODEL_STORAGE, model.trim());
+  }
+}
+
+/**
  * Common Client Helper gọi qua Server API route `/api/ai/gemini`
  */
 async function callGeminiApi<T = any>(
@@ -37,6 +58,7 @@ async function callGeminiApi<T = any>(
 ): Promise<AIResponse<T>> {
   try {
     const customKey = payload.apiKey || getCustomUserApiKey();
+    const customModel = payload.model || getCustomUserModel();
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -46,13 +68,19 @@ async function callGeminiApi<T = any>(
       headers['x-gemini-api-key'] = customKey;
     }
 
+    const finalPayload: Record<string, any> = {
+      action,
+      ...payload,
+    };
+
+    if (customModel && !payload.model) {
+      finalPayload.model = customModel;
+    }
+
     const res = await fetch('/api/ai/gemini', {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        action,
-        ...payload,
-      }),
+      body: JSON.stringify(finalPayload),
     });
 
     const data: AIResponse<T> = await res.json();

@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import {
   ChatCompletionOptions,
   DEFAULT_GEMINI_MODEL,
+  FALLBACK_GEMINI_MODELS,
   GenerateJsonOptions,
   GenerateTextOptions,
   ImageAnalysisOptions,
@@ -27,31 +28,109 @@ export function getGeminiServerClient(customApiKey?: string): GoogleGenAI {
 }
 
 /**
+ * Định dạng thông báo lỗi Gemini thân thiện với người dùng
+ */
+function formatGeminiErrorMessage(err: any): string {
+  const msg = typeof err === 'string' ? err : err?.message || '';
+  if (
+    msg.includes('429') ||
+    msg.includes('RESOURCE_EXHAUSTED') ||
+    msg.includes('quota') ||
+    msg.includes('limit exceeded')
+  ) {
+    return 'Hạn ngạch miễn phí của mô hình này hôm nay đã tạm thời chạm giới hạn của Google. Hệ thống đã thử chuyển sang mô hình dự phòng nhưng tất cả đều đang quá tải. Bạn có thể thử lại sau ít phút hoặc cài đặt API Key cá nhân trong mục "Cài đặt Key".';
+  }
+  if (
+    msg.includes('503') ||
+    msg.includes('UNAVAILABLE') ||
+    msg.includes('high demand')
+  ) {
+    return 'Máy chủ Google Gemini đang quá tải tạm thời do lượng người dùng cao. Vui lòng thử gửi lại sau vài giây.';
+  }
+  return msg || 'Lỗi xử lý yêu cầu từ Gemini AI.';
+}
+
+/**
+ * Thực thi gọi Gemini với cơ chế tự động chuyển sang mô hình dự phòng (Fallback) khi gặp 429 hoặc 503
+ */
+async function executeWithModelFallback<R>(
+  requestedModel: string | undefined,
+  apiKey: string | undefined,
+  fn: (ai: GoogleGenAI, model: string) => Promise<R>
+): Promise<{ result: R; modelUsed: string }> {
+  const ai = getGeminiServerClient(apiKey);
+  const primaryModel =
+    requestedModel ||
+    process.env.NEXT_PUBLIC_GEMINI_MODEL ||
+    DEFAULT_GEMINI_MODEL;
+
+  // Danh sách model ưu tiên thử lần lượt: [primaryModel, ...các fallback khác]
+  const modelsToTry = [
+    primaryModel,
+    ...FALLBACK_GEMINI_MODELS.filter((m) => m !== primaryModel),
+  ];
+
+  let lastError: any = null;
+
+  for (const model of modelsToTry) {
+    try {
+      const result = await fn(ai, model);
+      return { result, modelUsed: model };
+    } catch (err: any) {
+      lastError = err;
+      const errMsg = err?.message || '';
+      const isRetryable =
+        errMsg.includes('503') ||
+        errMsg.includes('429') ||
+        errMsg.includes('high demand') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('UNAVAILABLE') ||
+        errMsg.includes('404') ||
+        errMsg.includes('NOT_FOUND');
+
+      if (isRetryable) {
+        console.warn(
+          `[Gemini AI] Model '${model}' gặp lỗi (${errMsg.slice(0, 120)}...), đang tự động chuyển sang model dự phòng tiếp theo...`
+        );
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError;
+}
+
+/**
  * 1. Sinh văn bản thông thường (Text Generation)
  */
 export async function generateTextServer(
   options: GenerateTextOptions
 ): Promise<AIResponse<string>> {
   try {
-    const ai = getGeminiServerClient(options.apiKey);
-    const model = options.model || DEFAULT_GEMINI_MODEL;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: options.prompt,
-      config: {
-        temperature: options.temperature ?? 0.7,
-        maxOutputTokens: options.maxOutputTokens,
-        systemInstruction: options.systemInstruction,
-      },
-    });
+    const { result: response, modelUsed } = await executeWithModelFallback(
+      options.model,
+      options.apiKey,
+      async (ai, model) => {
+        return await ai.models.generateContent({
+          model,
+          contents: options.prompt,
+          config: {
+            temperature: options.temperature ?? 0.7,
+            maxOutputTokens: options.maxOutputTokens,
+            systemInstruction: options.systemInstruction,
+          },
+        });
+      }
+    );
 
     const text = response.text || '';
 
     return {
       success: true,
       data: text,
-      modelUsed: model,
+      modelUsed,
       usage: {
         promptTokens: response.usageMetadata?.promptTokenCount,
         responseTokens: response.usageMetadata?.candidatesTokenCount,
@@ -62,7 +141,7 @@ export async function generateTextServer(
     console.error('Lỗi Gemini generateTextServer:', err);
     return {
       success: false,
-      error: err?.message || 'Không thể tạo nội dung từ Gemini AI.',
+      error: formatGeminiErrorMessage(err),
     };
   }
 }
@@ -74,9 +153,6 @@ export async function generateJsonServer<T = any>(
   options: GenerateJsonOptions<T>
 ): Promise<AIResponse<T>> {
   try {
-    const ai = getGeminiServerClient(options.apiKey);
-    const model = options.model || DEFAULT_GEMINI_MODEL;
-
     let systemInstruction = options.systemInstruction || '';
     if (options.schemaDescription) {
       systemInstruction += `\nĐảm bảo định dạng JSON trả về tuân thủ cấu trúc sau: ${options.schemaDescription}`;
@@ -92,11 +168,17 @@ export async function generateJsonServer<T = any>(
       config.responseSchema = options.responseSchema;
     }
 
-    const response = await ai.models.generateContent({
-      model,
-      contents: options.prompt,
-      config,
-    });
+    const { result: response, modelUsed } = await executeWithModelFallback(
+      options.model,
+      options.apiKey,
+      async (ai, model) => {
+        return await ai.models.generateContent({
+          model,
+          contents: options.prompt,
+          config,
+        });
+      }
+    );
 
     const rawText = response.text || '{}';
     let parsedData: T;
@@ -116,7 +198,7 @@ export async function generateJsonServer<T = any>(
     return {
       success: true,
       data: parsedData,
-      modelUsed: model,
+      modelUsed,
       usage: {
         promptTokens: response.usageMetadata?.promptTokenCount,
         responseTokens: response.usageMetadata?.candidatesTokenCount,
@@ -127,7 +209,7 @@ export async function generateJsonServer<T = any>(
     console.error('Lỗi Gemini generateJsonServer:', err);
     return {
       success: false,
-      error: err?.message || 'Không thể tạo dữ liệu JSON từ Gemini AI.',
+      error: formatGeminiErrorMessage(err),
     };
   }
 }
@@ -139,31 +221,34 @@ export async function chatServer(
   options: ChatCompletionOptions
 ): Promise<AIResponse<string>> {
   try {
-    const ai = getGeminiServerClient(options.apiKey);
-    const model = options.model || DEFAULT_GEMINI_MODEL;
-
     // Chuẩn hóa lịch sử hội thoại cho SDK
     const contents = options.messages.map((m) => ({
       role: m.role === 'model' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
 
-    const response = await ai.models.generateContent({
-      model,
-      contents,
-      config: {
-        temperature: options.temperature ?? 0.7,
-        maxOutputTokens: options.maxOutputTokens,
-        systemInstruction: options.systemInstruction,
-      },
-    });
+    const { result: response, modelUsed } = await executeWithModelFallback(
+      options.model,
+      options.apiKey,
+      async (ai, model) => {
+        return await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            temperature: options.temperature ?? 0.7,
+            maxOutputTokens: options.maxOutputTokens,
+            systemInstruction: options.systemInstruction,
+          },
+        });
+      }
+    );
 
     const text = response.text || '';
 
     return {
       success: true,
       data: text,
-      modelUsed: model,
+      modelUsed,
       usage: {
         promptTokens: response.usageMetadata?.promptTokenCount,
         responseTokens: response.usageMetadata?.candidatesTokenCount,
@@ -174,7 +259,7 @@ export async function chatServer(
     console.error('Lỗi Gemini chatServer:', err);
     return {
       success: false,
-      error: err?.message || 'Lỗi xử lý tin nhắn chat từ Gemini AI.',
+      error: formatGeminiErrorMessage(err),
     };
   }
 }
@@ -186,9 +271,6 @@ export async function analyzeImageServer(
   options: ImageAnalysisOptions
 ): Promise<AIResponse<string>> {
   try {
-    const ai = getGeminiServerClient(options.apiKey);
-    const model = options.model || DEFAULT_GEMINI_MODEL;
-
     // Làm sạch chuỗi Base64
     const cleanBase64 = options.imageBase64.replace(
       /^data:image\/[a-zA-Z]+;base64,/,
@@ -210,22 +292,28 @@ export async function analyzeImageServer(
       },
     ];
 
-    const response = await ai.models.generateContent({
-      model,
-      contents,
-      config: {
-        temperature: options.temperature ?? 0.4,
-        maxOutputTokens: options.maxOutputTokens,
-        systemInstruction: options.systemInstruction,
-      },
-    });
+    const { result: response, modelUsed } = await executeWithModelFallback(
+      options.model,
+      options.apiKey,
+      async (ai, model) => {
+        return await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            temperature: options.temperature ?? 0.4,
+            maxOutputTokens: options.maxOutputTokens,
+            systemInstruction: options.systemInstruction,
+          },
+        });
+      }
+    );
 
     const text = response.text || '';
 
     return {
       success: true,
       data: text,
-      modelUsed: model,
+      modelUsed,
       usage: {
         promptTokens: response.usageMetadata?.promptTokenCount,
         responseTokens: response.usageMetadata?.candidatesTokenCount,
@@ -236,7 +324,8 @@ export async function analyzeImageServer(
     console.error('Lỗi Gemini analyzeImageServer:', err);
     return {
       success: false,
-      error: err?.message || 'Không thể phân tích ảnh bằng Gemini AI.',
+      error: formatGeminiErrorMessage(err),
     };
   }
 }
+

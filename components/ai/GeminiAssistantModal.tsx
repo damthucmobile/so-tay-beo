@@ -25,7 +25,7 @@ import {
   PanelLeft,
   Search,
 } from 'lucide-react';
-import { useGeminiAI, gemini, promptTemplates, getCustomUserApiKey, setCustomUserApiKey, ChatMessage } from '@/core';
+import { useGeminiAI, gemini, promptTemplates, getCustomUserApiKey, setCustomUserApiKey, getCustomUserModel, DEFAULT_GEMINI_MODEL, ChatMessage } from '@/core';
 import { SchoolTimetable } from '@/features/teaching-schedule/types';
 
 interface ChatSession {
@@ -144,7 +144,7 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
     sendMessage,
   } = useGeminiAI({
     systemInstruction,
-    model: 'gemini-2.5-flash',
+    model: (typeof window !== 'undefined' ? getCustomUserModel() : null) || DEFAULT_GEMINI_MODEL,
   });
 
   // Đồng bộ tin nhắn khi đổi session
@@ -315,7 +315,7 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
                   Không Gian Trợ Lý Gemini AI
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                  Gemini 2.5 Flash
+                  Gemini 3.5 Flash
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
@@ -532,7 +532,7 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
                           <div className="whitespace-pre-wrap">{msg.content}</div>
                           {msg.role !== 'user' && (
                             <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
-                              <span>Mô hình: Gemini 2.5 Flash</span>
+                              <span>Mô hình: Gemini 3.5 Flash</span>
                               <button
                                 onClick={() => handleCopy(msg.content, `chat_${i}`)}
                                 className="inline-flex items-center gap-1 hover:text-purple-600 cursor-pointer"

@@ -27,6 +27,8 @@ import {
   Clock,
   GraduationCap,
   CalendarDays,
+  Cpu,
+  Settings,
 } from 'lucide-react';
 import {
   useGeminiAI,
@@ -34,6 +36,10 @@ import {
   promptTemplates,
   getCustomUserApiKey,
   setCustomUserApiKey,
+  getCustomUserModel,
+  setCustomUserModel,
+  AVAILABLE_GEMINI_MODELS,
+  DEFAULT_GEMINI_MODEL,
   ChatMessage,
   AIContextScope,
   CONTEXT_SCOPE_OPTIONS,
@@ -98,6 +104,21 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
   const [savedKeySuccess, setSavedKeySuccess] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Quản lý Mô hình AI (Model)
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return getCustomUserModel() || DEFAULT_GEMINI_MODEL;
+    }
+    return DEFAULT_GEMINI_MODEL;
+  });
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+
+  const handleSelectModel = (modelId: string) => {
+    setSelectedModel(modelId);
+    setCustomUserModel(modelId);
+    setIsModelMenuOpen(false);
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 1. Tải danh sách sessions từ localStorage
@@ -113,7 +134,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
           return;
         }
       }
-    } catch {}
+    } catch { }
 
     const initialSession: ChatSession = {
       id: `session_${Date.now()}`,
@@ -131,7 +152,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(updatedSessions));
-      } catch {}
+      } catch { }
     }
   };
 
@@ -180,7 +201,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     sendMessage,
   } = useGeminiAI({
     systemInstruction,
-    model: 'gemini-2.5-flash',
+    model: selectedModel as any,
   });
 
   const scopeSuggestions = useMemo(() => {
@@ -283,37 +304,39 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       currentTitle = text.slice(0, 38) + (text.length > 38 ? '...' : '');
     }
 
-    const res = await sendMessage(text);
+    const res = await sendMessage(text, { model: selectedModel as any });
 
-    const userMsg: ChatMessage = {
-      id: `user_${Date.now()}`,
-      role: 'user',
-      content: text,
-      timestamp: new Date().toISOString(),
-    };
+    if (res) {
+      const userMsg: ChatMessage = {
+        id: `user_${Date.now()}`,
+        role: 'user',
+        content: text,
+        timestamp: new Date().toISOString(),
+      };
 
-    const modelMsg: ChatMessage = {
-      id: `model_${Date.now()}`,
-      role: 'model',
-      content: res || 'Xin lỗi, không có phản hồi từ AI.',
-      timestamp: new Date().toISOString(),
-    };
+      const modelMsg: ChatMessage = {
+        id: `model_${Date.now()}`,
+        role: 'model',
+        content: res,
+        timestamp: new Date().toISOString(),
+      };
 
-    const newMessages = [...chatMessages, userMsg, modelMsg];
+      const newMessages = [...chatMessages, userMsg, modelMsg];
 
-    const updatedSessions = sessions.map((s) => {
-      if (s.id === currentSessionId) {
-        return {
-          ...s,
-          title: currentTitle,
-          updatedAt: new Date().toISOString(),
-          messages: newMessages,
-        };
-      }
-      return s;
-    });
+      const updatedSessions = sessions.map((s) => {
+        if (s.id === currentSessionId) {
+          return {
+            ...s,
+            title: currentTitle,
+            updatedAt: new Date().toISOString(),
+            messages: newMessages,
+          };
+        }
+        return s;
+      });
 
-    saveSessionsToStorage(updatedSessions);
+      saveSessionsToStorage(updatedSessions);
+    }
   };
 
   const handleSaveApiKey = () => {
@@ -329,6 +352,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       const prompt = promptTemplates.lessonPlanGenerator(lessonSubject, `Khối ${lessonGrade}`, lessonTopic);
       const res = await gemini.generateText(prompt, {
         temperature: 0.6,
+        model: selectedModel as any,
       });
       if (res.success && res.data) {
         setGeneratedPlan(res.data);
@@ -454,11 +478,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                             setIsSidebarOpen(false);
                           }
                         }}
-                        className={`group relative flex items-center justify-between px-3 py-2 rounded-lg text-xs transition cursor-pointer select-none ${
-                          isActive
-                            ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium'
-                            : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 font-normal'
-                        }`}
+                        className={`group relative flex items-center justify-between px-3 py-2 rounded-lg text-xs transition cursor-pointer select-none ${isActive
+                          ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 font-normal'
+                          }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 pr-6">
                           <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`} />
@@ -490,23 +513,52 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
         {/* CỘT PHẢI: KHUNG LÀM VIỆC CHÍNH (CHAT / SOẠN GIÁO ÁN / CẤU HÌNH) */}
         <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-950">
           {/* Thanh điều hướng Tab bên phải & Bộ chọn Bối cảnh Dữ liệu */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs shrink-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* BỘ CHỌN BỐI CẢNH DỮ LIỆU ĐỘNG */}
-              <div className="relative">
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs shrink-0 min-w-0">
+            {/* VÙNG CUỘN NGANG (SCROLLABLE): Trò chuyện -> Soạn giáo án -> Bối cảnh -> Mode */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth min-w-0 flex-1 py-0.5">
+              {/* 1. Trò chuyện */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('chat')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 whitespace-nowrap ${
+                  activeTab === 'chat'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5 shrink-0" />
+                <span>Trò chuyện</span>
+              </button>
+
+              {/* 2. Soạn Giáo Án */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('lesson')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 whitespace-nowrap ${
+                  activeTab === 'lesson'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                <span>Soạn Giáo Án</span>
+              </button>
+
+              {/* 3. Bối cảnh (Dropdown) */}
+              <div className="relative shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsScopeMenuOpen(!isScopeMenuOpen)}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-medium transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-medium transition cursor-pointer whitespace-nowrap text-xs"
                   title="Nhấn để đổi phạm vi bối cảnh dữ liệu"
                 >
-                  {selectedScope === 'global' && <Globe className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
-                  {selectedScope === 'teaching' && <CalendarDays className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
-                  {selectedScope === 'classes' && <GraduationCap className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
-                  {selectedScope === 'schedule' && <Clock className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
-                  {selectedScope === 'general' && <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />}
+                  {selectedScope === 'global' && <Globe className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
+                  {selectedScope === 'teaching' && <CalendarDays className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
+                  {selectedScope === 'classes' && <GraduationCap className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
+                  {selectedScope === 'schedule' && <Clock className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
+                  {selectedScope === 'general' && <Bot className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400 shrink-0" />}
                   <span>Bối cảnh: <span className="font-semibold">{currentScopeConfig.shortLabel}</span></span>
-                  <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform ${isScopeMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform shrink-0 ${isScopeMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isScopeMenuOpen && (
@@ -565,51 +617,104 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 )}
               </div>
 
-              <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 mx-1 hidden sm:block" />
+              {/* 4. Mode / Mô hình AI (Dropdown) */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-medium transition cursor-pointer whitespace-nowrap text-xs"
+                  title="Nhấn để đổi mô hình AI"
+                >
+                  <Cpu className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <span>
+                    Model: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{AVAILABLE_GEMINI_MODELS.find((m) => m.id === selectedModel)?.name || selectedModel}</span>
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform shrink-0 ${isModelMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-              {/* Chế độ tương tác */}
-              <button
-                onClick={() => setActiveTab('chat')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  activeTab === 'chat'
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                }`}
-              >
-                <Bot className="w-3.5 h-3.5" />
-                <span>Trò chuyện</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('lesson')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  activeTab === 'lesson'
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Soạn Giáo Án</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('config')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  activeTab === 'config'
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                }`}
-              >
-                <Key className="w-3.5 h-3.5" />
-                <span>Cài đặt</span>
-              </button>
+                {isModelMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsModelMenuOpen(false)}
+                    />
+                    <div className="absolute left-0 top-full mt-1.5 w-80 sm:w-96 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl p-2 z-50 space-y-1">
+                      <div className="px-2.5 py-1 text-[10px] font-semibold uppercase text-zinc-400 tracking-wider flex items-center justify-between">
+                        <span>Lựa chọn Mô hình AI (Model)</span>
+                        <span className="text-[9px] text-zinc-500 font-normal">Chuyển tức thì</span>
+                      </div>
+                      {AVAILABLE_GEMINI_MODELS.map((m) => {
+                        const isSelected = m.id === selectedModel;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => handleSelectModel(m.id)}
+                            className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 border border-purple-200 dark:border-purple-800'
+                                : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 border border-transparent'
+                            }`}
+                          >
+                            <div className="mt-0.5 shrink-0">
+                              {isSelected ? (
+                                <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <Cpu className="w-4 h-4 text-zinc-400" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                                  {m.name}
+                                </span>
+                                {m.badge && (
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded text-[9px] font-semibold ${
+                                      m.recommended
+                                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                    }`}
+                                  >
+                                    {m.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">
+                                {m.description}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
-            {currentSession && activeTab === 'chat' && (
-              <span className="text-[11px] text-zinc-400 font-normal truncate max-w-[200px] hidden md:block">
-                Đang mở: <span className="text-zinc-700 dark:text-zinc-300 font-medium">{currentSession.title}</span>
-              </span>
-            )}
+            {/* PHẦN FIX CỨNG BÊN PHẢI: ICON BÁNH RĂNG CÀI ĐẶT */}
+            <div className="flex items-center gap-2 shrink-0 pl-2 bg-white dark:bg-zinc-950 border-l border-zinc-100 dark:border-zinc-800/80">
+              {currentSession && activeTab === 'chat' && (
+                <span className="text-[11px] text-zinc-400 font-normal truncate max-w-[140px] xl:max-w-[200px] hidden md:block">
+                  Đang mở: <span className="text-zinc-700 dark:text-zinc-300 font-medium">{currentSession.title}</span>
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setActiveTab(activeTab === 'config' ? 'chat' : 'config')}
+                className={`p-2 rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-center shrink-0 ${
+                  activeTab === 'config'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800'
+                }`}
+                title={activeTab === 'config' ? 'Quay lại Trò chuyện' : 'Cài đặt'}
+                aria-label="Cài đặt"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* TAB 1: KHUNG CHAT TOÀN DIỆN */}
@@ -657,11 +762,10 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                         </div>
                       )}
                       <div
-                        className={`max-w-[85%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed ${
-                          msg.role === 'user'
-                            ? 'bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 rounded-tr-xs font-normal shadow-xs'
-                            : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-xs shadow-xs'
-                        }`}
+                        className={`max-w-[85%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed ${msg.role === 'user'
+                          ? 'bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 rounded-tr-xs font-normal shadow-xs'
+                          : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-xs shadow-xs'
+                          }`}
                       >
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                         {msg.role !== 'user' && (
@@ -772,6 +876,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
               </div>
 
               <button
+                type="button"
                 onClick={handleGenerateLessonPlan}
                 disabled={!lessonTopic.trim() || isGeneratingPlan}
                 className="w-full py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 transition shadow-xs"
@@ -796,6 +901,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                       Kế hoạch bài dạy đã tạo:
                     </span>
                     <button
+                      type="button"
                       onClick={() => handleCopy(generatedPlan, 'lesson')}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-normal hover:text-zinc-900 cursor-pointer"
                     >
@@ -842,6 +948,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
               <div className="flex items-center gap-2 pt-2">
                 <button
+                  type="button"
                   onClick={handleSaveApiKey}
                   className="px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-medium text-xs transition cursor-pointer shadow-xs"
                 >
@@ -850,6 +957,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
                 {customKey && (
                   <button
+                    type="button"
                     onClick={() => {
                       setCustomKey('');
                       setCustomUserApiKey('');
@@ -866,6 +974,69 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                     Đã lưu thành công
                   </span>
                 )}
+              </div>
+
+              {/* LỰA CHỌN MÔ HÌNH AI (MODEL) MẶC ĐỊNH */}
+              <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                    Lựa chọn Mô hình AI (Model)
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Chọn mô hình xử lý câu hỏi phù hợp với nhu cầu và hạn ngạch của bạn. Lựa chọn sẽ được lưu trên thiết bị.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {AVAILABLE_GEMINI_MODELS.map((m) => {
+                    const isSelected = m.id === selectedModel;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => handleSelectModel(m.id)}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-purple-50/70 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 ring-1 ring-purple-400/50'
+                            : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-1.5 mb-1">
+                            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                              {isSelected ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                              ) : (
+                                <Cpu className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                              )}
+                              <span>{m.name}</span>
+                            </span>
+                            {m.badge && (
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-semibold shrink-0 ${
+                                  m.recommended
+                                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                                }`}
+                              >
+                                {m.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
+                            {m.description}
+                          </p>
+                        </div>
+                        {isSelected && (
+                          <div className="mt-2 text-[10px] font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                            <span>● Đang hoạt động</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

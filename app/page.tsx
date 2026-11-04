@@ -80,7 +80,7 @@ export default function HomePage() {
         const search = window.location.search;
         if (!search) return;
         const params = new URLSearchParams(search);
-        
+
         // Kiểm tra xem có đang mở liên kết chia sẻ chuyến đi không
         const share = params.get('share');
         const token = params.get('token');
@@ -198,7 +198,7 @@ export default function HomePage() {
       travel_checklist: { title: 'Hành Lý & Chuẩn Bị Chuyến Đi', subtitle: 'Checklist đồ đạc cần mang, giấy tờ tùy thân & vé máy bay' },
       family: { title: 'Gia Đình & Tổ Ấm', subtitle: 'Kỷ niệm, ngày sinh nhật, gia phả & tài chính gia đình' },
       education: { title: 'Giáo Dục & Bản Thân', subtitle: 'Khóa học phát triển kỹ năng, mục tiêu học tập & sách hay' },
-      ai_assistant: { title: 'Trợ Lý Gemini AI', subtitle: 'Trợ lý AI thông minh phân tích thời khóa biểu & hỗ trợ soạn bài' },
+      ai_assistant: { title: 'Trợ Lý AI', subtitle: 'Trợ lý AI thông minh phân tích thời khóa biểu & hỗ trợ soạn bài' },
     };
     const meta = tabMeta[currentTab];
     if (meta) {
