@@ -117,7 +117,7 @@ export const ChecklistFeature: React.FC<ChecklistFeatureProps> = ({ onNavigateTa
               </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Chuẩn Bị Hành Trang & Giấy Tờ
             </h1>
             <p className="text-xs sm:text-sm text-purple-50/90 max-w-2xl leading-relaxed">

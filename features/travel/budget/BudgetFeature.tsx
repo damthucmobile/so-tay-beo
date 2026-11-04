@@ -116,13 +116,13 @@ export const BudgetFeature: React.FC<BudgetFeatureProps> = ({ onNavigateTab }) =
                 <Wallet className="w-3.5 h-3.5 text-amber-200" />
                 <span>Quản Lý Ngân Sách & Chi Tiêu</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/40 backdrop-blur-md text-[11px] font-semibold text-amber-200 border border-amber-400/30">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/40 backdrop-blur-md text-[11px] font-medium text-amber-200 border border-amber-400/30">
                 <Sparkles className="w-3 h-3 text-amber-300" />
-                <span>Tự động chia tiền nhóm (Bill Splitter)</span>
+                <span>Tự động chia tiền nhóm</span>
               </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Sổ Quỹ & Tài Chính Chuyến Đi
             </h1>
             <p className="text-xs sm:text-sm text-amber-50/90 max-w-2xl leading-relaxed">

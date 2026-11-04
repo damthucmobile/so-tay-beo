@@ -14,7 +14,6 @@ import {
   Image as ImageIcon,
   Compass,
   Star,
-  CloudUpload,
 } from 'lucide-react';
 import { useAuth } from '@/core/firebase';
 import { useTravelStore } from '../stores/useTravelStore';
@@ -130,17 +129,13 @@ export const JournalFeature: React.FC<JournalFeatureProps> = ({ onNavigateTab })
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-bold text-cyan-100 border border-white/20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-medium text-cyan-100 border border-white/20">
                 <Camera className="w-3.5 h-3.5 text-cyan-200" />
                 <span>Nhật Ký & Album Kỷ Niệm</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/40 backdrop-blur-md text-[11px] font-semibold text-cyan-200 border border-cyan-400/30">
-                <CloudUpload className="w-3 h-3 text-cyan-300" />
-                <span>Cloudflare R2 Storage (Lưu trữ ảnh gốc không giới hạn)</span>
-              </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Kỷ Niệm & Kho Báu Hành Trình
             </h1>
             <p className="text-xs sm:text-sm text-cyan-50/90 max-w-2xl leading-relaxed">

@@ -76,7 +76,7 @@ export const TeachingScheduleFeature: React.FC = () => {
   const handleDeleteTimetable = async () => {
     if (
       window.confirm(
-        'Bạn có chắc chắn muốn xóa thời khóa biểu này khỏi hệ thống và Firebase? Sau khi xóa, bạn có thể tải lên file Excel mới bất kỳ lúc nào.'
+        'Bạn có chắc chắn muốn xóa thời khóa biểu này? Sau khi xóa, bạn có thể tải lên file Excel mới bất kỳ lúc nào.'
       )
     ) {
       await clearTimetable(user?.uid);
@@ -87,7 +87,7 @@ export const TeachingScheduleFeature: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full p-12 space-y-3 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100">
         <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-slate-500 dark:text-slate-400">Đang đồng bộ thời khóa biểu từ Cloud Firebase...</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Đang đồng bộ dữ liệu thời khóa biểu...</p>
       </div>
     );
   }
@@ -166,7 +166,7 @@ export const TeachingScheduleFeature: React.FC = () => {
             <button
               onClick={handleDeleteTimetable}
               className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-xs font-semibold transition border border-red-200/80 dark:border-red-900/40 shadow-sm cursor-pointer"
-              title="Xóa thời khóa biểu này khỏi hệ thống & Firebase"
+              title="Xóa thời khóa biểu này"
             >
               <Trash2 className="w-3.5 h-3.5 text-red-500" />
               <span className="hidden sm:inline ml-1">Xóa TKB</span>

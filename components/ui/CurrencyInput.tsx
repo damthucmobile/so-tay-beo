@@ -28,7 +28,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           value={displayValue}
           onChange={handleChange}
           placeholder={placeholder}
-          className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 font-mono pr-8 ${className || ''}`}
+          className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-base sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 font-mono pr-8 ${className || ''}`}
           {...props}
         />
         {currencySymbol && (

@@ -263,7 +263,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                     : 'text-slate-500'
                 }`}
               >
-                Tải lên Cloudflare R2
+                Tải từ thiết bị
               </button>
               <button
                 type="button"
@@ -297,7 +297,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                     )}
                   </div>
                   <span className="text-xs font-bold text-cyan-600 hover:underline">
-                    {isUploading ? `Đang tải lên (${progress}%)...` : 'Chọn ảnh để tải lên R2'}
+                    {isUploading ? `Đang tải lên (${progress}%)...` : 'Chọn ảnh từ thiết bị để tải lên'}
                   </span>
                 </label>
               </div>

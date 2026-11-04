@@ -426,7 +426,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                     placeholder="Tìm trong lịch sử..."
                     value={searchHistoryQuery}
                     onChange={(e) => setSearchHistoryQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-300 text-zinc-900 dark:text-zinc-100 font-normal"
+                    className="w-full pl-8 pr-3 py-1.5 text-base sm:text-xs rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-950 dark:focus:ring-zinc-300 text-zinc-900 dark:text-zinc-100 font-normal"
                   />
                 </div>
               </div>
@@ -601,7 +601,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                 }`}
               >
                 <Key className="w-3.5 h-3.5" />
-                <span>Cài đặt Key</span>
+                <span>Cài đặt</span>
               </button>
             </div>
 
@@ -709,7 +709,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                     placeholder="Nhập câu hỏi... (Nhấn Enter để xuống dòng)"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    className="flex-1 px-3.5 py-2 text-xs sm:text-sm rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-zinc-900 dark:text-zinc-100 resize-none max-h-36 min-h-[44px] font-normal"
+                    className="flex-1 px-3.5 py-2 text-base sm:text-sm rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-zinc-900 dark:text-zinc-100 resize-none max-h-36 min-h-[44px] font-normal"
                   />
                   <button
                     type="button"
@@ -737,7 +737,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                     type="text"
                     value={lessonSubject}
                     onChange={(e) => setLessonSubject(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                    className="w-full px-3 py-2 text-base sm:text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                   />
                 </div>
 
@@ -748,7 +748,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                   <select
                     value={lessonGrade}
                     onChange={(e) => setLessonGrade(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                    className="w-full px-3 py-2 text-base sm:text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                   >
                     <option value="6">Khối 6</option>
                     <option value="7">Khối 7</option>
@@ -766,7 +766,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                     placeholder="Ví dụ: Phép cộng phân số"
                     value={lessonTopic}
                     onChange={(e) => setLessonTopic(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                    className="w-full px-3 py-2 text-base sm:text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-normal focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                   />
                 </div>
               </div>
@@ -817,23 +817,23 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
               <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-xs space-y-1.5 text-zinc-800 dark:text-zinc-200">
                 <span className="font-semibold flex items-center gap-1.5 text-xs">
                   <Key className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
-                  Cấu hình khóa API cá nhân
+                  Cài đặt khóa dịch vụ cá nhân
                 </span>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  Mặc định hệ thống đã được cấu hình sẵn. Nếu muốn sử dụng hạn mức API cá nhân riêng của bạn, hãy nhập khóa vào bên dưới:
+                  Mặc định hệ thống đã được thiết lập sẵn sàng. Nếu muốn sử dụng hạn mức dịch vụ cá nhân riêng của bạn, hãy nhập mã khóa vào bên dưới:
                 </p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  Khóa API (Tùy chọn)
+                  Khóa dịch vụ (Tùy chọn)
                 </label>
                 <input
                   type="password"
-                  placeholder="Nhập API Key cá nhân..."
+                  placeholder="Nhập mã khóa cá nhân..."
                   value={customKey}
                   onChange={(e) => setCustomKey(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                  className="w-full px-3 py-2 text-base sm:text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
                 />
                 <p className="text-[11px] text-zinc-400">
                   Khóa được lưu cục bộ trên trình duyệt của bạn và bảo mật tuyệt đối.

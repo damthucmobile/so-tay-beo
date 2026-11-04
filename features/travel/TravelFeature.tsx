@@ -105,16 +105,12 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-bold text-emerald-100 border border-white/20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-medium text-emerald-100 border border-white/20">
                 <Compass className="w-3.5 h-3.5 text-emerald-200" />
                 <span>Danh Mục Chuyến Đi</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/40 backdrop-blur-md text-[11px] font-semibold text-emerald-200 border border-emerald-400/30">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>Firebase Firestore Database (Trực tiếp)</span>
-              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Quản Lý Chuyến Đi
             </h1>
             <p className="text-xs sm:text-sm text-emerald-50/90 max-w-2xl leading-relaxed">
@@ -176,7 +172,7 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
       {isLoading ? (
         <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-card p-16 text-center space-y-3">
           <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-muted-foreground">Đang tải danh sách chuyến đi từ Firebase Firestore...</p>
+          <p className="text-xs text-muted-foreground">Đang tải danh sách chuyến đi...</p>
         </div>
       ) : filteredTrips.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-12 text-center space-y-4">
@@ -184,7 +180,7 @@ export const TravelFeature: React.FC<TravelFeatureProps> = ({ onNavigateTab }) =
             <Compass className="w-8 h-8" />
           </div>
           <div className="max-w-md mx-auto space-y-1.5">
-            <h3 className="font-extrabold text-slate-800 dark:text-white text-base sm:text-lg">
+            <h3 className="font-semibold text-slate-800 dark:text-white text-base sm:text-lg">
               {searchQuery || statusFilter !== 'all'
                 ? 'Không tìm thấy chuyến đi phù hợp'
                 : 'Bạn chưa có kế hoạch chuyến đi nào'}

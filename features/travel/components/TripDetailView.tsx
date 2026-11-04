@@ -1372,7 +1372,7 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
                   mediaUploadMode === 'r2' ? 'bg-white dark:bg-slate-900 text-cyan-600 shadow-sm' : 'text-slate-500'
                 }`}
               >
-                Tải lên Cloudflare R2
+                Tải từ thiết bị
               </button>
               <button
                 type="button"
@@ -1400,7 +1400,7 @@ export const TripDetailView: React.FC<TripDetailViewProps> = ({
                     {isUploadingR2 ? <Loader2 className="w-6 h-6 animate-spin" /> : <Upload className="w-6 h-6" />}
                   </div>
                   <span className="text-xs font-bold text-cyan-600 hover:underline">
-                    {isUploadingR2 ? `Đang tải lên (${uploadProgress}%)...` : 'Chọn ảnh để tải lên kho R2'}
+                    {isUploadingR2 ? `Đang tải lên (${uploadProgress}%)...` : 'Chọn ảnh từ thiết bị để tải lên'}
                   </span>
                 </label>
               </div>

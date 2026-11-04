@@ -78,7 +78,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => 
         onClose();
       } catch (err: any) {
         setIsSavingCloud(false);
-        setError(err?.message || 'Có lỗi xảy ra khi lưu thời khóa biểu lên Firebase. Vui lòng thử lại.');
+        setError(err?.message || 'Có lỗi xảy ra khi lưu thời khóa biểu. Vui lòng thử lại.');
       }
     }
   };

@@ -406,7 +406,7 @@ export const CreateJournalModal: React.FC<CreateJournalModalProps> = ({
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Tải lên Cloudflare R2
+                  Tải từ thiết bị
                 </button>
                 <button
                   type="button"
@@ -445,7 +445,7 @@ export const CreateJournalModal: React.FC<CreateJournalModalProps> = ({
                   </div>
                   <div>
                     <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
-                      {isUploading ? `Đang tải lên Cloudflare R2 (${uploadProgress}%)...` : 'Chọn ảnh từ máy tính để tải lên'}
+                      {isUploading ? `Đang tải ảnh lên (${uploadProgress}%)...` : 'Chọn ảnh từ thiết bị để tải lên'}
                     </span>
                     <p className="text-[11px] text-slate-400 mt-0.5">
                       Hỗ trợ JPG, PNG, WEBP, ảnh chất lượng cao không nén

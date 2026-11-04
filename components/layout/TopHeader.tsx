@@ -115,20 +115,19 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 sm:px-6 gap-4 shadow-sm dark:shadow-none transition-colors duration-200">
-      {/* Mobile Menu Button & App Name */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onToggleMobileMenu}
-          className="md:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
-          title="Mở thanh điều hướng"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Screen Title & Back Button */}
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 sm:px-6 gap-3 sm:gap-4 shadow-sm dark:shadow-none transition-colors duration-200">
+      {/* Screen Title & Back Button (kèm nút Menu mobile khi không có nút Back) */}
       <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+        {!hasBackButton && (
+          <button
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer shrink-0"
+            title="Mở thanh điều hướng"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
         {hasBackButton && (
           <button
             onClick={handleBack}

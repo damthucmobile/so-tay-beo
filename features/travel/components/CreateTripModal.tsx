@@ -72,8 +72,8 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ isOpen, onClos
       const res = await uploadFileToR2(file, { folder: 'travel' });
       setCoverImage(res.publicUrl);
     } catch (err: any) {
-      console.error('Lỗi khi tải ảnh bìa lên R2:', err);
-      alert('Không thể tải ảnh lên Cloudflare R2: ' + (err?.message || 'Lỗi mạng'));
+      console.error('Lỗi khi tải ảnh bìa:', err);
+      alert('Không thể tải ảnh lên: ' + (err?.message || 'Lỗi mạng'));
     } finally {
       setIsUploadingCover(false);
     }
@@ -233,17 +233,17 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ isOpen, onClos
                 <span>Ảnh bìa chuyến đi</span>
               </label>
 
-              {/* Nút tải ảnh lên Cloudflare R2 */}
+              {/* Nút tải ảnh lên */}
               <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 text-xs font-bold cursor-pointer transition">
                 {isUploadingCover ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Đang tải lên R2...</span>
+                    <span>Đang tải ảnh lên...</span>
                   </>
                 ) : (
                   <>
                     <CloudUpload className="w-3.5 h-3.5" />
-                    <span>Tải ảnh từ máy lên R2</span>
+                    <span>Tải ảnh từ thiết bị</span>
                   </>
                 )}
                 <input
