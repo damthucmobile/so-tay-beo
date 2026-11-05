@@ -93,3 +93,12 @@ body {
     line-height: 1.4 !important;
   }
 }
+
+/* Tiện ích ẩn thanh cuộn nhưng vẫn cuộn ngang/dọc mượt mà trên mobile & desktop */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

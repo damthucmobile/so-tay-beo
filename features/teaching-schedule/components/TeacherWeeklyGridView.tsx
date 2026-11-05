@@ -20,6 +20,7 @@ import {
   DEFAULT_PERIOD_TIMES,
   Session,
   TimetableEntry,
+  getEntryTime,
 } from '../types';
 import { getSubjectTheme } from '../utils/subjectColors';
 import { getTodayDayOfWeekVietnamese, timeToMinutes } from '../utils/timetableLiveTracker';
@@ -186,8 +187,9 @@ export const TeacherWeeklyGridView: React.FC<TeacherWeeklyGridViewProps> = ({
                     // Kiểm tra xem tiết này có đang diễn ra ngay bây giờ không
                     let isLive = false;
                     if (isToday && entry) {
-                      const startMin = timeToMinutes(timeConfig.start);
-                      const endMin = timeToMinutes(timeConfig.end);
+                      const entryTime = getEntryTime(entry);
+                      const startMin = timeToMinutes(entryTime.start);
+                      const endMin = timeToMinutes(entryTime.end);
                       if (currentMinutes >= startMin && currentMinutes < endMin) {
                         isLive = true;
                       }
@@ -268,8 +270,9 @@ export const TeacherWeeklyGridView: React.FC<TeacherWeeklyGridViewProps> = ({
 
                     let isLive = false;
                     if (isToday && entry) {
-                      const startMin = timeToMinutes(timeConfig.start);
-                      const endMin = timeToMinutes(timeConfig.end);
+                      const entryTime = getEntryTime(entry);
+                      const startMin = timeToMinutes(entryTime.start);
+                      const endMin = timeToMinutes(entryTime.end);
                       if (currentMinutes >= startMin && currentMinutes < endMin) {
                         isLive = true;
                       }
@@ -376,7 +379,7 @@ const GridPeriodCell: React.FC<GridPeriodCellProps> = ({
         </div>
       )}
 
-      {/* Dòng dưới: Badge Lớp học */}
+      {/* Dòng dưới: Badge Lớp học & Giờ tuỳ chỉnh nếu có */}
       <div className="flex items-center justify-between gap-1 mt-auto">
         <button
           onClick={(e) => {
@@ -389,6 +392,16 @@ const GridPeriodCell: React.FC<GridPeriodCellProps> = ({
           <GraduationCap className="w-3 h-3 text-blue-500 group-hover/btn:text-white transition-colors" />
           <span>{entry.className}</span>
         </button>
+
+        {entry.startTime && entry.endTime && (
+          <span
+            className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1 py-0.2 rounded border border-amber-500/20 shrink-0"
+            title={`Giờ dạy thực tế: ${entry.startTime} - ${entry.endTime}`}
+          >
+            <Clock className="w-2.5 h-2.5 text-amber-500" />
+            <span>{entry.startTime}</span>
+          </span>
+        )}
       </div>
     </div>
   );

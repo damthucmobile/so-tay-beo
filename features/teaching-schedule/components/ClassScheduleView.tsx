@@ -16,7 +16,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { useTeachingScheduleStore } from '../stores/useTeachingScheduleStore';
-import { DAYS_OF_WEEK, DayOfWeek, DEFAULT_PERIOD_TIMES, TimetableEntry } from '../types';
+import { DAYS_OF_WEEK, DayOfWeek, DEFAULT_PERIOD_TIMES, TimetableEntry, getEntryTime } from '../types';
 import { getSubjectTheme } from '../utils/subjectColors';
 import { ClassWeeklyGridView } from './ClassWeeklyGridView';
 import { PrintTimetableModal } from './PrintTimetableModal';
@@ -356,10 +356,7 @@ interface ClassPeriodCardProps {
 
 const ClassPeriodCard: React.FC<ClassPeriodCardProps> = ({ entry, onSelectTeacher }) => {
   const theme = getSubjectTheme(entry.subject);
-  const timeConfig = DEFAULT_PERIOD_TIMES[entry.session]?.[entry.period] || {
-    start: '--:--',
-    end: '--:--',
-  };
+  const timeConfig = getEntryTime(entry);
 
   return (
     <div

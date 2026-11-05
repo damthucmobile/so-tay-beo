@@ -756,6 +756,8 @@ async function handleTeachingScheduleAction(
       if (params.className) updateData.className = params.className;
       if (params.room !== undefined) updateData.room = params.room;
       if (params.note !== undefined) updateData.note = params.note;
+      if (params.startTime !== undefined) updateData.startTime = params.startTime;
+      if (params.endTime !== undefined) updateData.endTime = params.endTime;
 
       const success = await store.updateTimetableEntry(entry.id, updateData, userId);
       if (!success) {
@@ -936,6 +938,8 @@ async function handleTeachingScheduleAction(
       const teacher = params.teacher || store.selectedTeacher || store.myTeacher || 'Giáo viên';
       const room = params.room || '';
       const note = params.note || '';
+      const startTime = params.startTime;
+      const endTime = params.endTime;
 
       const newId = await store.addTimetableEntry(
         {
@@ -947,6 +951,8 @@ async function handleTeachingScheduleAction(
           teacher,
           room,
           note,
+          startTime,
+          endTime,
         },
         userId
       );

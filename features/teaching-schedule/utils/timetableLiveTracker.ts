@@ -1,4 +1,4 @@
-import { DayOfWeek, DEFAULT_PERIOD_TIMES, Session, TimetableEntry } from '../types';
+import { DayOfWeek, DEFAULT_PERIOD_TIMES, Session, TimetableEntry, getEntryTime } from '../types';
 
 export function getTodayDayOfWeekVietnamese(): DayOfWeek | null {
   const day = new Date().getDay(); // 0: CN, 1: T2, 2: T3, 3: T4, 4: T5, 5: T6, 6: T7
@@ -84,10 +84,7 @@ export function calculateLiveScheduleStatus(
   // Tạo danh sách các tiết học kèm mốc phút bắt đầu và kết thúc
   const enrichedEntries = todayEntries
     .map((entry) => {
-      const times = DEFAULT_PERIOD_TIMES[entry.session]?.[entry.period] || {
-        start: entry.session === 'Sáng' ? '07:15' : '13:30',
-        end: entry.session === 'Sáng' ? '08:00' : '14:15',
-      };
+      const times = getEntryTime(entry);
       const startMin = timeToMinutes(times.start);
       const endMin = timeToMinutes(times.end);
       return {

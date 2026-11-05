@@ -269,7 +269,7 @@ export class TeachingReminderService {
     // 3. Kiểm tra nhắc nhở trước giờ vào từng tiết (cửa sổ an toàn 2 phút)
     if (settings.notifyBeforePeriod && todayEntries.length > 0) {
       for (const entry of todayEntries) {
-        const startTime = this.getPeriodStartTime(entry.session, entry.period);
+        const startTime = entry.startTime || this.getPeriodStartTime(entry.session, entry.period);
         const [h, m] = startTime.split(':').map(Number);
         const periodTotalMinutes = h * 60 + m;
 

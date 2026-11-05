@@ -14,6 +14,9 @@ import {
   Layers,
   X,
   Tag,
+  ChevronDown,
+  ChevronUp,
+  BarChart3,
 } from 'lucide-react';
 import { format, addMonths, subMonths, parse } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -126,43 +129,60 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
 
   const isCurrentMonth = selectedMonth === format(new Date(), 'yyyy-MM');
 
-  return (
-    <div className="w-full space-y-6 animate-fadeIn pb-10">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/50">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
-              <Wallet className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Quản Lý Thu - Chi
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Kiểm soát ngân sách, theo dõi dòng tiền và tối ưu tích lũy tài chính
-              </p>
-            </div>
-          </div>
-        </div>
+  const [isOverviewExpanded, setIsOverviewExpanded] = React.useState<boolean>(true);
+  const [isActionMenuOpen, setIsActionMenuOpen] = React.useState<boolean>(false);
+  const actionMenuRef = React.useRef<HTMLDivElement>(null);
 
-        {/* Action Controls & Month Picker */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Month Selector */}
+  // Close action menu on click outside or escape
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        setIsActionMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsActionMenuOpen(false);
+    };
+
+    if (isActionMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isActionMenuOpen]);
+
+  const formatVND = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+  return (
+    <div className="w-full space-y-5 animate-fadeIn pb-10">
+      {/* Top Toolbar: Month Picker & Action Controls (Popup Menu) */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-border/50">
+        {/* Month Selector & Quick "Tháng này" */}
+        <div className="flex items-center gap-2">
           <div className="flex items-center rounded-xl border border-border/60 bg-card p-1 shadow-sm">
             <button
               onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
               title="Tháng trước"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="px-3 text-xs font-semibold text-foreground capitalize min-w-[110px] text-center">
+            <span className="px-3 text-xs font-bold text-foreground capitalize min-w-[110px] text-center">
               {formattedMonthLabel}
             </span>
             <button
               onClick={handleNextMonth}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
               title="Tháng sau"
             >
               <ChevronRight className="h-4 w-4" />
@@ -170,62 +190,205 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
           </div>
 
           {!isCurrentMonth && (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={handleCurrentMonth}
-              className="text-xs h-9"
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-border/70 hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
             >
               Tháng này
-            </Button>
+            </button>
           )}
+        </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openBudgetModal}
-            className="text-xs h-9 gap-1.5"
-          >
-            <Target className="h-4 w-4 text-primary" />
-            <span>Hạn mức</span>
-          </Button>
+        {/* Right Controls: Action Popup Menu duy nhất */}
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Action Popup Menu Button */}
+          <div className="relative" ref={actionMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all cursor-pointer select-none active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Thao tác</span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                  isActionMenuOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
 
-          {/* Nút Ghi Thu Nhập */}
-          <Button
-            size="sm"
-            onClick={() => openCreateModal('income')}
-            className="text-xs h-9 gap-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600"
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            <span>+ Ghi thu</span>
-          </Button>
+            {/* Popup Dropdown Menu - Cố định hiển thị NỔI TRÊN các view khác */}
+            {isActionMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 sm:w-60 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-[80] animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 mb-1">
+                  Thao tác nhanh
+                </div>
 
-          {/* Nút Ghi Chi Tiêu */}
-          <Button
-            size="sm"
-            onClick={() => openCreateModal('expense')}
-            className="text-xs h-9 gap-1.5 shadow-sm"
-          >
-            <ArrowDownRight className="h-4 w-4" />
-            <span>+ Ghi chi</span>
-          </Button>
+                {/* 1. Ghi chi tiêu */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    openCreateModal('expense');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer text-left group"
+                >
+                  <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
+                    <ArrowDownRight className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold leading-tight">+ Ghi chi tiêu</span>
+                    <span className="text-[10px] text-muted-foreground font-normal truncate mt-0.5">
+                      Mua sắm, sinh hoạt, hóa đơn...
+                    </span>
+                  </div>
+                </button>
+
+                {/* 2. Ghi thu nhập */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    openCreateModal('income');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition cursor-pointer text-left group"
+                >
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+                    <ArrowUpRight className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold leading-tight">+ Ghi thu nhập</span>
+                    <span className="text-[10px] text-muted-foreground font-normal truncate mt-0.5">
+                      Lương, thù lao, thưởng...
+                    </span>
+                  </div>
+                </button>
+
+                <div className="h-px bg-border/40 my-1" />
+
+                {/* 3. Cài đặt Hạn mức */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    openBudgetModal();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer text-left group"
+                >
+                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                    <Target className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold leading-tight">Cài đặt hạn mức</span>
+                    <span className="text-[10px] text-muted-foreground font-normal truncate mt-0.5">
+                      Định mức ngân sách chi tiêu tháng
+                    </span>
+                  </div>
+                </button>
+
+                <div className="h-px bg-border/40 my-1" />
+
+                {/* 4. Thu hẹp / Mở rộng Thống kê Tổng quan */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    setIsOverviewExpanded(!isOverviewExpanded);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer text-left group"
+                >
+                  <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform">
+                    <BarChart3 className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold leading-tight">
+                      {isOverviewExpanded ? 'Thu hẹp tổng quan' : 'Mở rộng tổng quan'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-normal truncate mt-0.5">
+                      {isOverviewExpanded ? 'Ẩn 4 thẻ KPI & biểu đồ phân bổ' : 'Hiện 4 thẻ KPI & biểu đồ phân bổ'}
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Overview KPI Cards */}
-      <SpendingOverviewCards
-        stats={stats}
-        onOpenBudgetModal={openBudgetModal}
-        onOpenCreateExpense={() => openCreateModal('expense')}
-        onOpenCreateIncome={() => openCreateModal('income')}
-      />
+      {/* Overview Section: Có thể Thu hẹp hoặc Mở rộng */}
+      {isOverviewExpanded ? (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Overview KPI Cards */}
+          <SpendingOverviewCards
+            stats={stats}
+            onOpenBudgetModal={openBudgetModal}
+            onOpenCreateExpense={() => openCreateModal('expense')}
+            onOpenCreateIncome={() => openCreateModal('income')}
+          />
 
-      {/* Category Breakdown Chart */}
-      <CategoryBreakdown
-        stats={stats}
-        selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-      />
+          {/* Category Breakdown Chart */}
+          <CategoryBreakdown
+            stats={stats}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+        </div>
+      ) : (
+        /* Thanh tóm tắt gọn gàng khi thu hẹp */
+        <div
+          onClick={() => setIsOverviewExpanded(true)}
+          className="flex items-center justify-between gap-2.5 p-2.5 sm:px-4 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 transition-all cursor-pointer shadow-2xs group"
+          title="Bấm để mở rộng chi tiết tổng quan và phân bổ"
+        >
+          {/* Vùng chỉ số cuộn ngang không xuống dòng */}
+          <div className="flex items-center gap-3.5 sm:gap-5 text-xs whitespace-nowrap overflow-x-auto no-scrollbar scroll-smooth flex-1 min-w-0 py-0.5">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="text-muted-foreground">Thu:</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                +{formatVND(stats.totalIncome)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+              <span className="text-muted-foreground">Chi:</span>
+              <span className="font-bold text-rose-600 dark:text-rose-400">
+                -{formatVND(stats.totalExpense)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+              <span className="text-muted-foreground">Số dư:</span>
+              <span
+                className={`font-bold ${
+                  stats.netBalance >= 0
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                }`}
+              >
+                {stats.netBalance >= 0 ? '+' : ''}
+                {formatVND(stats.netBalance)}
+              </span>
+            </div>
+            {stats.monthlyBudget > 0 && (
+              <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
+                <Target className="w-3 h-3 text-primary shrink-0" />
+                <span>Hạn mức:</span>
+                <span className="font-medium text-foreground">
+                  {formatVND(stats.monthlyBudget)} ({stats.percentUsed}%)
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Nút Mở rộng cố định bên phải */}
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:underline shrink-0 pl-2 border-l border-border/50">
+            <span className="hidden sm:inline">Mở rộng chi tiết</span>
+            <span className="sm:hidden">Mở rộng</span>
+            <ChevronDown className="h-3.5 w-3.5 group-hover:translate-y-0.5 transition-transform" />
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="space-y-3 pt-2">

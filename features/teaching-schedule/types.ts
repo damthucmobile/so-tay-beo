@@ -48,6 +48,30 @@ export interface TimetableEntry {
   teacher: string;
   room?: string;
   note?: string;
+  startTime?: string; // Giờ bắt đầu tuỳ chỉnh (vd: '07:00')
+  endTime?: string;   // Giờ kết thúc tuỳ chỉnh (vd: '07:45')
+}
+
+/**
+ * Trả về khung giờ bắt đầu và kết thúc chuẩn của một tiết học.
+ * Ưu tiên giờ tuỳ chỉnh riêng của tiết (startTime/endTime), nếu không có sẽ lấy giờ mặc định.
+ */
+export function getEntryTime(entry?: {
+  session?: Session;
+  period?: number;
+  startTime?: string;
+  endTime?: string;
+}): { start: string; end: string } {
+  if (entry?.startTime && entry?.endTime) {
+    return { start: entry.startTime, end: entry.endTime };
+  }
+  const session: Session = entry?.session || 'Sáng';
+  const period = entry?.period || 1;
+  const def = DEFAULT_PERIOD_TIMES[session]?.[period] || { start: '--:--', end: '--:--' };
+  return {
+    start: entry?.startTime || def.start,
+    end: entry?.endTime || def.end,
+  };
 }
 
 export interface SchoolTimetable {
