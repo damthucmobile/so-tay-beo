@@ -22,6 +22,8 @@ import {
   CalendarDays,
   ChevronDown,
   MoreVertical,
+  Pencil,
+  Plus,
 } from 'lucide-react';
 import { useTeachingScheduleStore } from '../stores/useTeachingScheduleStore';
 import { DAYS_OF_WEEK, DayOfWeek, DEFAULT_PERIOD_TIMES, Session, TimetableEntry } from '../types';
@@ -29,6 +31,7 @@ import { getSubjectTheme } from '../utils/subjectColors';
 import { LiveScheduleTrackerBanner } from './LiveScheduleTrackerBanner';
 import { TeacherWeeklyGridView } from './TeacherWeeklyGridView';
 import { PrintTimetableModal } from './PrintTimetableModal';
+import { EditPeriodModal } from './EditPeriodModal';
 import { getTodayDayOfWeekVietnamese } from '../utils/timetableLiveTracker';
 
 export const TeacherScheduleView: React.FC = () => {
@@ -51,6 +54,31 @@ export const TeacherScheduleView: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // State Modal chỉnh sửa / thêm mới tiết học
+  const [editingEntry, setEditingEntry] = useState<TimetableEntry | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editModalDefaults, setEditModalDefaults] = useState<{
+    day?: DayOfWeek;
+    session?: Session;
+    period?: number;
+  }>({});
+
+  const handleOpenEdit = (entry: TimetableEntry) => {
+    setEditingEntry(entry);
+    setEditModalDefaults({
+      day: entry.dayOfWeek,
+      session: entry.session,
+      period: entry.period,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenAddNew = (defaults?: { day?: DayOfWeek; session?: Session; period?: number }) => {
+    setEditingEntry(null);
+    setEditModalDefaults(defaults || { day: selectedDay, session: 'Sáng', period: 1 });
+    setIsEditModalOpen(true);
+  };
 
   const todayDayOfWeek = useMemo(() => getTodayDayOfWeekVietnamese(), []);
 
@@ -501,6 +529,17 @@ export const TeacherScheduleView: React.FC = () => {
               )}
             </div>
 
+            {/* Nút Thêm Tiết Dạy */}
+            <button
+              onClick={() => handleOpenAddNew()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shrink-0 shadow-xs"
+              title="Thêm tiết dạy mới hoặc tiết dạy bù"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Thêm tiết</span>
+              <span className="sm:hidden text-[11px]">Thêm</span>
+            </button>
+
             {/* Nút In & Xuất TKB */}
             <button
               onClick={handlePrint}
@@ -565,6 +604,8 @@ export const TeacherScheduleView: React.FC = () => {
             setSelectedDay(day);
             setDisplayMode('agenda');
           }}
+          onEditEntry={handleOpenEdit}
+          onAddEntry={handleOpenAddNew}
         />
       ) : (
         /* CHẾ ĐỘ XEM THEO NGÀY (AGENDA) */
@@ -624,17 +665,38 @@ export const TeacherScheduleView: React.FC = () => {
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                 Thầy/Cô {selectedTeacher} không có lịch lên lớp vào {selectedDay}. Thư thả chuẩn bị giáo án hoặc nghỉ ngơi.
               </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenAddNew({ day: selectedDay, session: 'Sáng', period: 1 })}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm tiết học vào Thứ {selectedDay}</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Buổi Sáng */}
               {morningEntries.length > 0 && (
                 <div className="space-y-2.5">
-                  <div className="flex items-center gap-2 px-1">
-                    <Sun className="w-4 h-4 text-amber-500" />
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                      Buổi Sáng ({morningEntries.length} tiết)
-                    </h4>
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <Sun className="w-4 h-4 text-amber-500" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                        Buổi Sáng ({morningEntries.length} tiết)
+                      </h4>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAddNew({ day: selectedDay, session: 'Sáng', period: morningEntries.length + 1 <= 5 ? morningEntries.length + 1 : 5 })}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Thêm tiết sáng</span>
+                    </button>
                   </div>
 
                   <div className="space-y-2">
@@ -646,6 +708,7 @@ export const TeacherScheduleView: React.FC = () => {
                           setSelectedClass(cls);
                           setViewMode('class');
                         }}
+                        onEdit={handleOpenEdit}
                       />
                     ))}
                   </div>
@@ -655,11 +718,22 @@ export const TeacherScheduleView: React.FC = () => {
               {/* Buổi Chiều */}
               {afternoonEntries.length > 0 && (
                 <div className="space-y-2.5 pt-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <Moon className="w-4 h-4 text-indigo-500" />
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                      Buổi Chiều ({afternoonEntries.length} tiết)
-                    </h4>
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <Moon className="w-4 h-4 text-indigo-500" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                        Buổi Chiều ({afternoonEntries.length} tiết)
+                      </h4>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAddNew({ day: selectedDay, session: 'Chiều', period: afternoonEntries.length + 1 <= 5 ? afternoonEntries.length + 1 : 1 })}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Thêm tiết chiều</span>
+                    </button>
                   </div>
 
                   <div className="space-y-2">
@@ -671,6 +745,7 @@ export const TeacherScheduleView: React.FC = () => {
                           setSelectedClass(cls);
                           setViewMode('class');
                         }}
+                        onEdit={handleOpenEdit}
                       />
                     ))}
                   </div>
@@ -692,6 +767,16 @@ export const TeacherScheduleView: React.FC = () => {
         entries={teacherAllEntries}
         subjects={teacherSubjects}
       />
+
+      {/* Modal Chỉnh Sửa / Thêm Mới Tiết Dạy */}
+      <EditPeriodModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        entry={editingEntry}
+        defaultDay={editModalDefaults.day}
+        defaultSession={editModalDefaults.session}
+        defaultPeriod={editModalDefaults.period}
+      />
     </div>
   );
 };
@@ -699,9 +784,10 @@ export const TeacherScheduleView: React.FC = () => {
 interface PeriodCardProps {
   entry: TimetableEntry;
   onSelectClass: (className: string) => void;
+  onEdit?: (entry: TimetableEntry) => void;
 }
 
-const PeriodCard: React.FC<PeriodCardProps> = ({ entry, onSelectClass }) => {
+const PeriodCard: React.FC<PeriodCardProps> = ({ entry, onSelectClass, onEdit }) => {
   const theme = getSubjectTheme(entry.subject);
   const timeConfig = DEFAULT_PERIOD_TIMES[entry.session]?.[entry.period] || {
     start: '--:--',
@@ -722,11 +808,18 @@ const PeriodCard: React.FC<PeriodCardProps> = ({ entry, onSelectClass }) => {
         </div>
 
         <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${theme.bg} ${theme.text}`}>
               {entry.subject}
             </span>
+
+            {entry.note && (
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 italic">
+                {entry.note}
+              </span>
+            )}
           </div>
+
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
             <Clock className="w-3 h-3 text-slate-400" />
             <span className="font-mono">
@@ -742,16 +835,28 @@ const PeriodCard: React.FC<PeriodCardProps> = ({ entry, onSelectClass }) => {
         </div>
       </div>
 
-      {/* Cột phải: Badge Lớp học */}
-      <button
-        onClick={() => onSelectClass(entry.className)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-950/50 text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 transition cursor-pointer text-xs font-bold group shrink-0"
-        title={`Xem thời khóa biểu lớp ${entry.className}`}
-      >
-        <GraduationCap className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
-        <span>Lớp {entry.className}</span>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-      </button>
+      {/* Cột phải: Badge Lớp học & Nút Chỉnh sửa */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          onClick={() => onSelectClass(entry.className)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-950/50 text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 transition cursor-pointer text-xs font-bold group shrink-0"
+          title={`Xem thời khóa biểu lớp ${entry.className}`}
+        >
+          <GraduationCap className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
+          <span>Lớp {entry.className}</span>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+
+        {onEdit && (
+          <button
+            onClick={() => onEdit(entry)}
+            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/60 dark:border-slate-700 transition cursor-pointer"
+            title="Chỉnh sửa tiết học này"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 };

@@ -19,6 +19,7 @@ import { ClassEntity, ClassStudentEntity } from '@/features/class/types';
 import { saveAppointment, deleteAppointment, saveCustomer } from '@/features/schedule/services/scheduleService';
 import { Appointment, Customer } from '@/features/schedule/types';
 import { useTeachingScheduleStore } from '@/features/teaching-schedule/stores/useTeachingScheduleStore';
+import { DayOfWeek, Session, TimetableEntry } from '@/features/teaching-schedule/types';
 import { useSpendingStore } from '@/features/spending/stores/useSpendingStore';
 import { ExpenseItem, ExpenseCategory, EXPENSE_CATEGORIES } from '@/features/spending/types';
 import { getDb, COLLECTIONS, auth } from '@/core/firebase';
@@ -48,6 +49,11 @@ export type AgentActionType =
   // 4. Lịch dạy học (TKB)
   | 'SET_MY_TEACHER'
   | 'UPDATE_PERIOD_NOTE'
+  | 'UPDATE_TIMETABLE_ENTRY'
+  | 'SWAP_TIMETABLE_ENTRIES'
+  | 'MOVE_TIMETABLE_ENTRY'
+  | 'DELETE_TIMETABLE_ENTRY'
+  | 'ADD_TIMETABLE_ENTRY'
   // 5. Quản lý Thu - Chi Đời sống
   | 'CREATE_EXPENSE'
   | 'CREATE_INCOME'
@@ -621,6 +627,64 @@ async function handleScheduleAction(
 
 // =============================================================================
 // 4. HANDLER: THỜI KHÓA BIỂU & GIÁO VIÊN (TEACHING SCHEDULE)
+function parseDayOfWeek(val: any): DayOfWeek {
+  if (!val) return 'Hai';
+  const str = String(val).toLowerCase().replace(/thứ|\s|t/g, '');
+  if (str.includes('hai') || str === '2') return 'Hai';
+  if (str.includes('ba') || str === '3') return 'Ba';
+  if (str.includes('tư') || str.includes('tu') || str.includes('bốn') || str.includes('bon') || str === '4') return 'Tư';
+  if (str.includes('năm') || str.includes('nam') || str === '5') return 'Năm';
+  if (str.includes('sáu') || str.includes('sau') || str === '6') return 'Sáu';
+  if (str.includes('bảy') || str.includes('bay') || str === '7') return 'Bảy';
+  return 'Hai';
+}
+
+function parseSession(val: any, period?: number): Session {
+  if (val) {
+    const str = String(val).toLowerCase();
+    if (str.includes('chiều') || str.includes('chieu') || str.includes('pm') || str.includes('afternoon')) return 'Chiều';
+    if (str.includes('sáng') || str.includes('sang') || str.includes('am') || str.includes('morning')) return 'Sáng';
+  }
+  return 'Sáng';
+}
+
+function findMatchingTimetableEntry(
+  entries: TimetableEntry[],
+  criteria: {
+    entryId?: string;
+    dayOfWeek?: any;
+    period?: any;
+    session?: any;
+    className?: string;
+    teacher?: string;
+    subject?: string;
+  }
+): TimetableEntry | undefined {
+  if (criteria.entryId) {
+    const direct = entries.find((e) => e.id === criteria.entryId);
+    if (direct) return direct;
+  }
+
+  const targetDay = criteria.dayOfWeek ? parseDayOfWeek(criteria.dayOfWeek) : undefined;
+  const targetPeriod = criteria.period !== undefined ? Number(criteria.period) : undefined;
+  const targetSession = criteria.session ? parseSession(criteria.session) : undefined;
+  const targetClass = criteria.className ? criteria.className.toLowerCase().trim() : undefined;
+  const targetTeacher = criteria.teacher ? criteria.teacher.toLowerCase().trim() : undefined;
+  const targetSubject = criteria.subject ? criteria.subject.toLowerCase().trim() : undefined;
+
+  return entries.find((e) => {
+    if (targetDay && e.dayOfWeek !== targetDay) return false;
+    if (targetPeriod !== undefined && e.period !== targetPeriod) return false;
+    if (targetSession && e.session !== targetSession) return false;
+    if (targetClass && !e.className.toLowerCase().includes(targetClass)) return false;
+    if (targetTeacher && !e.teacher.toLowerCase().includes(targetTeacher)) return false;
+    if (targetSubject && !e.subject.toLowerCase().includes(targetSubject)) return false;
+    return true;
+  });
+}
+
+// =============================================================================
+// 4. HANDLER: THỜI KHÓA BIỂU & GIÁO VIÊN (TEACHING SCHEDULE)
 // =============================================================================
 async function handleTeachingScheduleAction(
   command: AgentActionCommand,
@@ -628,6 +692,7 @@ async function handleTeachingScheduleAction(
 ): Promise<AgentActionResult> {
   const { action, params } = command;
   const store = useTeachingScheduleStore.getState();
+  const timetable = store.timetable;
 
   switch (action) {
     case 'SET_MY_TEACHER': {
@@ -655,6 +720,250 @@ async function handleTeachingScheduleAction(
         success: true,
         action,
         message: `Đã ghi nhận lưu ý cho tiết dạy: "${params.note || params.message}".`,
+      };
+    }
+
+    case 'UPDATE_TIMETABLE_ENTRY': {
+      if (!timetable) {
+        return {
+          success: false,
+          action,
+          message: 'Chưa có dữ liệu Thời khóa biểu để chỉnh sửa. Vui lòng import TKB trước.',
+        };
+      }
+
+      const entry = findMatchingTimetableEntry(timetable.entries, {
+        entryId: params.entryId || params.id,
+        dayOfWeek: params.dayOfWeek || params.day,
+        period: params.period,
+        session: params.session,
+        className: params.className || params.class,
+        teacher: params.currentTeacher || store.selectedTeacher,
+        subject: params.currentSubject,
+      });
+
+      if (!entry) {
+        return {
+          success: false,
+          action,
+          message: `Không tìm thấy tiết học phù hợp (Thứ ${params.dayOfWeek || '?'}, Tiết ${params.period || '?'}, Lớp ${params.className || '?'}) để chỉnh sửa.`,
+        };
+      }
+
+      const updateData: Partial<TimetableEntry> = params.update || {};
+      if (params.teacher) updateData.teacher = params.teacher;
+      if (params.subject) updateData.subject = params.subject;
+      if (params.className) updateData.className = params.className;
+      if (params.room !== undefined) updateData.room = params.room;
+      if (params.note !== undefined) updateData.note = params.note;
+
+      const success = await store.updateTimetableEntry(entry.id, updateData, userId);
+      if (!success) {
+        return {
+          success: false,
+          action,
+          message: 'Không thể cập nhật tiết dạy do lỗi hệ thống.',
+        };
+      }
+
+      const teacherDesc = updateData.teacher ? ` • Giáo viên mới: **${updateData.teacher}**` : '';
+      const subjectDesc = updateData.subject ? ` • Môn: **${updateData.subject}**` : '';
+      const noteDesc = updateData.note ? ` • Ghi chú: *${updateData.note}*` : '';
+
+      return {
+        success: true,
+        action,
+        message: `Đã cập nhật Tiết ${entry.period} Thứ ${entry.dayOfWeek} (Lớp ${entry.className})${teacherDesc}${subjectDesc}${noteDesc} thành công!`,
+        data: { id: entry.id, ...updateData },
+      };
+    }
+
+    case 'MOVE_TIMETABLE_ENTRY': {
+      if (!timetable) {
+        return {
+          success: false,
+          action,
+          message: 'Chưa có dữ liệu Thời khóa biểu để di chuyển tiết dạy.',
+        };
+      }
+
+      const entry = findMatchingTimetableEntry(timetable.entries, {
+        entryId: params.entryId || params.id,
+        dayOfWeek: params.fromDay || params.dayOfWeek || params.day,
+        period: params.fromPeriod !== undefined ? params.fromPeriod : params.period,
+        session: params.fromSession || params.session,
+        className: params.className || params.class,
+        teacher: params.teacher || store.selectedTeacher,
+      });
+
+      if (!entry) {
+        return {
+          success: false,
+          action,
+          message: `Không tìm thấy tiết học gốc để di chuyển.`,
+        };
+      }
+
+      const toDay = parseDayOfWeek(params.toDay || params.targetDay || entry.dayOfWeek);
+      const toPeriod = Number(params.toPeriod !== undefined ? params.toPeriod : params.targetPeriod || entry.period);
+      const toSession = parseSession(params.toSession || params.targetSession || entry.session, toPeriod);
+
+      const success = await store.moveTimetableEntry(
+        entry.id,
+        { dayOfWeek: toDay, session: toSession, period: toPeriod },
+        userId
+      );
+
+      if (!success) {
+        return {
+          success: false,
+          action,
+          message: 'Không thể di chuyển tiết học do lỗi cập nhật dữ liệu.',
+        };
+      }
+
+      return {
+        success: true,
+        action,
+        message: `Đã chuyển Tiết ${entry.period} Thứ ${entry.dayOfWeek} (Lớp ${entry.className}, môn ${entry.subject}) sang **Tiết ${toPeriod} Thứ ${toDay} (${toSession})** thành công!`,
+      };
+    }
+
+    case 'SWAP_TIMETABLE_ENTRIES': {
+      if (!timetable) {
+        return {
+          success: false,
+          action,
+          message: 'Chưa có dữ liệu Thời khóa biểu.',
+        };
+      }
+
+      const firstParams = params.first || {
+        dayOfWeek: params.day1,
+        period: params.period1,
+        className: params.class1,
+      };
+      const secondParams = params.second || {
+        dayOfWeek: params.day2,
+        period: params.period2,
+        className: params.class2,
+      };
+
+      const e1 = findMatchingTimetableEntry(timetable.entries, firstParams);
+      const e2 = findMatchingTimetableEntry(timetable.entries, secondParams);
+
+      if (!e1 || !e2) {
+        return {
+          success: false,
+          action,
+          message: `Không tìm thấy đủ 2 tiết học cần đổi chéo vị trí.`,
+        };
+      }
+
+      const success = await store.swapTimetableEntries(e1.id, e2.id, userId);
+      if (!success) {
+        return {
+          success: false,
+          action,
+          message: 'Lỗi khi thực hiện hoán đổi 2 tiết dạy.',
+        };
+      }
+
+      return {
+        success: true,
+        action,
+        message: `Đã đổi chéo thành công: **Tiết ${e1.period} Thứ ${e1.dayOfWeek} (Lớp ${e1.className})** ⇄ **Tiết ${e2.period} Thứ ${e2.dayOfWeek} (Lớp ${e2.className})**!`,
+      };
+    }
+
+    case 'DELETE_TIMETABLE_ENTRY': {
+      if (!timetable) {
+        return {
+          success: false,
+          action,
+          message: 'Chưa có dữ liệu Thời khóa biểu.',
+        };
+      }
+
+      const entry = findMatchingTimetableEntry(timetable.entries, {
+        entryId: params.entryId || params.id,
+        dayOfWeek: params.dayOfWeek || params.day,
+        period: params.period,
+        session: params.session,
+        className: params.className || params.class,
+        teacher: params.teacher,
+        subject: params.subject,
+      });
+
+      if (!entry) {
+        return {
+          success: false,
+          action,
+          message: `Không tìm thấy tiết học cần xóa/hủy.`,
+        };
+      }
+
+      const success = await store.deleteTimetableEntry(entry.id, userId);
+      if (!success) {
+        return {
+          success: false,
+          action,
+          message: 'Lỗi khi xóa tiết học.',
+        };
+      }
+
+      return {
+        success: true,
+        action,
+        message: `Đã hủy/xóa **Tiết ${entry.period} Thứ ${entry.dayOfWeek} (Lớp ${entry.className}, môn ${entry.subject})** khỏi thời khóa biểu!`,
+      };
+    }
+
+    case 'ADD_TIMETABLE_ENTRY': {
+      if (!timetable) {
+        return {
+          success: false,
+          action,
+          message: 'Chưa có dữ liệu Thời khóa biểu. Vui lòng import TKB trước khi thêm tiết.',
+        };
+      }
+
+      const dayOfWeek = parseDayOfWeek(params.dayOfWeek || params.day);
+      const period = Number(params.period || 1);
+      const session = parseSession(params.session, period);
+      const className = params.className || params.class || 'Lớp mới';
+      const subject = params.subject || 'Môn học';
+      const teacher = params.teacher || store.selectedTeacher || store.myTeacher || 'Giáo viên';
+      const room = params.room || '';
+      const note = params.note || '';
+
+      const newId = await store.addTimetableEntry(
+        {
+          dayOfWeek,
+          session,
+          period,
+          className,
+          subject,
+          teacher,
+          room,
+          note,
+        },
+        userId
+      );
+
+      if (!newId) {
+        return {
+          success: false,
+          action,
+          message: 'Lỗi khi thêm tiết học vào thời khóa biểu.',
+        };
+      }
+
+      return {
+        success: true,
+        action,
+        message: `Đã thêm mới thành công: **Tiết ${period} Thứ ${dayOfWeek} (${session}) - Lớp ${className} (Môn: ${subject}, GV: ${teacher})**!`,
+        data: { id: newId },
       };
     }
 
@@ -1125,7 +1434,15 @@ export async function executeAgentAction(
     }
 
     // 4. Phân hệ Lịch dạy học (TKB)
-    if (action === 'SET_MY_TEACHER' || action === 'UPDATE_PERIOD_NOTE') {
+    if (
+      action === 'SET_MY_TEACHER' ||
+      action === 'UPDATE_PERIOD_NOTE' ||
+      action === 'UPDATE_TIMETABLE_ENTRY' ||
+      action === 'SWAP_TIMETABLE_ENTRIES' ||
+      action === 'MOVE_TIMETABLE_ENTRY' ||
+      action === 'DELETE_TIMETABLE_ENTRY' ||
+      action === 'ADD_TIMETABLE_ENTRY'
+    ) {
       return await handleTeachingScheduleAction(command, effectiveUserId);
     }
 

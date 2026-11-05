@@ -11,6 +11,8 @@ import {
   Calendar,
   Flame,
   ChevronRight,
+  Pencil,
+  Plus,
 } from 'lucide-react';
 import {
   DAYS_OF_WEEK,
@@ -27,6 +29,8 @@ interface TeacherWeeklyGridViewProps {
   teacherName: string;
   onSelectClass?: (className: string) => void;
   onSelectDay?: (day: DayOfWeek) => void;
+  onEditEntry?: (entry: TimetableEntry) => void;
+  onAddEntry?: (defaults: { day: DayOfWeek; session: Session; period: number }) => void;
 }
 
 export const TeacherWeeklyGridView: React.FC<TeacherWeeklyGridViewProps> = ({
@@ -34,6 +38,8 @@ export const TeacherWeeklyGridView: React.FC<TeacherWeeklyGridViewProps> = ({
   teacherName,
   onSelectClass,
   onSelectDay,
+  onEditEntry,
+  onAddEntry,
 }) => {
   const todayDayOfWeek = useMemo(() => getTodayDayOfWeekVietnamese(), []);
 
@@ -199,11 +205,17 @@ export const TeacherWeeklyGridView: React.FC<TeacherWeeklyGridViewProps> = ({
                             entry={entry}
                             isLive={isLive}
                             onSelectClass={onSelectClass}
+                            onEditEntry={onEditEntry}
                           />
                         ) : (
-                          <div className="h-full min-h-[52px] sm:min-h-[58px] flex items-center justify-center rounded-xl text-slate-300 dark:text-slate-700 hover:text-slate-400 text-xs font-medium">
-                            -
-                          </div>
+                          <button
+                            onClick={() => onAddEntry?.({ day: d.id, session: 'Sáng', period })}
+                            className="w-full h-full min-h-[52px] sm:min-h-[58px] flex items-center justify-center rounded-xl text-slate-300 dark:text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 dark:hover:bg-blue-950/30 text-xs font-medium transition cursor-pointer group"
+                            title={`Thêm tiết vào Thứ ${d.id} Tiết ${period} (Sáng)`}
+                          >
+                            <span className="group-hover:hidden">-</span>
+                            <Plus className="w-4 h-4 hidden group-hover:block text-blue-500" />
+                          </button>
                         )}
                       </td>
                     );
@@ -275,11 +287,17 @@ export const TeacherWeeklyGridView: React.FC<TeacherWeeklyGridViewProps> = ({
                             entry={entry}
                             isLive={isLive}
                             onSelectClass={onSelectClass}
+                            onEditEntry={onEditEntry}
                           />
                         ) : (
-                          <div className="h-full min-h-[52px] sm:min-h-[58px] flex items-center justify-center rounded-xl text-slate-300 dark:text-slate-700 hover:text-slate-400 text-xs font-medium">
-                            -
-                          </div>
+                          <button
+                            onClick={() => onAddEntry?.({ day: d.id, session: 'Chiều', period })}
+                            className="w-full h-full min-h-[52px] sm:min-h-[58px] flex items-center justify-center rounded-xl text-slate-300 dark:text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 dark:hover:bg-blue-950/30 text-xs font-medium transition cursor-pointer group"
+                            title={`Thêm tiết vào Thứ ${d.id} Tiết ${period} (Chiều)`}
+                          >
+                            <span className="group-hover:hidden">-</span>
+                            <Plus className="w-4 h-4 hidden group-hover:block text-blue-500" />
+                          </button>
                         )}
                       </td>
                     );
@@ -298,18 +316,21 @@ interface GridPeriodCellProps {
   entry: TimetableEntry;
   isLive?: boolean;
   onSelectClass?: (className: string) => void;
+  onEditEntry?: (entry: TimetableEntry) => void;
 }
 
 const GridPeriodCell: React.FC<GridPeriodCellProps> = ({
   entry,
   isLive,
   onSelectClass,
+  onEditEntry,
 }) => {
   const theme = getSubjectTheme(entry.subject);
 
   return (
     <div
-      className={`group relative rounded-xl p-2 sm:p-2.5 transition-all duration-200 border shadow-xs hover:shadow-md flex flex-col justify-between gap-1.5 min-h-[56px] sm:min-h-[62px] ${
+      onClick={() => onEditEntry?.(entry)}
+      className={`group relative rounded-xl p-2 sm:p-2.5 transition-all duration-200 border shadow-xs hover:shadow-md flex flex-col justify-between gap-1.5 min-h-[56px] sm:min-h-[62px] cursor-pointer ${
         theme.bg
       } ${theme.border} ${
         isLive
@@ -325,7 +346,7 @@ const GridPeriodCell: React.FC<GridPeriodCellProps> = ({
         </span>
       )}
 
-      {/* Dòng trên: Tên Môn học */}
+      {/* Dòng trên: Tên Môn học & Nút sửa */}
       <div className="flex items-start justify-between gap-1">
         <span
           className={`text-xs sm:text-[13px] font-semibold leading-tight line-clamp-2 ${theme.text}`}
@@ -333,7 +354,27 @@ const GridPeriodCell: React.FC<GridPeriodCellProps> = ({
         >
           {entry.subject}
         </span>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditEntry?.(entry);
+          }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 transition cursor-pointer shrink-0"
+          title="Sửa tiết học"
+        >
+          <Pencil className="w-3 h-3" />
+        </button>
       </div>
+
+      {/* Ghi chú hoặc Giáo viên dạy thay nếu có */}
+      {(entry.note || entry.room) && (
+        <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+          {entry.room && <span>P.{entry.room}</span>}
+          {entry.room && entry.note && <span>•</span>}
+          {entry.note && <span className="italic truncate">{entry.note}</span>}
+        </div>
+      )}
 
       {/* Dòng dưới: Badge Lớp học */}
       <div className="flex items-center justify-between gap-1 mt-auto">
@@ -348,15 +389,6 @@ const GridPeriodCell: React.FC<GridPeriodCellProps> = ({
           <GraduationCap className="w-3 h-3 text-blue-500 group-hover/btn:text-white transition-colors" />
           <span>{entry.className}</span>
         </button>
-
-        {entry.room && (
-          <span
-            className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[60px]"
-            title={`Phòng: ${entry.room}`}
-          >
-            P.{entry.room}
-          </span>
-        )}
       </div>
     </div>
   );

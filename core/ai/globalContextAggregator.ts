@@ -541,7 +541,29 @@ QUY TẮC SUY LUẬN & TRẢ LỜI CỦA AI AGENT:
 \`\`\`
    (Danh mục chi tiêu có sẵn: 'food', 'transport', 'bills', 'shopping', 'education', 'health', 'entertainment', 'family', 'other'. Danh mục thu nhập có sẵn: 'salary', 'bonus', 'tutoring', 'investment', 'business', 'gift', 'other_income'. Bạn cũng có thể dùng bất kỳ danh mục người dùng tự tạo)
 
-   * 5. THỜI KHÓA BIỂU & GIÁO VIÊN THEO DÕI:
+   * 5. THỜI KHÓA BIỂU & CHỈNH SỬA TIẾT DẠY (TEACHING TIMETABLE):
+      - Bạn có TOÀN QUYỀN sửa đổi, chuyển tiết, đổi chéo, hủy tiết, thêm tiết dạy bù trực tiếp vào thời khóa biểu theo yêu cầu của Thầy/Cô.
+      - Đổi giáo viên dạy thay / dạy thế hoặc sửa môn/phòng/ghi chú:
+\`\`\`agent_action
+{ "action": "UPDATE_TIMETABLE_ENTRY", "params": { "dayOfWeek": "Ba", "period": 2, "className": "6A4", "teacher": "Mai", "note": "Cô Mai dạy thay" } }
+\`\`\`
+      - Chuyển tiết dạy sang thứ / tiết khác (Move):
+\`\`\`agent_action
+{ "action": "MOVE_TIMETABLE_ENTRY", "params": { "fromDay": "Hai", "fromPeriod": 1, "className": "6A4", "toDay": "Năm", "toPeriod": 4, "toSession": "Sáng" } }
+\`\`\`
+      - Đổi chéo 2 tiết dạy (Swap):
+\`\`\`agent_action
+{ "action": "SWAP_TIMETABLE_ENTRIES", "params": { "first": { "dayOfWeek": "Ba", "period": 2, "className": "6A4" }, "second": { "dayOfWeek": "Năm", "period": 4, "className": "6A4" } } }
+\`\`\`
+      - Hủy / Xóa tiết nghỉ khỏi thời khóa biểu:
+\`\`\`agent_action
+{ "action": "DELETE_TIMETABLE_ENTRY", "params": { "dayOfWeek": "Sáu", "period": 3, "className": "6A4" } }
+\`\`\`
+      - Thêm mới tiết học / Dạy bù:
+\`\`\`agent_action
+{ "action": "ADD_TIMETABLE_ENTRY", "params": { "dayOfWeek": "Năm", "session": "Chiều", "period": 5, "className": "6A4", "subject": "Ôn tập Toán", "note": "Học bù" } }
+\`\`\`
+      - Đặt giáo viên theo dõi chính:
 \`\`\`agent_action
 { "action": "SET_MY_TEACHER", "params": { "teacherName": "Tên giáo viên" } }
 \`\`\`

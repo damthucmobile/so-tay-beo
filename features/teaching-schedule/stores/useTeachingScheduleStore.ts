@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SchoolTimetable, DayOfWeek, TeachingScheduleViewMode } from '../types';
+import { SchoolTimetable, DayOfWeek, TeachingScheduleViewMode, TimetableEntry, Session } from '../types';
 import {
   subscribeToSchoolTimetables,
   saveSchoolTimetable,
@@ -9,6 +9,21 @@ import {
 const STORAGE_KEY = 'so_tay_beo_teaching_schedule_v1';
 const PREFS_KEY = 'so_tay_beo_teaching_prefs_v2';
 const OLD_PREFS_KEY = 'so_tay_beo_teaching_prefs_v1';
+
+// Tự động tính toán lại các danh sách tổng hợp (giáo viên, lớp, môn, tổng số tiết) khi có chỉnh sửa
+function recomputeTimetableMetadata(timetable: SchoolTimetable): SchoolTimetable {
+  const teachers = Array.from(new Set(timetable.entries.map((e) => e.teacher).filter(Boolean))).sort();
+  const classes = Array.from(new Set(timetable.entries.map((e) => e.className).filter(Boolean))).sort();
+  const subjects = Array.from(new Set(timetable.entries.map((e) => e.subject).filter(Boolean))).sort();
+  return {
+    ...timetable,
+    teachers,
+    classes,
+    subjects,
+    totalEntries: timetable.entries.length,
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 // Xác định thứ hiện tại trong tuần (1 = Thứ 2 ... 5 = Thứ 6)
 function getTodayDayOfWeek(): DayOfWeek {
@@ -65,6 +80,14 @@ interface TeachingScheduleState {
   setIsImportModalOpen: (open: boolean) => void;
   setSelectedTimetable: (timetableId: string) => void;
   initStore: (userId?: string) => () => void;
+
+  // Mutation actions (Chỉnh sửa TKB trực tiếp hoặc qua AI Agent)
+  updateTimetableEntry: (entryId: string, updates: Partial<TimetableEntry>, userId?: string) => Promise<boolean>;
+  swapTimetableEntries: (entry1Id: string, entry2Id: string, userId?: string) => Promise<boolean>;
+  moveTimetableEntry: (entryId: string, target: { dayOfWeek: DayOfWeek; session: Session; period: number }, userId?: string) => Promise<boolean>;
+  deleteTimetableEntry: (entryId: string, userId?: string) => Promise<boolean>;
+  addTimetableEntry: (entry: Omit<TimetableEntry, 'id'>, userId?: string) => Promise<string | null>;
+  saveUpdatedTimetable: (updatedTimetable: SchoolTimetable, userId?: string) => Promise<void>;
 }
 
 export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get) => ({
@@ -461,4 +484,162 @@ export const useTeachingScheduleStore = create<TeachingScheduleState>((set, get)
 
   setSearchQuery: (query: string) => set({ searchQuery: query }),
   setIsImportModalOpen: (open: boolean) => set({ isImportModalOpen: open }),
+
+  // ---------------------------------------------------------------------------
+  // THAO TÁC CẬP NHẬT & CHỈNH SỬA THỜI KHÓA BIỂU
+  // ---------------------------------------------------------------------------
+  saveUpdatedTimetable: async (updatedTimetable: SchoolTimetable, userId?: string) => {
+    set({ timetable: updatedTimetable });
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimetable));
+      } catch (e) {
+        console.warn('Lỗi lưu TKB vào localStorage:', e);
+      }
+    }
+    const targetUserId = userId || updatedTimetable.userId;
+    if (targetUserId) {
+      try {
+        await saveSchoolTimetable(updatedTimetable, targetUserId);
+      } catch (e) {
+        console.error('Lỗi lưu TKB cập nhật lên Firebase:', e);
+      }
+    }
+  },
+
+  updateTimetableEntry: async (entryId: string, updates: Partial<TimetableEntry>, userId?: string): Promise<boolean> => {
+    const current = get().timetable;
+    if (!current) return false;
+    const index = current.entries.findIndex((e) => e.id === entryId);
+    if (index === -1) return false;
+
+    const newEntries = [...current.entries];
+    newEntries[index] = { ...newEntries[index], ...updates };
+
+    const updatedTimetable = recomputeTimetableMetadata({
+      ...current,
+      entries: newEntries,
+    });
+
+    await get().saveUpdatedTimetable(updatedTimetable, userId);
+    return true;
+  },
+
+  swapTimetableEntries: async (entry1Id: string, entry2Id: string, userId?: string): Promise<boolean> => {
+    const current = get().timetable;
+    if (!current) return false;
+    const idx1 = current.entries.findIndex((e) => e.id === entry1Id);
+    const idx2 = current.entries.findIndex((e) => e.id === entry2Id);
+    if (idx1 === -1 || idx2 === -1) return false;
+
+    const newEntries = [...current.entries];
+    const e1 = newEntries[idx1];
+    const e2 = newEntries[idx2];
+
+    newEntries[idx1] = {
+      ...e1,
+      dayOfWeek: e2.dayOfWeek,
+      session: e2.session,
+      period: e2.period,
+    };
+    newEntries[idx2] = {
+      ...e2,
+      dayOfWeek: e1.dayOfWeek,
+      session: e1.session,
+      period: e1.period,
+    };
+
+    const updatedTimetable = recomputeTimetableMetadata({
+      ...current,
+      entries: newEntries,
+    });
+
+    await get().saveUpdatedTimetable(updatedTimetable, userId);
+    return true;
+  },
+
+  moveTimetableEntry: async (
+    entryId: string,
+    target: { dayOfWeek: DayOfWeek; session: Session; period: number },
+    userId?: string
+  ): Promise<boolean> => {
+    const current = get().timetable;
+    if (!current) return false;
+    const idx = current.entries.findIndex((e) => e.id === entryId);
+    if (idx === -1) return false;
+
+    const newEntries = [...current.entries];
+    // Nếu tại ô đích đã có tiết học của cùng lớp hoặc cùng giáo viên -> hoán đổi vị trí
+    const targetConflictIdx = newEntries.findIndex(
+      (e, i) =>
+        i !== idx &&
+        e.dayOfWeek === target.dayOfWeek &&
+        e.session === target.session &&
+        e.period === target.period &&
+        (e.className === newEntries[idx].className || e.teacher.toLowerCase() === newEntries[idx].teacher.toLowerCase())
+    );
+
+    if (targetConflictIdx !== -1) {
+      const conflictEntry = newEntries[targetConflictIdx];
+      newEntries[targetConflictIdx] = {
+        ...conflictEntry,
+        dayOfWeek: newEntries[idx].dayOfWeek,
+        session: newEntries[idx].session,
+        period: newEntries[idx].period,
+      };
+    }
+
+    newEntries[idx] = {
+      ...newEntries[idx],
+      dayOfWeek: target.dayOfWeek,
+      session: target.session,
+      period: target.period,
+    };
+
+    const updatedTimetable = recomputeTimetableMetadata({
+      ...current,
+      entries: newEntries,
+    });
+
+    await get().saveUpdatedTimetable(updatedTimetable, userId);
+    return true;
+  },
+
+  deleteTimetableEntry: async (entryId: string, userId?: string): Promise<boolean> => {
+    const current = get().timetable;
+    if (!current) return false;
+    const newEntries = current.entries.filter((e) => e.id !== entryId);
+    if (newEntries.length === current.entries.length) return false;
+
+    const updatedTimetable = recomputeTimetableMetadata({
+      ...current,
+      entries: newEntries,
+    });
+
+    await get().saveUpdatedTimetable(updatedTimetable, userId);
+    return true;
+  },
+
+  addTimetableEntry: async (
+    entryData: Omit<TimetableEntry, 'id'>,
+    userId?: string
+  ): Promise<string | null> => {
+    const current = get().timetable;
+    if (!current) return null;
+
+    const newId = `entry_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newEntry: TimetableEntry = {
+      ...entryData,
+      id: newId,
+    };
+
+    const newEntries = [...current.entries, newEntry];
+    const updatedTimetable = recomputeTimetableMetadata({
+      ...current,
+      entries: newEntries,
+    });
+
+    await get().saveUpdatedTimetable(updatedTimetable, userId);
+    return newId;
+  },
 }));
