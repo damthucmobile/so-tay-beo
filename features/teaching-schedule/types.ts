@@ -69,7 +69,7 @@ export interface SchoolTimetable {
   isActive?: boolean;
 }
 
-export type TeachingScheduleViewMode = 'teacher' | 'class' | 'matrix';
+export type TeachingScheduleViewMode = 'teacher' | 'class' | 'matrix' | 'details';
 
 export interface TeacherDayStats {
   totalPeriods: number;

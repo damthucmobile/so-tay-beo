@@ -318,16 +318,16 @@ export const TeacherScheduleView: React.FC = () => {
       <div className={`hidden sm:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm print:hidden ${
         isCompactView ? 'rounded-2xl p-2.5 sm:p-3' : 'rounded-2xl sm:rounded-3xl p-3 sm:p-4'
       }`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-2.5 sm:gap-3">
           {/* Cụm trái: Thông tin Giáo viên & Nút ghim */}
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             <div className={`bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20 ${
               isCompactView ? 'w-8 h-8 rounded-xl' : 'w-9 h-9 sm:w-11 sm:h-11 rounded-2xl'
             }`}>
               <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <h3 className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                   {selectedTeacher ? `Thầy/Cô: ${selectedTeacher}` : 'Chưa chọn giáo viên'}
@@ -405,8 +405,8 @@ export const TeacherScheduleView: React.FC = () => {
             </div>
           </div>
 
-          {/* Cụm phải: Tìm kiếm, Chế độ xem Lưới vs Ngày, Nút In */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
+          {/* Cụm phải: Tìm kiếm, Chế độ xem Lưới vs Ngày, Nút In - Tự xuống dòng ở màn hình nhỏ/vừa để không dồn ép cụm trái */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between 2xl:justify-end pt-2 sm:pt-2.5 border-t border-slate-100 dark:border-slate-800/80 2xl:border-t-0 2xl:pt-0 shrink-0">
             {/* Chế độ hiển thị: Lưới tuần vs Theo ngày */}
             <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
               <button
@@ -550,46 +550,7 @@ export const TeacherScheduleView: React.FC = () => {
         />
       </div>
 
-      {/* 3. Thống kê KPI tóm tắt (Chỉ hiện khi ở Chế độ xem đầy đủ) */}
-      {!isCompactView && (
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-4 print:hidden">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
-            <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Tiết Trong Tuần
-            </span>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-                {teacherAllEntries.length}
-              </span>
-              <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
-            </div>
-          </div>
 
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider truncate">
-              {todayDayOfWeek ? `Hôm Nay (${todayDayOfWeek})` : 'Hôm Nay'}
-            </span>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-                {todayEntries.length}
-              </span>
-              <span className="text-[11px] text-zinc-500 font-normal">tiết</span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Lớp Phụ Trách
-            </span>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-                {teacherClasses.length}
-              </span>
-              <span className="text-[11px] text-zinc-500 font-normal">lớp</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 4. Khung Hiển Thị Chính: Lưới Cả Tuần (Grid) hoặc Theo Ngày (Agenda) */}
       {displayMode === 'grid' ? (

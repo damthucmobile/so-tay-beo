@@ -7,6 +7,7 @@ import { TimetableHeaderBanner } from './components/TimetableHeaderBanner';
 import { TeacherScheduleView } from './components/TeacherScheduleView';
 import { ClassScheduleView } from './components/ClassScheduleView';
 import { MatrixTimetableDesktop } from './components/MatrixTimetableDesktop';
+import { TimetableDetailsTab } from './components/TimetableDetailsTab';
 import { ImportModal } from './components/ImportModal';
 import { TeachingReminderModal } from './components/TeachingReminderModal';
 import { TeachingReminderService } from './services/teachingReminderService';
@@ -101,8 +102,8 @@ export const TeachingScheduleFeature: React.FC = () => {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* 1. Sub-Tabs Navigation Bar - Đồng bộ chuẩn thiết kế với Lịch Tự Do & Khách Hàng */}
-      <div className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2 overflow-x-auto print:hidden">
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+      <div className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 relative z-30 print:hidden">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 min-w-0 overflow-x-auto no-scrollbar shrink">
           <button
             onClick={() => setViewMode('teacher')}
             className={`px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'teacher'
@@ -111,6 +112,16 @@ export const TeachingScheduleFeature: React.FC = () => {
               }`}
           >
             <span className="hidden sm:inline">Lịch </span>giáo viên
+          </button>
+
+          <button
+            onClick={() => setViewMode('details')}
+            className={`px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${viewMode === 'details'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+          >
+            <span className="hidden sm:inline">Thống kê & </span>Chi tiết TKB
           </button>
 
           <button
@@ -315,10 +326,14 @@ export const TeachingScheduleFeature: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Thẻ thông tin trường và TKB nằm cùng lề chuẩn với nội dung bên dưới */}
-              <TimetableHeaderBanner onOpenReminder={() => setIsReminderModalOpen(true)} />
-
               {viewMode === 'teacher' && <TeacherScheduleView />}
+              {viewMode === 'details' && (
+                <TimetableDetailsTab
+                  onOpenImport={() => setIsImportModalOpen(true)}
+                  onOpenReminder={() => setIsReminderModalOpen(true)}
+                  onDeleteTimetable={handleDeleteTimetable}
+                />
+              )}
               {viewMode === 'class' && <ClassScheduleView />}
               {viewMode === 'matrix' && <MatrixTimetableDesktop />}
             </>
