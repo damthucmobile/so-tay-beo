@@ -95,7 +95,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {sortedDates.map((dateStr) => {
         const dayItems = grouped[dateStr];
         const dayIncome = dayItems
@@ -106,7 +106,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
           .reduce((s, it) => s + (Number(it.amount) || 0), 0);
 
         return (
-          <div key={dateStr} className="space-y-2">
+          <div key={dateStr} className="space-y-1.5">
             {/* Day Header */}
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-semibold text-muted-foreground capitalize">

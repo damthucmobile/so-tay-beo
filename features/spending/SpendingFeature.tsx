@@ -164,9 +164,9 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
     }).format(amount);
   };
   return (
-    <div className="w-full space-y-5 animate-fadeIn pb-10">
+    <div className="w-full space-y-3.5 sm:space-y-4 animate-fadeIn pb-10">
       {/* Top Toolbar: Month Picker & Action Controls (Popup Menu) */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-border/50">
+      <div className="flex items-center justify-between gap-2.5">
         {/* Month Selector & Quick "Tháng này" */}
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-xl border border-border/60 bg-card p-1 shadow-sm">
@@ -317,7 +317,7 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
 
       {/* Overview Section: Có thể Thu hẹp hoặc Mở rộng */}
       {isOverviewExpanded ? (
-        <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="space-y-3 sm:space-y-3.5 animate-in fade-in duration-200">
           {/* Overview KPI Cards */}
           <SpendingOverviewCards
             stats={stats}
@@ -337,30 +337,30 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
         /* Thanh tóm tắt gọn gàng khi thu hẹp */
         <div
           onClick={() => setIsOverviewExpanded(true)}
-          className="flex items-center justify-between gap-2.5 p-2.5 sm:px-4 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 transition-all cursor-pointer shadow-2xs group"
+          className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-4 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 transition-all cursor-pointer shadow-2xs group"
           title="Bấm để mở rộng chi tiết tổng quan và phân bổ"
         >
-          {/* Vùng chỉ số cuộn ngang không xuống dòng */}
-          <div className="flex items-center gap-3.5 sm:gap-5 text-xs whitespace-nowrap overflow-x-auto no-scrollbar scroll-smooth flex-1 min-w-0 py-0.5">
+          {/* Vùng chỉ số */}
+          <div className="flex items-center gap-2.5 sm:gap-4 text-xs min-w-0 flex-1 overflow-x-auto no-scrollbar py-0.5">
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-muted-foreground">Thu:</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] sm:text-xs text-muted-foreground">Thu:</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                 +{formatVND(stats.totalIncome)}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-              <span className="text-muted-foreground">Chi:</span>
-              <span className="font-bold text-rose-600 dark:text-rose-400">
+              <span className="text-[11px] sm:text-xs text-muted-foreground">Chi:</span>
+              <span className="font-bold text-rose-600 dark:text-rose-400 text-xs sm:text-sm">
                 -{formatVND(stats.totalExpense)}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="hidden sm:flex items-center gap-1.5 shrink-0">
               <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-              <span className="text-muted-foreground">Số dư:</span>
+              <span className="text-[11px] sm:text-xs text-muted-foreground">Số dư:</span>
               <span
-                className={`font-bold ${
+                className={`font-bold text-xs sm:text-sm ${
                   stats.netBalance >= 0
                     ? 'text-blue-600 dark:text-blue-400'
                     : 'text-rose-600 dark:text-rose-400'
@@ -371,7 +371,7 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
               </span>
             </div>
             {stats.monthlyBudget > 0 && (
-              <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
+              <div className="hidden md:flex items-center gap-1.5 text-muted-foreground shrink-0 text-xs">
                 <Target className="w-3 h-3 text-primary shrink-0" />
                 <span>Hạn mức:</span>
                 <span className="font-medium text-foreground">
@@ -383,82 +383,92 @@ export const SpendingFeature: React.FC<SpendingFeatureProps> = ({ onNavigateTab 
 
           {/* Nút Mở rộng cố định bên phải */}
           <div className="flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:underline shrink-0 pl-2 border-l border-border/50">
-            <span className="hidden sm:inline">Mở rộng chi tiết</span>
-            <span className="sm:hidden">Mở rộng</span>
-            <ChevronDown className="h-3.5 w-3.5 group-hover:translate-y-0.5 transition-transform" />
+            <span className="hidden sm:inline">Chi tiết</span>
+            <ChevronDown className="h-4 w-4 group-hover:translate-y-0.5 transition-transform" />
           </div>
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="space-y-3 pt-2">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* View Mode Toggle: [Tất cả | Chi tiêu | Thu nhập] */}
-          <div className="flex items-center p-1 bg-muted/40 rounded-xl border border-border/60 self-start sm:self-auto">
-            <button
-              onClick={() => {
-                setViewMode('all');
-                setSelectedCategory('all');
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                viewMode === 'all'
-                  ? 'bg-card text-foreground shadow-xs font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Layers className="h-3.5 w-3.5" />
-              <span>Tất cả</span>
-            </button>
-            <button
-              onClick={() => {
-                setViewMode('expense');
-                setSelectedCategory('all');
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                viewMode === 'expense'
-                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20 shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <ArrowDownRight className="h-3.5 w-3.5 text-rose-500" />
-              <span>Khoản chi</span>
-            </button>
-            <button
-              onClick={() => {
-                setViewMode('income');
-                setSelectedCategory('all');
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                viewMode === 'income'
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20 shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
-              <span>Khoản thu</span>
-            </button>
-          </div>
+      {/* Filter and Search Bar: Gọn gàng, cân đối, hài hòa */}
+      <div className="space-y-2">
+        {/* Row 1: View Mode Tabs cân xứng full-width (3 cột đều nhau) */}
+        <div className="grid grid-cols-3 p-1 bg-muted/50 dark:bg-slate-800/80 rounded-xl border border-border/60 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('all');
+              setSelectedCategory('all');
+            }}
+            className={`py-1.5 px-1.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer text-center ${
+              viewMode === 'all'
+                ? 'bg-card text-foreground shadow-xs font-bold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Tất cả</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('expense');
+              setSelectedCategory('all');
+            }}
+            className={`py-1.5 px-1.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer text-center ${
+              viewMode === 'expense'
+                ? 'bg-card text-rose-600 dark:text-rose-400 font-bold shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <ArrowDownRight className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+            <span className="truncate">Khoản chi</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('income');
+              setSelectedCategory('all');
+            }}
+            className={`py-1.5 px-1.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer text-center ${
+              viewMode === 'income'
+                ? 'bg-card text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <span className="truncate">Khoản thu</span>
+          </button>
+        </div>
 
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Tìm kiếm nội dung, ghi chú giao dịch..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 text-xs"
-            />
-          </div>
-
-          <div className="text-xs text-muted-foreground font-medium self-center">
-            Hiển thị <span className="font-bold text-foreground">{filteredExpenses.length}</span>{' '}
-            {viewMode === 'income' ? 'khoản thu' : viewMode === 'expense' ? 'khoản chi' : 'giao dịch'}
+        {/* Row 2: Search Input full-width tích hợp badge đếm số lượng */}
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            type="text"
+            placeholder="Tìm kiếm nội dung, ghi chú giao dịch..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8.5 pr-24 h-9 text-xs rounded-xl bg-card border-border/70 focus-visible:ring-1"
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+            <span className="text-[10px] font-semibold text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-md whitespace-nowrap select-none">
+              {filteredExpenses.length} {viewMode === 'income' ? 'thu' : viewMode === 'expense' ? 'chi' : 'giao dịch'}
+            </span>
           </div>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* Row 3: Category Pills cuộn ngang mượt mà */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
           <button
             onClick={() => setSelectedCategory('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
