@@ -106,6 +106,12 @@ export const COLLECTIONS = {
   EXPENSE_CATEGORIES: 'expense_categories',
 
   // ============================================================================
+  // PHÂN HỆ TRỢ LÝ AI (AI ASSISTANT MODULE)
+  // ============================================================================
+  /** Danh sách phiên chat và lịch sử hội thoại AI đa thiết bị */
+  AI_CHAT_SESSIONS: 'ai_chat_sessions',
+
+  // ============================================================================
   // PHÂN HỆ THEO DÕI HOẠT ĐỘNG & XEM GẦN ĐÂY (ACTIVITY & RECENT VIEWS)
   // ============================================================================
   /** Danh sách nội dung đã xem gần đây (subcollection: users/{uid}/recentViews) */

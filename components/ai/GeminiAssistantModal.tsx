@@ -24,19 +24,26 @@ import {
   PanelLeftClose,
   PanelLeft,
   Search,
+  Cloud,
 } from 'lucide-react';
-import { useGeminiAI, gemini, promptTemplates, getCustomUserApiKey, setCustomUserApiKey, getCustomUserModel, DEFAULT_GEMINI_MODEL, ChatMessage } from '@/core';
+import {
+  useGeminiAI,
+  gemini,
+  promptTemplates,
+  getCustomUserApiKey,
+  setCustomUserApiKey,
+  getCustomUserModel,
+  DEFAULT_GEMINI_MODEL,
+  ChatMessage,
+  AIChatSession,
+  getLocalCachedSessions,
+  saveAIChatSession,
+  deleteAIChatSession,
+  subscribeToUserAIChatSessions,
+  autoSyncLocalSessionsToCloud,
+} from '@/core';
+import { useAuth } from '@/core/firebase';
 import { SchoolTimetable } from '@/features/teaching-schedule/types';
-
-interface ChatSession {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: ChatMessage[];
-}
-
-const CHAT_SESSIONS_STORAGE_KEY = 'so_tay_beo_gemini_chat_sessions_v1';
 
 interface GeminiAssistantModalProps {
   isOpen: boolean;
@@ -51,15 +58,19 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
   timetable,
   teacherName,
 }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'chat' | 'lesson' | 'config'>('chat');
   const [inputText, setInputText] = useState('');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
 
-  // Quản lý sessions lịch sử hội thoại
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  // Quản lý sessions lịch sử hội thoại (Cloud Firestore + Local Cache)
+  const [sessions, setSessions] = useState<AIChatSession[]>(() => getLocalCachedSessions());
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
+    const cached = getLocalCachedSessions();
+    return cached[0]?.id || `session_${Date.now()}`;
+  });
 
   // Lesson plan form state
   const [lessonSubject, setLessonSubject] = useState(timetable?.subjects[0] || 'Toán');
@@ -75,42 +86,44 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 1. Tải danh sách sessions từ localStorage khi mở modal
+  // 1. Tải danh sách sessions từ Cache
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const saved = localStorage.getItem(CHAT_SESSIONS_STORAGE_KEY);
-      if (saved) {
-        const parsed: ChatSession[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSessions(parsed);
-          setCurrentSessionId(parsed[0].id);
-          return;
-        }
-      }
-    } catch {}
-
-    // Tạo session mặc định đầu tiên nếu chưa có
-    const initialSession: ChatSession = {
-      id: `session_${Date.now()}`,
-      title: 'Cuộc trò chuyện mới',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      messages: [],
-    };
-    setSessions([initialSession]);
-    setCurrentSessionId(initialSession.id);
+    const cached = getLocalCachedSessions();
+    if (cached.length > 0) {
+      setSessions(cached);
+      setCurrentSessionId((prev) => (cached.some((s) => s.id === prev) ? prev : cached[0].id));
+    } else {
+      const initialSession: AIChatSession = {
+        id: `session_${Date.now()}`,
+        userId: user?.uid,
+        title: 'Cuộc trò chuyện mới',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+      };
+      setSessions([initialSession]);
+      setCurrentSessionId(initialSession.id);
+      saveAIChatSession(initialSession, user?.uid);
+    }
   }, []);
 
-  // Lưu sessions vào localStorage mỗi khi có thay đổi
-  const saveSessionsToStorage = (updatedSessions: ChatSession[]) => {
-    setSessions(updatedSessions);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(updatedSessions));
-      } catch {}
-    }
-  };
+  // 2. Tự động đồng bộ và lắng nghe Firestore khi đăng nhập
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    autoSyncLocalSessionsToCloud(user.uid);
+    const unsub = subscribeToUserAIChatSessions(user.uid, (cloudSessions) => {
+      if (cloudSessions.length > 0) {
+        setSessions(cloudSessions);
+        setCurrentSessionId((prev) => {
+          const found = cloudSessions.some((s) => s.id === prev);
+          return found ? prev : cloudSessions[0].id;
+        });
+      }
+    });
+
+    return () => unsub();
+  }, [user?.uid]);
 
   // Phiên trò chuyện hiện tại
   const currentSession = useMemo(() => {
@@ -162,37 +175,41 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
   if (!isOpen) return null;
 
   // Tạo cuộc hội thoại mới
-  const handleCreateNewChat = () => {
-    const newSession: ChatSession = {
+  const handleCreateNewChat = async () => {
+    const newSession: AIChatSession = {
       id: `session_${Date.now()}`,
+      userId: user?.uid,
       title: 'Cuộc trò chuyện mới',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       messages: [],
     };
-    const updated = [newSession, ...sessions];
-    saveSessionsToStorage(updated);
+    await saveAIChatSession(newSession, user?.uid);
+    setSessions((prev) => [newSession, ...prev.filter((s) => s.id !== newSession.id)]);
     setCurrentSessionId(newSession.id);
     setChatMessages([]);
   };
 
   // Xóa một session
-  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    await deleteAIChatSession(sessionId, user?.uid);
     const updated = sessions.filter((s) => s.id !== sessionId);
     if (updated.length === 0) {
-      const fallback: ChatSession = {
+      const fallback: AIChatSession = {
         id: `session_${Date.now()}`,
+        userId: user?.uid,
         title: 'Cuộc trò chuyện mới',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         messages: [],
       };
-      saveSessionsToStorage([fallback]);
+      await saveAIChatSession(fallback, user?.uid);
+      setSessions([fallback]);
       setCurrentSessionId(fallback.id);
       setChatMessages([]);
     } else {
-      saveSessionsToStorage(updated);
+      setSessions(updated);
       if (sessionId === currentSessionId) {
         setCurrentSessionId(updated[0].id);
         setChatMessages(updated[0].messages || []);
@@ -231,19 +248,24 @@ export const GeminiAssistantModal: React.FC<GeminiAssistantModalProps> = ({
 
     const newMessages = [...chatMessages, userMsg, modelMsg];
 
-    const updatedSessions = sessions.map((s) => {
-      if (s.id === currentSessionId) {
-        return {
-          ...s,
-          title: currentTitle,
-          updatedAt: new Date().toISOString(),
-          messages: newMessages,
-        };
-      }
-      return s;
-    });
+    const target = sessions.find((s) => s.id === currentSessionId);
+    const updatedSession: AIChatSession = {
+      ...(target || {
+        id: currentSessionId,
+        createdAt: new Date().toISOString(),
+        messages: [],
+      }),
+      id: currentSessionId,
+      userId: user?.uid,
+      title: currentTitle,
+      updatedAt: new Date().toISOString(),
+      messages: newMessages,
+    };
 
-    saveSessionsToStorage(updatedSessions);
+    await saveAIChatSession(updatedSession, user?.uid);
+    setSessions((prev) =>
+      prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
+    );
   };
 
   const handleSaveApiKey = () => {

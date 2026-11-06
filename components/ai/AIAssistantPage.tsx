@@ -40,6 +40,7 @@ import {
   Maximize2,
   UploadCloud,
   ArrowUp,
+  Cloud,
 } from 'lucide-react';
 import {
   useGeminiAI,
@@ -53,11 +54,19 @@ import {
   DEFAULT_GEMINI_MODEL,
   ChatMessage,
   ChatAttachment,
+  AIChatSession,
   AIContextScope,
   CONTEXT_SCOPE_OPTIONS,
   buildSystemContextPrompt,
   extractAgentActions,
   executeAgentAction,
+  formatFileSize,
+  processChatFileAttachment,
+  getLocalCachedSessions,
+  subscribeToUserAIChatSessions,
+  saveAIChatSession,
+  deleteAIChatSession,
+  autoSyncLocalSessionsToCloud,
 } from '@/core';
 import { useAuth } from '@/core/firebase';
 import { useTeachingScheduleStore } from '@/features/teaching-schedule/stores/useTeachingScheduleStore';
@@ -68,81 +77,6 @@ import { useTravelStore } from '@/features/travel/stores/useTravelStore';
 import { useSpendingStore } from '@/features/spending/stores/useSpendingStore';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { NavTabId } from '../layout/Sidebar';
-
-interface ChatSession {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: ChatMessage[];
-}
-
-const CHAT_SESSIONS_STORAGE_KEY = 'so_tay_beo_gemini_chat_sessions_v1';
-const MAX_ATTACHMENT_SIZE = 15 * 1024 * 1024; // 15MB
-
-function formatFileSize(bytes: number): string {
-  if (!bytes || bytes === 0) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function readFileAsAttachment(file: File): Promise<ChatAttachment> {
-  return new Promise((resolve, reject) => {
-    if (file.size > MAX_ATTACHMENT_SIZE) {
-      reject(new Error(`Tệp "${file.name}" quá lớn (${formatFileSize(file.size)}). Giới hạn tối đa là 15MB.`));
-      return;
-    }
-
-    const isImage = file.type.startsWith('image/');
-    const isText =
-      file.type.startsWith('text/') ||
-      file.name.endsWith('.txt') ||
-      file.name.endsWith('.md') ||
-      file.name.endsWith('.csv') ||
-      file.name.endsWith('.json') ||
-      file.name.endsWith('.js') ||
-      file.name.endsWith('.ts') ||
-      file.name.endsWith('.tsx') ||
-      file.name.endsWith('.html') ||
-      file.name.endsWith('.css') ||
-      file.name.endsWith('.py');
-
-    const reader = new FileReader();
-
-    if (isText) {
-      reader.onload = () => {
-        const textContent = reader.result as string;
-        resolve({
-          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          name: file.name,
-          type: file.type || 'text/plain',
-          size: file.size,
-          data: textContent,
-          isText: true,
-          textContent,
-        });
-      };
-      reader.onerror = () => reject(new Error(`Không thể đọc tệp "${file.name}"`));
-      reader.readAsText(file);
-    } else {
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        resolve({
-          id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          name: file.name,
-          type: file.type || (isImage ? 'image/jpeg' : 'application/octet-stream'),
-          size: file.size,
-          data: dataUrl,
-          previewUrl: isImage ? dataUrl : undefined,
-          isText: false,
-        });
-      };
-      reader.onerror = () => reject(new Error(`Không thể đọc tệp "${file.name}"`));
-      reader.readAsDataURL(file);
-    }
-  });
-}
 
 interface AIAssistantPageProps {
   onNavigateTab?: (tab: NavTabId) => void;
@@ -182,9 +116,14 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     }
   }, []);
 
-  // Quản lý sessions lịch sử hội thoại
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  // Quản lý sessions lịch sử hội thoại (Cloud Firestore + Local Cache)
+  const [sessions, setSessions] = useState<AIChatSession[]>(() => getLocalCachedSessions());
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
+    const cached = getLocalCachedSessions();
+    return cached[0]?.id || `session_${Date.now()}`;
+  });
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
   // Lesson plan form state
   const [lessonSubject, setLessonSubject] = useState(timetable?.subjects[0] || 'Toán');
@@ -235,15 +174,19 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
 
+    setIsUploadingAttachment(true);
     try {
       const newAttachments: ChatAttachment[] = [];
       for (const file of fileArray) {
-        const att = await readFileAsAttachment(file);
+        // Tự động upload lên Cloudflare R2 để lưu trữ vĩnh viễn và lấy CDN URL
+        const att = await processChatFileAttachment(file, user?.uid);
         newAttachments.push(att);
       }
       setAttachments((prev) => [...prev, ...newAttachments]);
     } catch (err: any) {
       alert(err?.message || 'Lỗi khi tải tệp lên.');
+    } finally {
+      setIsUploadingAttachment(false);
     }
   };
 
@@ -298,62 +241,58 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     }
   };
 
-  // 1. Tải danh sách sessions từ localStorage
+  // 1. Tải danh sách sessions ban đầu từ Local Cache (hiển thị tức thì)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const saved = localStorage.getItem(CHAT_SESSIONS_STORAGE_KEY);
-      if (saved) {
-        const parsed: ChatSession[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSessions(parsed);
-          setCurrentSessionId(parsed[0].id);
-          return;
-        }
-      }
-    } catch { }
-
-    const initialSession: ChatSession = {
-      id: `session_${Date.now()}`,
-      title: 'Cuộc trò chuyện mới',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      messages: [],
-    };
-    setSessions([initialSession]);
-    setCurrentSessionId(initialSession.id);
+    const cached = getLocalCachedSessions();
+    if (cached.length > 0) {
+      setSessions(cached);
+      setCurrentSessionId((prev) => (cached.some((s) => s.id === prev) ? prev : cached[0].id));
+    } else {
+      const initialSession: AIChatSession = {
+        id: `session_${Date.now()}`,
+        userId: user?.uid,
+        title: 'Cuộc trò chuyện mới',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+      };
+      setSessions([initialSession]);
+      setCurrentSessionId(initialSession.id);
+      saveAIChatSession(initialSession, user?.uid);
+    }
   }, []);
 
-  const saveSessionsToStorage = (updatedSessions: ChatSession[]) => {
-    setSessions(updatedSessions);
-    if (typeof window !== 'undefined') {
-      try {
-        // Tối ưu hóa chuỗi Base64 lớn trước khi lưu vào localStorage để tránh lỗi QuotaExceededError
-        const storableSessions = updatedSessions.map((session) => ({
-          ...session,
-          messages: session.messages?.map((m) => {
-            if (!m.attachments || m.attachments.length === 0) return m;
-            return {
-              ...m,
-              attachments: m.attachments.map((a) => ({
-                id: a.id,
-                name: a.name,
-                type: a.type,
-                size: a.size,
-                data: a.data && a.data.length > 250000 ? '' : a.data,
-                previewUrl: a.previewUrl && a.previewUrl.length < 250000 ? a.previewUrl : undefined,
-                isText: a.isText,
-                textContent: a.textContent && a.textContent.length < 50000 ? a.textContent : undefined,
-              })),
-            };
-          }),
-        }));
-        localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(storableSessions));
-      } catch (e) {
-        console.warn('Lỗi lưu lịch sử chat vào localStorage:', e);
+  // 2. Tự động đồng bộ Đa thiết bị qua Cloud Firestore khi người dùng đăng nhập
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    setIsCloudSyncing(true);
+    // Tự động đẩy các phiên offline trước đó lên Cloud Firestore mà không cần hỏi
+    autoSyncLocalSessionsToCloud(user.uid).finally(() => {
+      setIsCloudSyncing(false);
+    });
+
+    // Lắng nghe Realtime Firestore: máy khác cập nhật thì máy này tự động tải về ngay
+    const unsub = subscribeToUserAIChatSessions(
+      user.uid,
+      (cloudSessions) => {
+        if (cloudSessions.length > 0) {
+          setSessions(cloudSessions);
+          setCurrentSessionId((prev) => {
+            const found = cloudSessions.some((s) => s.id === prev);
+            return found ? prev : cloudSessions[0].id;
+          });
+        }
+      },
+      (err) => {
+        console.warn('Lỗi đồng bộ Realtime Firestore AI Chat:', err);
       }
-    }
-  };
+    );
+
+    return () => {
+      unsub();
+    };
+  }, [user?.uid]);
 
   const currentSession = useMemo(() => {
     return sessions.find((s) => s.id === currentSessionId) || sessions[0] || null;
@@ -489,36 +428,40 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isLoading]);
 
-  const handleCreateNewChat = () => {
-    const newSession: ChatSession = {
+  const handleCreateNewChat = async () => {
+    const newSession: AIChatSession = {
       id: `session_${Date.now()}`,
+      userId: user?.uid,
       title: 'Cuộc trò chuyện mới',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       messages: [],
     };
-    const updated = [newSession, ...sessions];
-    saveSessionsToStorage(updated);
+    await saveAIChatSession(newSession, user?.uid);
+    setSessions((prev) => [newSession, ...prev.filter((s) => s.id !== newSession.id)]);
     setCurrentSessionId(newSession.id);
     setChatMessages([]);
   };
 
-  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    await deleteAIChatSession(sessionId, user?.uid);
     const updated = sessions.filter((s) => s.id !== sessionId);
     if (updated.length === 0) {
-      const fallback: ChatSession = {
+      const fallback: AIChatSession = {
         id: `session_${Date.now()}`,
+        userId: user?.uid,
         title: 'Cuộc trò chuyện mới',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         messages: [],
       };
-      saveSessionsToStorage([fallback]);
+      await saveAIChatSession(fallback, user?.uid);
+      setSessions([fallback]);
       setCurrentSessionId(fallback.id);
       setChatMessages([]);
     } else {
-      saveSessionsToStorage(updated);
+      setSessions(updated);
       if (sessionId === currentSessionId) {
         setCurrentSessionId(updated[0].id);
         setChatMessages(updated[0].messages || []);
@@ -594,19 +537,25 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
 
       const newMessages = [...chatMessages, userMsg, modelMsg];
 
-      const updatedSessions = sessions.map((s) => {
-        if (s.id === currentSessionId) {
-          return {
-            ...s,
-            title: currentTitle,
-            updatedAt: new Date().toISOString(),
-            messages: newMessages,
-          };
-        }
-        return s;
-      });
+      const targetSession = sessions.find((s) => s.id === currentSessionId);
+      const updatedSession: AIChatSession = {
+        ...(targetSession || {
+          id: currentSessionId,
+          createdAt: new Date().toISOString(),
+          messages: [],
+        }),
+        id: currentSessionId,
+        userId: user?.uid,
+        title: currentTitle,
+        updatedAt: new Date().toISOString(),
+        messages: newMessages,
+      };
 
-      saveSessionsToStorage(updatedSessions);
+      // Lưu đồng thời vào Cloud Firestore và Local Cache
+      await saveAIChatSession(updatedSession, user?.uid);
+      setSessions((prev) =>
+        prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
+      );
     }
   };
 
@@ -746,6 +695,19 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
               <div className="flex-1 overflow-y-auto p-2 space-y-1">
                 <div className="px-2 py-1 text-[11px] font-medium text-zinc-400 uppercase tracking-wider flex items-center justify-between">
                   <span>Lịch sử ({filteredSessions.length})</span>
+                  {user?.uid ? (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold lowercase tracking-normal bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20"
+                      title="Lịch sử chat và tệp đính kèm được tự động đồng bộ đám mây đa thiết bị"
+                    >
+                      <Cloud className={`w-2.5 h-2.5 text-emerald-500 ${isCloudSyncing ? 'animate-pulse' : ''}`} />
+                      <span>{isCloudSyncing ? 'đang đồng bộ' : 'cloud sync'}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-zinc-400 lowercase tracking-normal font-normal">
+                      cục bộ máy này
+                    </span>
+                  )}
                 </div>
 
                 {filteredSessions.length === 0 ? (
@@ -883,8 +845,13 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                         {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
                           <div className="mb-2.5 flex flex-wrap gap-2 justify-end">
                             {msg.attachments.map((att) => {
-                              const isImg = att.type?.startsWith('image/') || !!att.previewUrl;
-                              const imgSrc = att.previewUrl || (att.data?.startsWith('data:image') ? att.data : undefined);
+                              const fileUrl = att.url || (att.data?.startsWith('http') ? att.data : undefined);
+                              const isImg =
+                                att.type?.startsWith('image/') ||
+                                !!att.previewUrl ||
+                                Boolean(fileUrl && /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(fileUrl));
+                              const imgSrc =
+                                att.previewUrl || fileUrl || (att.data?.startsWith('data:image') ? att.data : undefined);
 
                               if (isImg && imgSrc) {
                                 return (
@@ -910,9 +877,15 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                               }
 
                               return (
-                                <div
+                                <a
                                   key={att.id}
-                                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-850 border border-zinc-700/60 text-zinc-100 text-xs shadow-xs max-w-[260px]"
+                                  href={fileUrl || undefined}
+                                  target={fileUrl ? '_blank' : undefined}
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-850 border border-zinc-700/60 text-zinc-100 text-xs shadow-xs max-w-[260px] transition hover:bg-zinc-800 ${
+                                    fileUrl ? 'cursor-pointer hover:border-zinc-500' : ''
+                                  }`}
+                                  title={fileUrl ? `Mở/tải tệp "${att.name}" từ Cloud` : att.name}
                                 >
                                   <div className="p-1.5 rounded-lg bg-zinc-700 text-zinc-300 shrink-0">
                                     {att.type === 'application/pdf' ? (
@@ -923,9 +896,14 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                                   </div>
                                   <div className="min-w-0 flex-1 text-left">
                                     <p className="font-medium truncate text-xs text-white">{att.name}</p>
-                                    <p className="text-[10px] text-zinc-400">{formatFileSize(att.size)}</p>
+                                    <p className="text-[10px] text-zinc-400 flex items-center gap-1">
+                                      <span>{formatFileSize(att.size)}</span>
+                                      {fileUrl && (
+                                        <span className="text-[9px] text-emerald-400 font-medium">• Cloud</span>
+                                      )}
+                                    </p>
                                   </div>
-                                </div>
+                                </a>
                               );
                             })}
                           </div>
@@ -1012,6 +990,14 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                         e.target.value = '';
                       }}
                     />
+
+                    {/* Trạng thái tải tệp lên Cloudflare R2 */}
+                    {isUploadingAttachment && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200/50 dark:border-blue-900/50 text-[11px] text-blue-600 dark:text-blue-400 animate-in fade-in">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                        <span>Đang tải tệp lên Cloudflare R2 để lưu trữ đám mây đa thiết bị...</span>
+                      </div>
+                    )}
 
                     {/* Preview danh sách tệp đính kèm bên trong capsule */}
                     {attachments.length > 0 && (

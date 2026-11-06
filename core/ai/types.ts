@@ -58,7 +58,9 @@ export interface ChatAttachment {
   name: string;
   type: string; // MIME type (image/png, image/jpeg, application/pdf, etc.)
   size: number; // bytes
-  data: string; // Base64 Data URL hoặc raw Base64
+  data: string; // Base64 Data URL hoặc raw Base64 (tùy chọn khi gọi API trực tiếp)
+  url?: string; // Cloudflare R2 Public/CDN URL vĩnh viễn
+  fileKey?: string; // Cloudflare R2 storage key
   previewUrl?: string; // Preview URL cho hình ảnh
   isText?: boolean;
   textContent?: string;
@@ -70,6 +72,18 @@ export interface ChatMessage {
   content: string;
   timestamp?: string;
   attachments?: ChatAttachment[];
+}
+
+export interface AIChatSession {
+  id: string;
+  userId?: string;
+  title: string;
+  scope?: string;
+  model?: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+  pinned?: boolean;
 }
 
 export interface BaseAIOptions {
