@@ -12,19 +12,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /** Kiểm tra xem người dùng hiện tại có đúng là chủ sở hữu qua userId khớp với UID hay không */
+    /** Kiểm tra xem người dùng hiện tại có đúng là chủ sở hữu qua userId khớp với UID hoặc Email hay không */
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && (
+        request.auth.uid == userId ||
+        (request.auth.token.email != null && request.auth.token.email == userId)
+      );
     }
 
     /** Kiểm tra quyền sở hữu đối với tài liệu đã tồn tại (dựa vào trường userId trong document) */
     function isDocOwner() {
-      return isAuthenticated() && resource.data.userId == request.auth.uid;
+      return isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.userId == request.auth.token.email) ||
+        resource.data.get('userId', '') == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.get('userId', '') == request.auth.token.email)
+      );
     }
 
     /** Kiểm tra quyền sở hữu đối với tài liệu mới được tạo (dựa vào trường userId được gửi lên) */
     function isNewDocOwner() {
-      return isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      return isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid ||
+        (request.auth.token.email != null && request.resource.data.userId == request.auth.token.email) ||
+        request.resource.data.get('userId', '') == request.auth.uid ||
+        (request.auth.token.email != null && request.resource.data.get('userId', '') == request.auth.token.email)
+      );
     }
 
     // ==============================================================================
@@ -252,15 +265,20 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         resource == null || 
         resource.data.get('userId', '') == request.auth.uid ||
-        resource.data.userId == request.auth.uid
+        (request.auth.token.email != null && resource.data.get('userId', '') == request.auth.token.email) ||
+        resource.data.userId == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.userId == request.auth.token.email)
       );
       allow create: if isAuthenticated() && (
         request.resource.data.userId == request.auth.uid ||
-        request.resource.data.get('userId', '') == request.auth.uid
+        (request.auth.token.email != null && request.resource.data.userId == request.auth.token.email) ||
+        request.resource.data.get('userId', '') == request.auth.uid ||
+        (request.auth.token.email != null && request.resource.data.get('userId', '') == request.auth.token.email)
       );
       allow update, delete: if isAuthenticated() && (
         resource == null ||
-        resource.data.userId == request.auth.uid
+        resource.data.userId == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.userId == request.auth.token.email)
       );
     }
 
@@ -268,16 +286,22 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         resource == null || 
         resource.data.get('userId', '') == request.auth.uid ||
-        budgetId.matches('^' + request.auth.uid + '_.*')
+        (request.auth.token.email != null && resource.data.get('userId', '') == request.auth.token.email) ||
+        budgetId.matches('^' + request.auth.uid + '_.*') ||
+        (request.auth.token.email != null && budgetId.matches('^' + request.auth.token.email + '_.*'))
       );
       allow create: if isAuthenticated() && (
         request.resource.data.userId == request.auth.uid ||
-        budgetId.matches('^' + request.auth.uid + '_.*')
+        (request.auth.token.email != null && request.resource.data.userId == request.auth.token.email) ||
+        budgetId.matches('^' + request.auth.uid + '_.*') ||
+        (request.auth.token.email != null && budgetId.matches('^' + request.auth.token.email + '_.*'))
       );
       allow update, delete: if isAuthenticated() && (
         resource == null ||
         resource.data.userId == request.auth.uid ||
-        budgetId.matches('^' + request.auth.uid + '_.*')
+        (request.auth.token.email != null && resource.data.userId == request.auth.token.email) ||
+        budgetId.matches('^' + request.auth.uid + '_.*') ||
+        (request.auth.token.email != null && budgetId.matches('^' + request.auth.token.email + '_.*'))
       );
     }
 
@@ -285,15 +309,20 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         resource == null || 
         resource.data.get('userId', '') == request.auth.uid ||
-        resource.data.userId == request.auth.uid
+        (request.auth.token.email != null && resource.data.get('userId', '') == request.auth.token.email) ||
+        resource.data.userId == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.userId == request.auth.token.email)
       );
       allow create: if isAuthenticated() && (
         request.resource.data.userId == request.auth.uid ||
-        request.resource.data.get('userId', '') == request.auth.uid
+        (request.auth.token.email != null && request.resource.data.userId == request.auth.token.email) ||
+        request.resource.data.get('userId', '') == request.auth.uid ||
+        (request.auth.token.email != null && request.resource.data.get('userId', '') == request.auth.token.email)
       );
       allow update, delete: if isAuthenticated() && (
         resource == null ||
-        resource.data.userId == request.auth.uid
+        resource.data.userId == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.userId == request.auth.token.email)
       );
     }
 

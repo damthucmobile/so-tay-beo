@@ -24,6 +24,10 @@ interface TopHeaderProps {
 }
 
 const TAB_DEFAULT_TITLES: Record<NavTabId, { title: string; subtitle: string }> = {
+  dashboard: {
+    title: 'Trang Chủ',
+    subtitle: 'Trung tâm điều hành công việc & đời sống',
+  },
   classes: {
     title: 'Quản Lý Lớp Học',
     subtitle: 'Lớp học trực tuyến & Thù lao giảng dạy',
@@ -90,7 +94,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onToggleMobileMenu,
   user,
   onSelectSettings,
-  currentTab = 'classes',
+  currentTab = 'dashboard',
   onBackTab,
   canBackTab = false,
   onSelectRecentItem,
@@ -105,10 +109,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     customHeader?.subtitle !== undefined ? customHeader.subtitle : tabInfo.subtitle;
   const displayBadge = customHeader?.badge;
 
-  const hasBackButton = Boolean(
-    (customHeader?.showBackButton && customHeader?.onBack) ||
-    (canBackTab && onBackTab)
-  );
+  // Màn cấp 2 (chi tiết / modal / sub-view) hiển thị nút Back tùy chỉnh
+  const isSubScreen = Boolean(customHeader?.showBackButton && customHeader?.onBack);
 
   const handleBack = () => {
     if (customHeader?.showBackButton && customHeader?.onBack) {
@@ -120,9 +122,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 sm:px-6 gap-3 sm:gap-4 shadow-sm dark:shadow-none transition-colors duration-200">
-      {/* Screen Title & Back Button (kèm nút Menu mobile khi không có nút Back) */}
+      {/* Screen Title & Back Button / Menu Mobile */}
       <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
-        {!hasBackButton && (
+        {/* Ở màn cấp 1 trên Mobile: LUÔN hiển thị nút Menu để mở sidebar drawer */}
+        {!isSubScreen && (
           <button
             onClick={onToggleMobileMenu}
             className="md:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer shrink-0"
@@ -132,7 +135,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </button>
         )}
 
-        {hasBackButton && (
+        {/* Ở màn cấp 2 (chi tiết): hiển thị nút Quay lại */}
+        {isSubScreen && (
           <button
             onClick={handleBack}
             className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition cursor-pointer shadow-sm shrink-0 border border-slate-200/80 dark:border-slate-700/80"

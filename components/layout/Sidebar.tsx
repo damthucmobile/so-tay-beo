@@ -25,9 +25,11 @@ import {
   PanelLeft,
   Sparkles,
   Bot,
+  LayoutDashboard,
 } from 'lucide-react';
 
 export type NavTabId =
+  | 'dashboard'
   | 'classes'
   | 'teaching_schedule'
   | 'schedule'
@@ -75,6 +77,14 @@ interface SidebarProps {
 // Giữ lại cấu trúc NAV_GROUPS & NAV_ITEMS để đảm bảo tương thích ngược
 export const NAV_GROUPS: NavGroup[] = [
   {
+    id: 'overview',
+    label: 'Tổng quan',
+    icon: LayoutDashboard,
+    items: [
+      { id: 'dashboard', label: 'Trang chủ', icon: LayoutDashboard },
+    ],
+  },
+  {
     id: 'work',
     label: 'Công việc',
     icon: Briefcase,
@@ -102,6 +112,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Tiện ích',
     icon: Settings,
     items: [
+      { id: 'ai_assistant', label: 'Trợ lý AI', icon: Bot },
       { id: 'guide', label: 'Hướng dẫn sử dụng', icon: BookOpen },
       { id: 'settings', label: 'Cài đặt hồ sơ', icon: Settings },
     ],

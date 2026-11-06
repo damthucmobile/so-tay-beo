@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Trip, TripActivity, DayItinerary } from '../types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/core/utils/formatters';
 import {
   MapPin,
   Calendar,
@@ -58,10 +59,6 @@ export const SharedTripView: React.FC<SharedTripViewProps> = ({ trip, onExit }) 
     } catch {
       return dateStr;
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
 
   const currentDayData = trip.itinerary.find((d) => d.day === selectedDay);

@@ -18,6 +18,7 @@ import { NavTabId } from '../components/layout/Sidebar';
 import { BlankModuleView } from '../components/shared/BlankModuleView';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useTeachingScheduleStore } from '../features/teaching-schedule/stores/useTeachingScheduleStore';
+import { DashboardFeature } from '../features/dashboard';
 import { AIAssistantPage } from '../components/ai/AIAssistantPage';
 import { AIFloatingButton } from '../components/ai/AIFloatingButton';
 import {
@@ -50,12 +51,30 @@ import {
   Luggage,
 } from 'lucide-react';
 
+const VALID_TABS: NavTabId[] = [
+  'dashboard',
+  'classes',
+  'teaching_schedule',
+  'schedule',
+  'income',
+  'spending',
+  'ai_assistant',
+  'settings',
+  'guide',
+  'health',
+  'travel',
+  'travel_journal',
+  'travel_budget',
+  'travel_checklist',
+  'family',
+  'education',
+];
+
 export default function HomePage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const { trackManualView } = useActivityTracker();
   const { theme, setTheme } = useThemeStore();
-  const [tabHistory, setTabHistory] = useState<NavTabId[]>(['classes']);
-  const currentTab = tabHistory[tabHistory.length - 1] || 'classes';
+  const [currentTab, setCurrentTab] = useState<NavTabId>('dashboard');
   const [sharedTripId, setSharedTripId] = useState<string | null>(null);
   const [sharedToken, setSharedToken] = useState<string | null>(null);
   const [sharedTripData, setSharedTripData] = useState<Trip | null>(null);
@@ -63,23 +82,26 @@ export default function HomePage() {
 
   const handleSelectTab = (tab: NavTabId) => {
     if (tab === currentTab) return;
-    setTabHistory((prev) => [...prev, tab]);
-  };
-
-  const handleBackTab = () => {
-    if (tabHistory.length > 1) {
-      setTabHistory((prev) => prev.slice(0, -1));
+    setCurrentTab(tab);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('sotaybeo_active_tab', tab);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.pushState({ tab }, '', url.toString());
+      } catch {
+        // ignore
+      }
     }
   };
 
-  // Tự động kiểm tra URL query param và lắng nghe sự kiện khi người dùng click vào thông báo
+  // Tự động kiểm tra URL query param và đồng bộ khi reload hoặc popstate
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const checkUrlParams = () => {
+    const readTabFromUrlOrStorage = (): NavTabId => {
       try {
         const search = window.location.search;
-        if (!search) return;
         const params = new URLSearchParams(search);
 
         // Kiểm tra xem có đang mở liên kết chia sẻ chuyến đi không
@@ -88,31 +110,59 @@ export default function HomePage() {
         if (share) {
           setSharedTripId(share);
           setSharedToken(token || null);
-          return;
         }
 
         const tab = params.get('tab') as NavTabId | null;
         const teacher = params.get('teacher');
 
-        if (tab && ['classes', 'teaching_schedule', 'schedule', 'income', 'spending', 'settings', 'guide', 'health', 'travel', 'travel_journal', 'travel_budget', 'travel_checklist', 'family', 'education', 'ai_assistant'].includes(tab)) {
-          setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
+        if (tab && VALID_TABS.includes(tab)) {
           if (teacher && tab === 'teaching_schedule') {
             useTeachingScheduleStore.getState().setSelectedTeacher(decodeURIComponent(teacher));
             useTeachingScheduleStore.getState().setViewMode('teacher');
           }
+          return tab;
+        }
+
+        // Nếu URL không có tab param, đọc từ localStorage
+        const stored = localStorage.getItem('sotaybeo_active_tab') as NavTabId | null;
+        if (stored && VALID_TABS.includes(stored)) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', stored);
+          window.history.replaceState({ tab: stored }, '', url.toString());
+          return stored;
         }
       } catch (e) {
         // ignore
       }
+      return 'dashboard';
     };
 
-    checkUrlParams();
+    const initialTab = readTabFromUrlOrStorage();
+    setCurrentTab(initialTab);
+
+    // Lắng nghe nút Back / Forward của trình duyệt
+    const handlePopState = (e: PopStateEvent) => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab') as NavTabId | null;
+        if (tab && VALID_TABS.includes(tab)) {
+          setCurrentTab(tab);
+        } else if (e.state?.tab && VALID_TABS.includes(e.state.tab)) {
+          setCurrentTab(e.state.tab);
+        } else {
+          const stored = localStorage.getItem('sotaybeo_active_tab') as NavTabId | null;
+          setCurrentTab(stored && VALID_TABS.includes(stored) ? stored : 'dashboard');
+        }
+      } catch {
+        // ignore
+      }
+    };
 
     // 1. Lắng nghe sự kiện click thông báo nội bộ
     const handleNavigateTab = (e: any) => {
       const detail = e.detail;
-      if (detail?.tab) {
-        setTabHistory((prev) => (prev[prev.length - 1] === detail.tab ? prev : [...prev, detail.tab]));
+      if (detail?.tab && VALID_TABS.includes(detail.tab)) {
+        handleSelectTab(detail.tab);
         if (detail.teacher && detail.tab === 'teaching_schedule') {
           useTeachingScheduleStore.getState().setSelectedTeacher(detail.teacher);
           useTeachingScheduleStore.getState().setViewMode('teacher');
@@ -125,22 +175,24 @@ export default function HomePage() {
       if (e.data?.type === 'NOTIFICATION_CLICKED') {
         const data = e.data.data;
         const tab = data?.tab || 'teaching_schedule';
-        setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
-        if (data?.teacher && tab === 'teaching_schedule') {
-          useTeachingScheduleStore.getState().setSelectedTeacher(data.teacher);
-          useTeachingScheduleStore.getState().setViewMode('teacher');
+        if (VALID_TABS.includes(tab)) {
+          handleSelectTab(tab);
+          if (data?.teacher && tab === 'teaching_schedule') {
+            useTeachingScheduleStore.getState().setSelectedTeacher(data.teacher);
+            useTeachingScheduleStore.getState().setViewMode('teacher');
+          }
         }
       }
     };
 
-    window.addEventListener('popstate', checkUrlParams);
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('app-navigate-tab', handleNavigateTab);
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', handleSwMessage);
     }
 
     return () => {
-      window.removeEventListener('popstate', checkUrlParams);
+      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('app-navigate-tab', handleNavigateTab);
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.removeEventListener('message', handleSwMessage);
@@ -186,6 +238,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     const tabMeta: Record<NavTabId, { title: string; subtitle: string }> = {
+      dashboard: { title: 'Trang Chủ', subtitle: 'Tổng quan giảng dạy, lịch trình & đời sống' },
       classes: { title: 'Quản Lý Lớp Học', subtitle: 'Danh sách các lớp giảng dạy' },
       teaching_schedule: { title: 'Lịch Dạy Học', subtitle: 'Thời khóa biểu nhà trường & Lịch giảng dạy cá nhân' },
       schedule: { title: 'Lịch Tự Do & Khách Hàng', subtitle: 'Lịch hẹn gia sư & học viên' },
@@ -361,12 +414,13 @@ export default function HomePage() {
     <MainLayout
       currentTab={currentTab}
       onSelectTab={handleSelectTab}
-      onBackTab={handleBackTab}
-      canBackTab={tabHistory.length > 1}
       user={user}
       onLogout={() => logout()}
       onSelectRecentItem={handleSelectRecentItem}
     >
+      {/* 0. TRANG CHỦ (TỔNG QUAN) */}
+      {currentTab === 'dashboard' && <DashboardFeature onNavigateTab={handleSelectTab} />}
+
       {/* 1. LỚP HỌC (FEATURE CHÍNH) */}
       {currentTab === 'classes' && <ClassFeature />}
 

@@ -5,7 +5,8 @@ export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
-  }).format(amount);
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
 };
 
 export const formatDate = (dateString?: string, formatStr: string = 'dd/MM/yyyy HH:mm'): string => {
