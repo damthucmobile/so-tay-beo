@@ -13,7 +13,7 @@ import {
   getDocs,
   onSnapshot,
 } from 'firebase/firestore';
-import { getDb, COLLECTIONS } from '@/core/firebase';
+import { getDb, COLLECTIONS, cleanUndefinedFields } from '@/core/firebase';
 import { AIChatSession, ChatAttachment, ChatMessage } from './types';
 
 export const CHAT_SESSIONS_STORAGE_KEY = 'so_tay_beo_gemini_chat_sessions_v1';
@@ -58,37 +58,54 @@ export function setLocalCachedSessions(sessions: AIChatSession[]): void {
 }
 
 /**
- * Làm sạch tin nhắn trước khi lưu vào Cloud Firestore hoặc LocalStorage
+ * Làm sạch tin nhắn trước khi lưu vào Cloud Firestore hoặc LocalStorage:
  * - Bỏ chuỗi Base64 `data` khổng lồ nếu đã có URL trên Cloudflare R2 hoặc data quá lớn
  * - Giữ lại URL, previewUrl, thông tin file, văn bản text
+ * - LOẠI BỎ TRIỆT ĐỂ CÁC TRƯỜNG `undefined` (Vì Firestore SDK sẽ ném Exception nếu gặp undefined)
  */
 export function sanitizeSessionForStorage(session: AIChatSession): AIChatSession {
-  return {
-    ...session,
+  const sanitized: Record<string, any> = {
+    id: session.id,
+    title: session.title || 'Cuộc trò chuyện mới',
+    createdAt: session.createdAt || new Date().toISOString(),
+    updatedAt: session.updatedAt || new Date().toISOString(),
     messages: (session.messages || []).map((m) => {
-      if (!m.attachments || m.attachments.length === 0) return m;
-      return {
-        ...m,
-        attachments: m.attachments.map((a) => {
+      const msgCopy: Record<string, any> = {
+        id: m.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        role: m.role || 'user',
+        content: m.content || '',
+        timestamp: m.timestamp || new Date().toISOString(),
+      };
+
+      if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
+        msgCopy.attachments = m.attachments.map((a) => {
           const hasCloudUrl = Boolean(a.url);
-          return {
+          const attCopy: Record<string, any> = {
             id: a.id,
             name: a.name,
             type: a.type,
-            size: a.size,
-            url: a.url || (a.data?.startsWith('http') ? a.data : undefined),
-            fileKey: a.fileKey,
-            previewUrl: a.previewUrl || a.url,
-            isText: a.isText,
-            textContent:
-              a.textContent && a.textContent.length < 30000 ? a.textContent : undefined,
-            // Nếu đã có cloud URL hoặc Base64 > 100KB, không lưu data Base64 vào DB để tránh phình dung lượng
+            size: a.size || 0,
             data: hasCloudUrl || (a.data && a.data.length > 100000) ? '' : a.data || '',
           };
-        }),
-      };
+          if (a.url) attCopy.url = a.url;
+          if (a.fileKey) attCopy.fileKey = a.fileKey;
+          if (a.previewUrl || a.url) attCopy.previewUrl = a.previewUrl || a.url;
+          if (typeof a.isText === 'boolean') attCopy.isText = a.isText;
+          if (a.textContent && a.textContent.length < 30000) attCopy.textContent = a.textContent;
+          return attCopy;
+        });
+      }
+
+      return msgCopy;
     }),
   };
+
+  if (session.userId) sanitized.userId = session.userId;
+  if (session.scope) sanitized.scope = session.scope;
+  if (session.model) sanitized.model = session.model;
+  if (typeof session.pinned === 'boolean') sanitized.pinned = session.pinned;
+
+  return cleanUndefinedFields(sanitized) as AIChatSession;
 }
 
 /**
@@ -289,14 +306,11 @@ export async function saveAIChatSession(
     try {
       const db = getDb();
       const docRef = doc(db, COLLECTIONS.AI_CHAT_SESSIONS, sanitized.id);
-      await setDoc(
-        docRef,
-        {
-          ...sanitized,
-          userId: effectiveUid,
-        },
-        { merge: true }
-      );
+      const firestorePayload = cleanUndefinedFields({
+        ...sanitized,
+        userId: effectiveUid,
+      });
+      await setDoc(docRef, firestorePayload, { merge: true });
     } catch (e) {
       console.error('[AIChatStorage] Lỗi lưu session lên Firestore:', e);
     }
@@ -354,7 +368,8 @@ export async function autoSyncLocalSessionsToCloud(userId: string): Promise<void
           userId,
         });
         const docRef = doc(db, COLLECTIONS.AI_CHAT_SESSIONS, session.id);
-        await setDoc(docRef, sanitized, { merge: true });
+        const firestorePayload = cleanUndefinedFields(sanitized);
+        await setDoc(docRef, firestorePayload, { merge: true });
       }
     }
   } catch (err) {
