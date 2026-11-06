@@ -10,31 +10,32 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
-  Stethoscope,
   Plus,
   Trash2,
   Calendar,
   Building2,
   User,
-  ArrowRight,
   ShieldCheck,
   Check,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { HealthRecordDocument, HealthMetricValue } from '../types';
 import { useAuth } from '@/core/firebase';
 import { useHealthStore } from '../stores/useHealthStore';
+
+interface UploadedFileItem {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  base64: string;
+}
 
 interface AiMedicalImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (recordId: string) => void;
   defaultCheckupId?: string;
-}
-
-interface SampleDoc {
-  fileName: string;
-  label: string;
-  category: string;
 }
 
 export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
@@ -51,109 +52,79 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
   const [selectedCheckupSessionId, setSelectedCheckupSessionId] = useState<string>(
     defaultCheckupId && defaultCheckupId !== 'all' ? defaultCheckupId : 'none'
   );
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileItem[]>([]);
 
   React.useEffect(() => {
     if (defaultCheckupId && defaultCheckupId !== 'all') {
       setSelectedCheckupSessionId(defaultCheckupId);
     }
   }, [defaultCheckupId]);
-  const [fileBase64, setFileBase64] = useState<string>('');
-  const [fileName, setFileName] = useState<string>('');
-  const [mimeType, setMimeType] = useState<string>('');
+
   const [rawText, setRawText] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  // Sample Documents
-  const [samples, setSamples] = useState<SampleDoc[]>([]);
-  const [loadingSample, setLoadingSample] = useState<string | null>(null);
-
   // Parsed Result to Review
   const [parsedData, setParsedData] = useState<Partial<HealthRecordDocument> | null>(null);
 
-  // Tải danh sách tài liệu mẫu từ thư mục .document
-  useEffect(() => {
-    if (!isOpen) return;
-    fetch('/api/health/sample-documents')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.samples) {
-          setSamples(data.samples);
-        }
-      })
-      .catch((err) => console.warn('Không tải được sample docs:', err));
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
-  // Xử lý khi chọn file từ máy tính
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
-    setFileName(file.name);
-    setMimeType(file.type || 'application/octet-stream');
+  // Xử lý khi chọn một hoặc nhiều file từ máy tính / điện thoại
+  const handleFilesSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     setErrorMsg('');
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setFileBase64(result);
-    };
-    reader.readAsDataURL(file);
+    const fileList = Array.from(files);
+    fileList.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const b64 = reader.result as string;
+        setUploadedFiles((prev) => [
+          ...prev,
+          {
+            id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            size: file.size,
+            type: file.type || 'application/octet-stream',
+            base64: b64,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
-  // Chọn 1 file mẫu từ bệnh viện
-  const handleSelectSample = async (sample: SampleDoc) => {
-    setLoadingSample(sample.fileName);
-    setErrorMsg('');
-    try {
-      const res = await fetch('/api/health/sample-documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: sample.fileName }),
-      });
-      const data = await res.json();
-      if (data.success && data.fileBase64) {
-        setFileName(data.fileName);
-        setMimeType(data.mimeType);
-        setFileBase64(data.fileBase64);
-        setSelectedFile(null);
-        // Tự động phân tích luôn
-        triggerAiParse(data.fileBase64, data.mimeType, data.fileName, '');
-      } else {
-        setErrorMsg('Không thể đọc file mẫu.');
-      }
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Lỗi nạp file mẫu.');
-    } finally {
-      setLoadingSample(null);
-    }
+  const handleRemoveFile = (id: string) => {
+    setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  // Gửi file đến AI để bóc tách dữ liệu
-  const triggerAiParse = async (
-    b64: string,
-    mime: string,
-    name: string,
-    text: string
-  ) => {
+  // Gửi toàn bộ các file đã chọn đến AI để bóc tách dữ liệu
+  const triggerAiParse = async () => {
+    if (uploadedFiles.length === 0 && !rawText) return;
     setIsProcessing(true);
     setStep('scanning');
     setErrorMsg('');
 
     try {
+      const payload: any = {
+        rawText,
+      };
+
+      if (uploadedFiles.length > 0) {
+        payload.files = uploadedFiles.map((f) => ({
+          fileBase64: f.base64,
+          mimeType: f.type,
+          fileName: f.name,
+        }));
+        payload.fileBase64 = uploadedFiles[0].base64;
+        payload.mimeType = uploadedFiles[0].type;
+        payload.fileName = uploadedFiles.map((f) => f.name).join(', ');
+      }
+
       const res = await fetch('/api/health/parse-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileBase64: b64,
-          mimeType: mime,
-          fileName: name,
-          rawText: text,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json();
@@ -181,6 +152,9 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
 
     try {
       const sessionIdToAssign = selectedCheckupSessionId !== 'none' ? selectedCheckupSessionId : undefined;
+      const combinedFileNames = uploadedFiles.map((f) => f.name).join(', ');
+      const totalFileSize = uploadedFiles.reduce((acc, f) => acc + f.size, 0);
+
       const recordPayload: Omit<HealthRecordDocument, 'id' | 'createdAt' | 'updatedAt' | 'userId'> = {
         title: parsedData.title || `Khám sức khỏe - ${parsedData.hospitalName || 'Bệnh viện'}`,
         recordDate: parsedData.recordDate || new Date().toISOString().split('T')[0],
@@ -197,7 +171,8 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
           checkupSessionId: sessionIdToAssign,
         })),
         imagingFindings: parsedData.imagingFindings || [],
-        fileName: fileName || '',
+        fileName: combinedFileNames || undefined,
+        fileSize: totalFileSize || undefined,
         aiAnalysisNotes: parsedData.aiAnalysisNotes || '',
       };
 
@@ -271,13 +246,46 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
 
           {/* STEP 1: UPLOAD HOẶC CHỌN MẪU */}
           {step === 'upload' && (
-            <div className="space-y-6">
-              {/* Dropzone Upload */}
+            <div className="space-y-5">
+              {/* Checkup Session Selector */}
+              {checkupSessions.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/60">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                        Gán vào Đợt Khám Sức Khỏe:
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                        Các chỉ số và hồ sơ quét được sẽ tự động liên kết với đợt khám này
+                      </span>
+                    </div>
+                  </div>
+                  <select
+                    value={selectedCheckupSessionId}
+                    onChange={(e) => setSelectedCheckupSessionId(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 cursor-pointer sm:max-w-xs truncate"
+                  >
+                    <option value="none">Không gắn đợt khám (Tự đo lẻ / Khác)</option>
+                    {checkupSessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title} ({s.checkupDate} • {s.hospitalName})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Dropzone Upload Hỗ trợ nhiều tệp */}
               <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-rose-500 dark:hover:border-rose-500 rounded-3xl p-6 sm:p-8 text-center transition-all bg-slate-50/50 dark:bg-slate-800/20 group">
                 <input
                   type="file"
+                  multiple
                   accept=".pdf,image/png,image/jpeg,image/webp,.txt,.csv"
-                  onChange={handleFileChange}
+                  onChange={(e) => {
+                    handleFilesSelect(e.target.files);
+                    e.target.value = '';
+                  }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
 
@@ -287,85 +295,100 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
 
                 <div className="mt-3 space-y-1">
                   <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                    {selectedFile ? selectedFile.name : 'Kéo thả hoặc chọn tệp kết quả khám bệnh'}
+                    {uploadedFiles.length > 0 ? 'Nhấn hoặc kéo thả để thêm tệp' : 'Kéo thả hoặc chọn tệp kết quả khám bệnh'}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                    Hỗ trợ tệp <strong>PDF</strong>, ảnh chụp điện thoại (<strong>JPG, PNG</strong>), hoặc văn bản. AI sẽ tự động phân tích và đưa vào CSDL chuẩn hóa.
+                    Hỗ trợ chọn <strong>cùng lúc nhiều tệp</strong>: ảnh chụp từng trang (<strong>JPG, PNG</strong>), phiếu siêu âm, xét nghiệm hoặc tệp <strong>PDF</strong>.
                   </p>
                 </div>
-
-                {selectedFile && (
-                  <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-xs font-bold">
-                    <FileText className="w-4 h-4" />
-                    <span>Đã chọn: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)</span>
-                  </div>
-                )}
               </div>
 
-              {selectedFile && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => triggerAiParse(fileBase64, mimeType, fileName, rawText)}
-                    disabled={isProcessing}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Đang phân tích...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Bắt đầu quét AI</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* Dùng ngay mẫu thực tế từ .document */}
-              {samples.length > 0 && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <Stethoscope className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Hoặc thử nghiệm ngay với tài liệu thực tế của bạn:</span>
+              {/* Danh sách tệp đã chọn */}
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Tệp đã nạp ({uploadedFiles.length} tệp)
                     </span>
-                    <span className="text-[11px] text-slate-400">1-click AI Scanner</span>
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer transition">
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Thêm tệp khác</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,image/png,image/jpeg,image/webp,.txt,.csv"
+                          onChange={(e) => {
+                            handleFilesSelect(e.target.files);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setUploadedFiles([])}
+                        className="text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
+                      >
+                        Xóa tất cả
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                    {samples.map((s) => (
-                      <button
-                        key={s.fileName}
-                        type="button"
-                        onClick={() => handleSelectSample(s)}
-                        disabled={loadingSample !== null || isProcessing}
-                        className="group p-3 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 hover:border-rose-500 dark:hover:border-rose-500 text-left transition flex items-start justify-between gap-2 cursor-pointer shadow-xs"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1">
+                    {uploadedFiles.map((file, idx) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center justify-between p-2.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-xs gap-2"
                       >
-                        <div className="min-w-0">
-                          <span className="inline-block px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 mb-1">
-                            {s.category}
-                          </span>
-                          <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-rose-400 truncate">
-                            {s.label}
-                          </h5>
-                          <p className="text-[10px] text-slate-400 truncate">
-                            {s.fileName}
-                          </p>
-                        </div>
-
-                        {loadingSample === s.fileName ? (
-                          <Loader2 className="w-4 h-4 text-rose-500 animate-spin shrink-0 mt-2" />
-                        ) : (
-                          <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:bg-rose-500 group-hover:text-white transition">
-                            <ArrowRight className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                            {file.type.startsWith('image/') ? (
+                              <ImageIcon className="w-4 h-4" />
+                            ) : (
+                              <FileText className="w-4 h-4" />
+                            )}
                           </div>
-                        )}
-                      </button>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                              {file.name}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              {(file.size / 1024).toFixed(0)} KB • Trang/Ảnh #{idx + 1}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(file.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                          title="Xóa tệp này"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ))}
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={triggerAiParse}
+                      disabled={isProcessing}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Đang phân tích {uploadedFiles.length} tệp...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          <span>Bắt đầu quét AI ({uploadedFiles.length} tệp)</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               )}
@@ -384,10 +407,10 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
 
               <div className="space-y-1">
                 <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                  AI đang đọc và phân tích cấu trúc phiếu xét nghiệm...
+                  AI đang đọc và tổng hợp {uploadedFiles.length > 1 ? `${uploadedFiles.length} tài liệu / trang khám` : 'tài liệu y tế'}...
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                  Tự động nhận diện tên chỉ số, giá trị, đơn vị, khoảng tham chiếu và đánh giá tình trạng sức khỏe.
+                  Tự động nhận diện tên chỉ số, giá trị, đơn vị, khoảng tham chiếu và đánh giá tình trạng sức khỏe từ toàn bộ các trang.
                 </p>
               </div>
             </div>

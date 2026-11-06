@@ -22,7 +22,7 @@ import { useTeachingScheduleStore } from '@/features/teaching-schedule/stores/us
 import { DayOfWeek, Session, TimetableEntry } from '@/features/teaching-schedule/types';
 import { useSpendingStore } from '@/features/spending/stores/useSpendingStore';
 import { ExpenseItem, ExpenseCategory, EXPENSE_CATEGORIES } from '@/features/spending/types';
-import { getDb, COLLECTIONS, auth } from '@/core/firebase';
+import { getDb, COLLECTIONS, auth, cleanUndefinedFields } from '@/core/firebase';
 import { collection, getDocs, query, where, setDoc, doc } from 'firebase/firestore';
 import { HealthService } from '@/features/health/services/healthService';
 import { HealthCategory, HealthMetricValue } from '@/features/health/types';
@@ -1317,6 +1317,7 @@ export async function handleHealthAction(
         notes: params.notes || '',
         hospitalName: params.hospitalName,
         doctorName: params.doctorName,
+        checkupSessionId: params.checkupSessionId || params.sessionId || undefined,
       });
 
       return {
@@ -1443,15 +1444,20 @@ export async function handleHealthAction(
         };
       });
 
+      const targetSessionId = params.checkupSessionId || params.sessionId || undefined;
       const recordId = await HealthService.saveHealthRecord(uid, {
         title: params.title || `Hồ sơ khám tại ${hospitalName}`,
         recordDate,
         documentType: (params.documentType || params.recordType || 'blood_test') as any,
         hospitalName,
         doctorName,
+        checkupSessionId: targetSessionId,
         summaryDiagnosis: diagnosis,
         aiAnalysisNotes: params.notes || params.aiAnalysisNotes,
-        metrics: preparedMetrics,
+        metrics: preparedMetrics.map((m) => ({
+          ...m,
+          checkupSessionId: targetSessionId || m.checkupSessionId,
+        })),
       });
 
       return {
@@ -1552,7 +1558,7 @@ export async function handleHealthAction(
       if (params.notes !== undefined) updates.notes = params.notes;
 
       const ref = doc(db, COLLECTIONS.HEALTH_CHECKUPS, sessionId);
-      await setDoc(ref, updates, { merge: true });
+      await setDoc(ref, cleanUndefinedFields(updates), { merge: true });
 
       return {
         success: true,
@@ -1597,7 +1603,7 @@ export async function initializeFamilyEventAction(
 
   try {
     const docId = `family_${Date.now()}`;
-    await setDoc(doc(db, 'family_events', docId), {
+    await setDoc(doc(db, 'family_events', docId), cleanUndefinedFields({
       id: docId,
       userId: uid,
       title,
@@ -1605,7 +1611,7 @@ export async function initializeFamilyEventAction(
       category: params.category || 'general',
       notes: params.notes || '',
       createdAt: new Date().toISOString(),
-    });
+    }));
 
     return {
       success: true,
@@ -1634,7 +1640,7 @@ export async function initializeEducationGoalAction(
 
   try {
     const docId = `edu_${Date.now()}`;
-    await setDoc(doc(db, 'education_goals', docId), {
+    await setDoc(doc(db, 'education_goals', docId), cleanUndefinedFields({
       id: docId,
       userId: uid,
       title: goalTitle,
@@ -1642,7 +1648,7 @@ export async function initializeEducationGoalAction(
       status: 'in_progress',
       notes: params.notes || '',
       createdAt: new Date().toISOString(),
-    });
+    }));
 
     return {
       success: true,

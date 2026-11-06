@@ -159,7 +159,7 @@ export const ManualMetricModal: React.FC<ManualMetricModalProps> = ({
               <option value="none">Không thuộc đợt khám cụ thể (Tự đo tại nhà / Hàng ngày)</option>
               {checkupSessions.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.checkupDate} - {s.title} ({s.hospitalName})
+                  {s.title} ({s.checkupDate} • {s.hospitalName})
                 </option>
               ))}
             </select>

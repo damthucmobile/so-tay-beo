@@ -110,38 +110,38 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
 
   return (
     <div className="w-full space-y-6 animate-fadeIn pb-12">
-      {/* Top Banner Header (Giữ nguyên phong cách BlankModuleView hiện tại) */}
-      <div className="relative overflow-hidden rounded-3xl border border-rose-200 dark:border-rose-900/40 bg-white dark:bg-slate-900/90 p-6 sm:p-8 shadow-sm backdrop-blur-xl">
+      {/* Top Banner Header (Tối ưu responsive trên Mobile & Desktop) */}
+      <div className="relative overflow-hidden rounded-3xl border border-rose-200 dark:border-rose-900/40 bg-white dark:bg-slate-900/90 p-4 sm:p-7 shadow-sm backdrop-blur-xl">
         <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-pink-500/5 to-transparent pointer-events-none opacity-80" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 flex items-center justify-center shrink-0 shadow-sm">
-              <HeartPulse className="w-7 h-7 sm:w-8 sm:h-8" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+          <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 flex items-center justify-center shrink-0 shadow-sm">
+              <HeartPulse className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300">
+            <div className="space-y-1 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 shrink-0">
                   <Sparkles className="w-3 h-3" />
                   Sức Khỏe & Thể Chất
                 </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500">• Không gian cá nhân</span>
+                <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500">• Không gian cá nhân</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
                 Nhật Ký & Theo Dõi Sức Khỏe
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
-                Không gian toàn diện giúp bạn ghi chép chỉ số thể chất (BMI, cân nặng, huyết áp), nhật ký tập luyện thể thao, kế hoạch ăn uống healthy và lịch nhắc khám sức khỏe định kỳ.
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed line-clamp-2 sm:line-clamp-none">
+                Không gian ghi chép chỉ số thể chất (BMI, cân nặng, huyết áp), nhật ký tập luyện thể thao, chế độ dinh dưỡng và hồ sơ khám sức khỏe định kỳ.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 pt-1 md:pt-0">
             <button
               type="button"
               onClick={() => setActiveSubTab('biometrics')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition cursor-pointer active:scale-95 bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/20"
+              className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition cursor-pointer active:scale-95 bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/20"
             >
               <HeartPulse className="w-4 h-4" />
               <span>Xem chỉ số sinh học</span>

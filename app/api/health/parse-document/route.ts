@@ -50,9 +50,16 @@ Yêu cầu xuất ra định dạng JSON CHÍNH XÁC theo cấu trúc sau (khôn
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { fileBase64, mimeType, fileName, rawText } = body;
+    const { fileBase64, mimeType, fileName, rawText, files } = body;
 
-    if (!fileBase64 && !rawText) {
+    const fileList: Array<{ fileBase64: string; mimeType: string; fileName?: string }> = [];
+    if (Array.isArray(files) && files.length > 0) {
+      fileList.push(...files);
+    } else if (fileBase64 && mimeType) {
+      fileList.push({ fileBase64, mimeType, fileName });
+    }
+
+    if (fileList.length === 0 && !rawText) {
       return NextResponse.json(
         { success: false, error: 'Vui lòng cung cấp nội dung tệp hoặc văn bản kết quả khám.' },
         { status: 400 }
@@ -64,17 +71,18 @@ export async function POST(req: NextRequest) {
 
     const parts: any[] = [];
 
-    // Nếu có file đính kèm (PDF, Image, Text)
-    if (fileBase64 && mimeType) {
-      const cleanBase64 = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    // Duyệt qua tất cả các file được gửi lên (ảnh các trang, pdf...)
+    for (const f of fileList) {
+      if (!f.fileBase64 || !f.mimeType) continue;
+      const cleanBase64 = f.fileBase64.replace(/^data:[^;]+;base64,/, '');
 
       if (
-        mimeType === 'application/pdf' ||
-        mimeType.startsWith('image/')
+        f.mimeType === 'application/pdf' ||
+        f.mimeType.startsWith('image/')
       ) {
         parts.push({
           inlineData: {
-            mimeType,
+            mimeType: f.mimeType,
             data: cleanBase64,
           },
         });
@@ -83,11 +91,11 @@ export async function POST(req: NextRequest) {
         try {
           const textDecoded = Buffer.from(cleanBase64, 'base64').toString('utf-8');
           parts.push({
-            text: `[Nội dung tệp ${fileName || 'tài liệu'}]:\n${textDecoded}`,
+            text: `[Nội dung tệp ${f.fileName || 'tài liệu'}]:\n${textDecoded}`,
           });
         } catch {
           parts.push({
-            text: `[Dữ liệu text ${fileName}]:\n${rawText || ''}`,
+            text: `[Dữ liệu text ${f.fileName}]:\n${rawText || ''}`,
           });
         }
       }
@@ -100,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
 
     parts.push({
-      text: 'Hãy đọc toàn bộ dữ liệu tài liệu y tế ở trên và trích xuất thành JSON chuẩn xác theo đúng cấu trúc đã chỉ định.',
+      text: 'Hãy đọc toàn bộ dữ liệu tài liệu y tế ở trên (nếu có nhiều trang hoặc nhiều ảnh của cùng một đợt khám, hãy tổng hợp đầy đủ tất cả chỉ số xét nghiệm, kết luận chẩn đoán hình ảnh và đánh giá từ mọi trang) và trích xuất thành JSON chuẩn xác theo đúng cấu trúc đã chỉ định.',
     });
 
     // Thử gọi các model Gemini

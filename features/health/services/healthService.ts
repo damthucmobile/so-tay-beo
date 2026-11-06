@@ -12,24 +12,29 @@ import {
   orderBy,
   Unsubscribe,
 } from 'firebase/firestore';
-import { getDb, COLLECTIONS } from '@/core/firebase';
+import { getDb, COLLECTIONS, cleanUndefinedFields } from '@/core/firebase';
 import { HealthRecordDocument, HealthMetricValue, HealthCheckupSession } from '../types';
 
 const RECORDS_STORAGE_KEY = 'so_tay_beo_health_records_cache';
 const METRICS_STORAGE_KEY = 'so_tay_beo_health_metrics_cache';
 
 export function cleanUndefined<T extends Record<string, any>>(obj: T): T {
-  const result: any = {};
-  for (const [key, val] of Object.entries(obj)) {
-    if (val !== undefined) {
-      if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
-        result[key] = cleanUndefined(val);
-      } else {
-        result[key] = val;
-      }
-    }
+  return cleanUndefinedFields(obj) as T;
+}
+
+export function parseDateToTimestamp(dateStr?: string): number {
+  if (!dateStr) return 0;
+  const trimmed = dateStr.trim();
+  // Check if DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1;
+    const year = parseInt(dmyMatch[3], 10);
+    return new Date(year, month, day).getTime();
   }
-  return result;
+  const parsed = new Date(trimmed).getTime();
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 export const HealthService = {
@@ -82,7 +87,11 @@ export const HealthService = {
         snapshot.forEach((docSnap) => {
           records.push({ id: docSnap.id, ...(docSnap.data() as any) });
         });
-        records.sort((a, b) => (b.recordDate || '').localeCompare(a.recordDate || ''));
+        records.sort(
+          (a, b) =>
+            parseDateToTimestamp(b.recordDate) - parseDateToTimestamp(a.recordDate) ||
+            parseDateToTimestamp(b.createdAt) - parseDateToTimestamp(a.createdAt)
+        );
         HealthService.saveLocalCache(records, undefined);
         onUpdate(records);
       },
@@ -115,7 +124,11 @@ export const HealthService = {
         snapshot.forEach((docSnap) => {
           metrics.push({ id: docSnap.id, ...(docSnap.data() as any) });
         });
-        metrics.sort((a, b) => (b.measuredAt || '').localeCompare(a.measuredAt || ''));
+        metrics.sort(
+          (a, b) =>
+            parseDateToTimestamp(b.measuredAt) - parseDateToTimestamp(a.measuredAt) ||
+            (b.id || '').localeCompare(a.id || '')
+        );
         HealthService.saveLocalCache(undefined, metrics);
         onUpdate(metrics);
       },
@@ -247,7 +260,11 @@ export const HealthService = {
         snapshot.forEach((docSnap) => {
           sessions.push({ id: docSnap.id, ...(docSnap.data() as any) });
         });
-        sessions.sort((a, b) => (b.checkupDate || '').localeCompare(a.checkupDate || ''));
+        sessions.sort(
+          (a, b) =>
+            parseDateToTimestamp(b.checkupDate) - parseDateToTimestamp(a.checkupDate) ||
+            parseDateToTimestamp(b.createdAt) - parseDateToTimestamp(a.createdAt)
+        );
         onUpdate(sessions);
       },
       (err) => {
@@ -279,6 +296,17 @@ export const HealthService = {
 
     await setDoc(doc(db, COLLECTIONS.HEALTH_CHECKUPS, sessionId), cleanUndefined(fullSession));
     return sessionId;
+  },
+
+  // Cập nhật thông tin đợt khám sức khỏe
+  async updateCheckupSession(
+    sessionId: string,
+    updates: Partial<HealthCheckupSession>
+  ): Promise<void> {
+    const db = getDb();
+    if (!db) return;
+    const ref = doc(db, COLLECTIONS.HEALTH_CHECKUPS, sessionId);
+    await setDoc(ref, cleanUndefined({ ...updates, updatedAt: new Date().toISOString() }), { merge: true });
   },
 
   // Xóa đợt khám sức khỏe

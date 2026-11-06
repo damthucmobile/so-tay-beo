@@ -40,6 +40,10 @@ interface HealthStoreState {
     userId: string,
     session: Omit<HealthCheckupSession, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
   ) => Promise<string>;
+  updateCheckup: (
+    sessionId: string,
+    updates: Partial<HealthCheckupSession>
+  ) => Promise<void>;
   deleteRecord: (recordId: string) => Promise<void>;
   deleteMetric: (metricId: string) => Promise<void>;
   deleteCheckup: (sessionId: string) => Promise<void>;
@@ -123,6 +127,15 @@ export const useHealthStore = create<HealthStoreState>((set, get) => {
     saveCheckup: async (userId, session) => {
       const sessionId = await HealthService.saveCheckupSession(userId, session);
       return sessionId;
+    },
+
+    updateCheckup: async (sessionId, updates) => {
+      await HealthService.updateCheckupSession(sessionId, updates);
+      set((state) => ({
+        checkupSessions: state.checkupSessions.map((s) =>
+          s.id === sessionId ? { ...s, ...updates, updatedAt: new Date().toISOString() } : s
+        ),
+      }));
     },
 
     deleteRecord: async (recordId) => {
