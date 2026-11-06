@@ -41,6 +41,7 @@ import {
   UploadCloud,
   ArrowUp,
   Cloud,
+  HeartPulse,
 } from 'lucide-react';
 import {
   useGeminiAI,
@@ -75,6 +76,7 @@ import { useScheduleManager } from '@/features/schedule/hooks/useScheduleManager
 import { useIncomeManager } from '@/features/income/hooks/useIncomeManager';
 import { useTravelStore } from '@/features/travel/stores/useTravelStore';
 import { useSpendingStore } from '@/features/spending/stores/useSpendingStore';
+import { useHealthStore } from '@/features/health/stores/useHealthStore';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { NavTabId } from '../layout/Sidebar';
 
@@ -90,16 +92,24 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
   const { transactions } = useIncomeManager(user?.uid);
   const { trips, fetchTrips } = useTravelStore();
   const { expenses, monthlyBudget, customCategories, initStore: initSpendingStore } = useSpendingStore();
+  const {
+    records: healthRecords,
+    metrics: healthMetrics,
+    checkupSessions: healthCheckupSessions,
+    initStore: initHealthStore,
+  } = useHealthStore();
 
   useEffect(() => {
     if (user?.uid) {
       fetchTrips(user.uid);
-      const unsub = initSpendingStore(user.uid);
+      const unsubSpending = initSpendingStore(user.uid);
+      const unsubHealth = initHealthStore(user.uid);
       return () => {
-        unsub();
+        unsubSpending();
+        unsubHealth();
       };
     }
-  }, [user?.uid, fetchTrips, initSpendingStore]);
+  }, [user?.uid, fetchTrips, initSpendingStore, initHealthStore]);
 
   const [selectedScope, setSelectedScope] = useState<AIContextScope>('global');
   const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
@@ -323,6 +333,9 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       expenses,
       customCategories,
       monthlyBudget,
+      healthRecords,
+      healthMetrics,
+      checkupSessions: healthCheckupSessions,
     });
   }, [
     selectedScope,
@@ -341,6 +354,9 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
     expenses,
     customCategories,
     monthlyBudget,
+    healthRecords,
+    healthMetrics,
+    healthCheckupSessions,
   ]);
 
   const {
@@ -404,6 +420,13 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
           'Lịch du lịch có bị trùng buổi dạy nào ở trường hay lớp học không?',
           'Tổng ngân sách và chi phí đã chi cho các chuyến đi',
           'Gợi ý kế hoạch xin nghỉ hoặc dạy bù để chuẩn bị cho chuyến đi',
+        ];
+      case 'health':
+        return [
+          'Hôm nay tôi vừa đo cân nặng 67.5 kg, huyết áp 120/80 mmHg, hãy lưu lại giúp tôi',
+          'Đây là kết quả xét nghiệm máu: Đường huyết 5.2, Men gan AST 26, ALT 29, Cholesterol 4.7. Hãy lưu vào hệ thống',
+          'Sửa lại chỉ số huyết áp hôm nay thành 118/78 mmHg',
+          'Đánh giá các chỉ số sức khỏe gần đây của tôi xem có chỉ số nào bất thường cần lưu ý không?',
         ];
       case 'general':
         return [
@@ -1306,6 +1329,7 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
                                 {opt.id === 'income' && <DollarSign className="w-3.5 h-3.5" />}
                                 {opt.id === 'spending' && <Wallet className="w-3.5 h-3.5" />}
                                 {opt.id === 'travel' && <Compass className="w-3.5 h-3.5" />}
+                                {opt.id === 'health' && <HeartPulse className="w-3.5 h-3.5 text-rose-500" />}
                                 {opt.id === 'general' && <Bot className="w-3.5 h-3.5" />}
                               </div>
                               <span>{opt.label}</span>

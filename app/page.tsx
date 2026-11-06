@@ -19,6 +19,7 @@ import { BlankModuleView } from '../components/shared/BlankModuleView';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useTeachingScheduleStore } from '../features/teaching-schedule/stores/useTeachingScheduleStore';
 import { DashboardFeature } from '../features/dashboard';
+import { HealthFeature } from '../features/health/HealthFeature';
 import { AIAssistantPage } from '../components/ai/AIAssistantPage';
 import { AIFloatingButton } from '../components/ai/AIFloatingButton';
 import {
@@ -573,33 +574,7 @@ export default function HomePage() {
       {currentTab === 'spending' && <SpendingFeature onNavigateTab={handleSelectTab} />}
 
       {/* 6. SỨC KHỎE & THỂ CHẤT */}
-      {currentTab === 'health' && (
-        <BlankModuleView
-          category="Sức Khỏe & Thể Chất"
-          title="Nhật Ký & Theo Dõi Sức Khỏe"
-          description="Không gian toàn diện giúp bạn ghi chép chỉ số thể chất (BMI, cân nặng, huyết áp), nhật ký tập luyện thể thao, kế hoạch ăn uống healthy và lịch nhắc khám sức khỏe định kỳ."
-          icon={HeartPulse}
-          accentColor="rose"
-          suggestedCards={[
-            {
-              icon: Dumbbell,
-              title: 'Lịch Tập & Workout',
-              description: 'Lên lịch tập gym, chạy bộ, cardio theo tuần và ghi nhận số calo tiêu hao.',
-            },
-            {
-              icon: Apple,
-              title: 'Dinh Dưỡng & Thực Đơn',
-              description: 'Theo dõi khẩu phần bữa ăn, lượng nước uống hàng ngày và mục tiêu calo nạp vào.',
-            },
-            {
-              icon: HeartPulse,
-              title: 'Chỉ Số Sinh Học',
-              description: 'Biểu đồ theo dõi cân nặng, huyết áp, nhịp tim và chu kỳ giấc ngủ.',
-            },
-          ]}
-          emptyStateTip="Sức khỏe là tài sản quý giá nhất. Hãy bắt đầu ghi chép ngày hôm nay!"
-        />
-      )}
+      {currentTab === 'health' && <HealthFeature onNavigateTab={handleSelectTab} />}
 
       {/* 7. DU LỊCH & NGHỈ DƯỠNG */}
       {/* 7.1 Lịch trình chuyến đi (Full Module) */}

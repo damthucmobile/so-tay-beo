@@ -330,7 +330,18 @@ service cloud.firestore {
     // 16. CÁC TÍNH NĂNG MỞ RỘNG (HEALTH, FAMILY, EDUCATION)
     // ==============================================================================
     match /health_metrics/{metricId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
+    match /health_records/{recordId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
+    match /health_checkups/{checkupId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
     }
 
     match /family_events/{eventId} {

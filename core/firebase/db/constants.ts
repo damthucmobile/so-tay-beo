@@ -119,6 +119,18 @@ export const COLLECTIONS = {
 
   /** Nhật ký hoạt động người dùng (subcollection: users/{uid}/activityLogs) */
   ACTIVITY_LOGS: 'activityLogs',
+
+  // ============================================================================
+  // PHÂN HỆ SỨC KHỎE & THỂ CHẤT (HEALTH & BIOMETRICS MODULE)
+  // ============================================================================
+  /** Các chỉ số sinh học, cân nặng, huyết áp, đường huyết */
+  HEALTH_METRICS: 'health_metrics',
+
+  /** Hồ sơ khám chữa bệnh, kết quả xét nghiệm tổng hợp */
+  HEALTH_RECORDS: 'health_records',
+
+  /** Các đợt khám sức khỏe định kỳ & tổng thể */
+  HEALTH_CHECKUPS: 'health_checkups',
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

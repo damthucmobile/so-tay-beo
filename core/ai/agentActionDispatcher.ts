@@ -24,6 +24,9 @@ import { useSpendingStore } from '@/features/spending/stores/useSpendingStore';
 import { ExpenseItem, ExpenseCategory, EXPENSE_CATEGORIES } from '@/features/spending/types';
 import { getDb, COLLECTIONS, auth } from '@/core/firebase';
 import { collection, getDocs, query, where, setDoc, doc } from 'firebase/firestore';
+import { HealthService } from '@/features/health/services/healthService';
+import { HealthCategory, HealthMetricValue } from '@/features/health/types';
+import { evaluateMetricStatus, MEDICAL_METRIC_DEFINITIONS } from '@/features/health/constants/medicalMetrics';
 
 // =============================================================================
 // ĐỊNH NGHĨA CÁC LOẠI HÀNH ĐỘNG AGENT ĐA PHÂN HỆ
@@ -61,8 +64,16 @@ export type AgentActionType =
   | 'DELETE_EXPENSE'
   | 'SET_MONTHLY_BUDGET'
   | 'CREATE_EXPENSE_CATEGORY'
-  // 6. Khởi tạo sẵn cho các tính năng tương lai
+  // 6. Sức khoẻ & Thể chất (Health & Biometrics)
   | 'RECORD_HEALTH_METRIC'
+  | 'UPDATE_HEALTH_METRIC'
+  | 'DELETE_HEALTH_METRIC'
+  | 'IMPORT_HEALTH_RECORD'
+  | 'DELETE_HEALTH_RECORD'
+  | 'CREATE_CHECKUP_SESSION'
+  | 'UPDATE_CHECKUP_SESSION'
+  | 'DELETE_CHECKUP_SESSION'
+  // 7. Khởi tạo sẵn cho các tính năng tương lai
   | 'ADD_FAMILY_EVENT'
   | 'ADD_EDUCATION_GOAL'
   | 'GENERIC_MODULE_ACTION';
@@ -1262,47 +1273,313 @@ async function handleSpendingAction(
 }
 
 // =============================================================================
-// 5. KHỞI TẠO SẴN SÀNG CHO CÁC TÍNH NĂNG TƯƠNG LAI (FUTURE MODULES INITIALIZERS)
-// Sức khoẻ & Thể chất, Gia đình, Giáo dục... và mở rộng sau này
+// 5. PHÂN HỆ SỨC KHOẺ & THỂ CHẤT (HEALTH & BIOMETRICS ACTIONS)
+// Tự động ghi nhận, cập nhật, xóa và import hồ sơ xét nghiệm
 // =============================================================================
 
-/**
- * Hàm khởi tạo ghi nhận chỉ số Sức khoẻ & Thể chất (Health & Fitness)
- */
-export async function initializeHealthMetricAction(
-  params: Record<string, any>,
+export async function handleHealthAction(
+  command: AgentActionCommand,
   userId?: string
 ): Promise<AgentActionResult> {
-  const uid = userId || 'anonymous';
+  const uid = userId || auth?.currentUser?.uid || 'anonymous';
+  const { action, params } = command;
   const db = getDb();
-  const metricType = params.metricType || params.type || 'general';
-  const value = params.value || 0;
-  const date = params.date || new Date().toISOString().slice(0, 10);
+  if (!db) {
+    throw new Error('Cơ sở dữ liệu Firestore chưa sẵn sàng.');
+  }
 
-  try {
-    const docId = `health_${Date.now()}`;
-    await setDoc(doc(db, 'health_metrics', docId), {
-      id: docId,
-      userId: uid,
-      metricType,
-      value,
-      unit: params.unit || '',
-      date,
-      notes: params.notes || '',
-      createdAt: new Date().toISOString(),
-    });
+  switch (action) {
+    case 'RECORD_HEALTH_METRIC': {
+      const metricName = params.metricName || params.name || params.metricType || 'Chỉ số sức khỏe';
+      const metricCode = (params.metricCode || params.code || '').toUpperCase();
+      const rawVal = params.value ?? params.numericValue;
+      const numericVal = typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal).replace(',', '.'));
+      const valStr = String(rawVal ?? '');
+      const unit = params.unit || '';
+      const category: HealthCategory = params.category || 'vitals';
+      const measuredAt = params.measuredAt || params.date || new Date().toISOString().split('T')[0];
 
-    return {
-      success: true,
-      action: 'RECORD_HEALTH_METRIC',
-      message: `Đã ghi nhận chỉ số sức khoẻ [${metricType}: ${value} ${params.unit || ''}] ngày ${date}!`,
-    };
-  } catch (err: any) {
-    return {
-      success: true,
-      action: 'RECORD_HEALTH_METRIC',
-      message: `Đã ghi nhận thông tin sức khoẻ: ${params.notes || metricType} (${value})!`,
-    };
+      // Đánh giá trạng thái
+      const def = MEDICAL_METRIC_DEFINITIONS.find((d) => d.code === metricCode);
+      const refRange = params.referenceRange || def?.referenceText;
+      const status = params.status || (def ? evaluateMetricStatus(numericVal, def.defaultMin, def.defaultMax, def.referenceText) : 'normal');
+
+      const metricId = await HealthService.addSingleMetric(uid, {
+        metricCode: metricCode || undefined,
+        metricName,
+        value: valStr,
+        numericValue: isNaN(numericVal) ? undefined : numericVal,
+        unit,
+        category,
+        referenceRange: refRange,
+        status,
+        measuredAt,
+        notes: params.notes || '',
+        hospitalName: params.hospitalName,
+        doctorName: params.doctorName,
+      });
+
+      return {
+        success: true,
+        action: 'RECORD_HEALTH_METRIC',
+        message: `Đã lưu chỉ số sức khỏe "${metricName}": ${valStr} ${unit} (Ngày ${measuredAt}) vào hệ thống!`,
+        data: { metricId },
+      };
+    }
+
+    case 'UPDATE_HEALTH_METRIC': {
+      let metricId = params.metricId || params.id;
+      const updateData = params.update || params;
+
+      if (!metricId) {
+        const targetQuery = (params.metricCode || params.metricName || params.name || '').toLowerCase().trim();
+        const q = query(collection(db, COLLECTIONS.HEALTH_METRICS), where('userId', '==', uid));
+        const snap = await getDocs(q);
+        let foundDoc: any = null;
+        snap.forEach((d) => {
+          const data = d.data();
+          if (
+            (data.metricCode && data.metricCode.toLowerCase() === targetQuery) ||
+            (data.metricName && data.metricName.toLowerCase().includes(targetQuery))
+          ) {
+            foundDoc = { id: d.id, ...data };
+          }
+        });
+        if (foundDoc) {
+          metricId = foundDoc.id;
+        }
+      }
+
+      if (!metricId) {
+        throw new Error(`Không tìm thấy chỉ số sức khỏe phù hợp: ${params.metricName || params.metricCode || ''}`);
+      }
+
+      const updates: any = {};
+      if (updateData.value !== undefined) {
+        updates.value = String(updateData.value);
+        const num = parseFloat(String(updateData.value).replace(',', '.'));
+        if (!isNaN(num)) updates.numericValue = num;
+      }
+      if (updateData.unit !== undefined) updates.unit = updateData.unit;
+      if (updateData.measuredAt || updateData.date) updates.measuredAt = updateData.measuredAt || updateData.date;
+      if (updateData.notes !== undefined) updates.notes = updateData.notes;
+      if (updateData.status) updates.status = updateData.status;
+      if (updateData.referenceRange) updates.referenceRange = updateData.referenceRange;
+
+      await HealthService.updateHealthMetric(metricId, updates);
+
+      return {
+        success: true,
+        action: 'UPDATE_HEALTH_METRIC',
+        message: `Đã cập nhật chỉ số sức khỏe thành công!`,
+        data: { metricId, updates },
+      };
+    }
+
+    case 'DELETE_HEALTH_METRIC': {
+      let metricId = params.metricId || params.id;
+      if (!metricId) {
+        const targetQuery = (params.metricCode || params.metricName || params.name || '').toLowerCase().trim();
+        const q = query(collection(db, COLLECTIONS.HEALTH_METRICS), where('userId', '==', uid));
+        const snap = await getDocs(q);
+        let foundDoc: any = null;
+        snap.forEach((d) => {
+          const data = d.data();
+          if (
+            (data.metricCode && data.metricCode.toLowerCase() === targetQuery) ||
+            (data.metricName && data.metricName.toLowerCase().includes(targetQuery))
+          ) {
+            foundDoc = { id: d.id, ...data };
+          }
+        });
+        if (foundDoc) {
+          metricId = foundDoc.id;
+        }
+      }
+
+      if (!metricId) {
+        throw new Error(`Không tìm thấy chỉ số sức khỏe để xóa: ${params.metricName || params.metricCode || ''}`);
+      }
+
+      await HealthService.deleteHealthMetric(metricId);
+
+      return {
+        success: true,
+        action: 'DELETE_HEALTH_METRIC',
+        message: `Đã xóa chỉ số sức khỏe khỏi hệ thống!`,
+        data: { metricId },
+      };
+    }
+
+    case 'IMPORT_HEALTH_RECORD': {
+      const hospitalName = params.hospitalName || 'Bệnh viện / Cơ sở Y tế';
+      const recordDate = params.recordDate || params.date || new Date().toISOString().split('T')[0];
+      const doctorName = params.doctorName;
+      const diagnosis = params.summaryDiagnosis || params.diagnosis;
+      const metricsList = Array.isArray(params.metrics) ? params.metrics : [];
+
+      const preparedMetrics: HealthMetricValue[] = metricsList.map((m: any, idx: number) => {
+        const rawV = m.value ?? m.numericValue ?? '';
+        const numV = typeof rawV === 'number' ? rawV : parseFloat(String(rawV).replace(',', '.'));
+        const code = (m.metricCode || m.code || '').toUpperCase();
+        const def = MEDICAL_METRIC_DEFINITIONS.find((d) => d.code === code);
+        const refRange = m.referenceRange || def?.referenceText;
+        const status = m.status || (def ? evaluateMetricStatus(numV, def.defaultMin, def.defaultMax, def.referenceText) : 'normal');
+
+        return {
+          id: m.id || `m_${idx}_${Date.now()}`,
+          metricCode: code || undefined,
+          metricName: m.metricName || m.name || `Chỉ số ${idx + 1}`,
+          value: String(rawV),
+          numericValue: isNaN(numV) ? undefined : numV,
+          unit: m.unit || def?.defaultUnit || '',
+          category: (m.category as HealthCategory) || def?.category || 'biochemistry',
+          referenceRange: refRange,
+          status,
+          measuredAt: m.measuredAt || recordDate,
+          hospitalName,
+          doctorName,
+          notes: m.notes,
+        };
+      });
+
+      const recordId = await HealthService.saveHealthRecord(uid, {
+        title: params.title || `Hồ sơ khám tại ${hospitalName}`,
+        recordDate,
+        documentType: (params.documentType || params.recordType || 'blood_test') as any,
+        hospitalName,
+        doctorName,
+        summaryDiagnosis: diagnosis,
+        aiAnalysisNotes: params.notes || params.aiAnalysisNotes,
+        metrics: preparedMetrics,
+      });
+
+      return {
+        success: true,
+        action: 'IMPORT_HEALTH_RECORD',
+        message: `Đã import hồ sơ khám tại ${hospitalName} (${recordDate}) cùng ${preparedMetrics.length} chỉ số y tế vào cơ sở dữ liệu!`,
+        data: { recordId, totalMetrics: preparedMetrics.length },
+      };
+    }
+
+    case 'DELETE_HEALTH_RECORD': {
+      let recordId = params.recordId || params.id;
+      if (!recordId && params.hospitalName) {
+        const q = query(
+          collection(db, COLLECTIONS.HEALTH_RECORDS),
+          where('userId', '==', uid),
+          where('hospitalName', '==', params.hospitalName)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          recordId = snap.docs[0].id;
+        }
+      }
+
+      if (!recordId) {
+        throw new Error('Vui lòng chỉ định mã hồ sơ hoặc tên bệnh viện để xóa.');
+      }
+
+      await HealthService.deleteHealthRecord(recordId);
+
+      return {
+        success: true,
+        action: 'DELETE_HEALTH_RECORD',
+        message: `Đã xóa hồ sơ khám bệnh (${recordId}) thành công!`,
+      };
+    }
+
+    case 'CREATE_CHECKUP_SESSION': {
+      const title = params.title || `Khám sức khỏe tại ${params.hospitalName || 'Bệnh viện'}`;
+      const checkupDate = params.checkupDate || params.date || new Date().toISOString().split('T')[0];
+      const hospitalName = params.hospitalName || 'Bệnh viện';
+
+      const sessionId = await HealthService.saveCheckupSession(
+        uid,
+        {
+          title,
+          checkupDate,
+          hospitalName,
+          doctorName: params.doctorName,
+          healthClassification: params.healthClassification,
+          familyHistory: params.familyHistory,
+          clinicalConclusion: params.clinicalConclusion || params.conclusion,
+          specialtiesSummary: params.specialtiesSummary || {
+            internalMedicine: params.internalMedicine,
+            surgery: params.surgery,
+            ophthalmology: params.ophthalmology,
+            dental: params.dental,
+            ent: params.ent,
+            dermatology: params.dermatology,
+          },
+          notes: params.notes,
+        },
+        params.id || params.sessionId
+      );
+
+      return {
+        success: true,
+        action: 'CREATE_CHECKUP_SESSION',
+        message: `Đã tạo đợt khám sức khỏe "${title}" (${checkupDate} - ${hospitalName}) thành công!`,
+        data: { sessionId },
+      };
+    }
+
+    case 'UPDATE_CHECKUP_SESSION': {
+      let sessionId = params.sessionId || params.id;
+      if (!sessionId) {
+        const q = query(collection(db, COLLECTIONS.HEALTH_CHECKUPS), where('userId', '==', uid));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          sessionId = snap.docs[0].id;
+        }
+      }
+
+      if (!sessionId) {
+        throw new Error('Vui lòng chỉ định mã đợt khám để cập nhật.');
+      }
+
+      const updates: any = {};
+      if (params.title) updates.title = params.title;
+      if (params.checkupDate || params.date) updates.checkupDate = params.checkupDate || params.date;
+      if (params.hospitalName) updates.hospitalName = params.hospitalName;
+      if (params.doctorName) updates.doctorName = params.doctorName;
+      if (params.healthClassification) updates.healthClassification = params.healthClassification;
+      if (params.familyHistory !== undefined) updates.familyHistory = params.familyHistory;
+      if (params.clinicalConclusion || params.conclusion)
+        updates.clinicalConclusion = params.clinicalConclusion || params.conclusion;
+      if (params.specialtiesSummary) updates.specialtiesSummary = params.specialtiesSummary;
+      if (params.notes !== undefined) updates.notes = params.notes;
+
+      const ref = doc(db, COLLECTIONS.HEALTH_CHECKUPS, sessionId);
+      await setDoc(ref, updates, { merge: true });
+
+      return {
+        success: true,
+        action: 'UPDATE_CHECKUP_SESSION',
+        message: `Đã cập nhật thông tin đợt khám (${sessionId}) thành công!`,
+        data: { sessionId, updates },
+      };
+    }
+
+    case 'DELETE_CHECKUP_SESSION': {
+      let sessionId = params.sessionId || params.id;
+      if (!sessionId) {
+        throw new Error('Vui lòng chỉ định mã đợt khám để xóa.');
+      }
+
+      await HealthService.deleteCheckupSession(sessionId);
+
+      return {
+        success: true,
+        action: 'DELETE_CHECKUP_SESSION',
+        message: `Đã xóa đợt khám sức khỏe (${sessionId}) khỏi hệ thống!`,
+        data: { sessionId },
+      };
+    }
+
+    default:
+      throw new Error(`Hành động ${action} không thuộc phân hệ Sức Khỏe.`);
   }
 }
 
@@ -1464,9 +1741,18 @@ export async function executeAgentAction(
       return await handleSpendingAction(command, effectiveUserId);
     }
 
-    // 5. Phân hệ Sức khoẻ & Thể chất (Hàm khởi tạo sẵn sàng)
-    if (action === 'RECORD_HEALTH_METRIC') {
-      return await initializeHealthMetricAction(params, effectiveUserId);
+    // 5. Phân hệ Sức khoẻ & Thể chất (Health & Biometrics)
+    if (
+      action === 'RECORD_HEALTH_METRIC' ||
+      action === 'UPDATE_HEALTH_METRIC' ||
+      action === 'DELETE_HEALTH_METRIC' ||
+      action === 'IMPORT_HEALTH_RECORD' ||
+      action === 'DELETE_HEALTH_RECORD' ||
+      action === 'CREATE_CHECKUP_SESSION' ||
+      action === 'UPDATE_CHECKUP_SESSION' ||
+      action === 'DELETE_CHECKUP_SESSION'
+    ) {
+      return await handleHealthAction(command, effectiveUserId);
     }
 
     // 6. Phân hệ Gia đình (Hàm khởi tạo sẵn sàng)

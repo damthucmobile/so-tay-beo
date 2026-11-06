@@ -27,8 +27,9 @@ import { Appointment, Customer } from '@/features/schedule/types';
 import { IncomeTransaction } from '@/features/income/types';
 import { Trip } from '@/features/travel/types';
 import { ExpenseItem, MonthlyBudget, CategoryMeta, DEFAULT_FINANCE_CATEGORIES } from '@/features/spending/types';
+import { HealthRecordDocument, HealthMetricValue, HealthCheckupSession } from '@/features/health/types';
 
-export type AIContextScope = 'global' | 'teaching' | 'classes' | 'schedule' | 'income' | 'spending' | 'travel' | 'general';
+export type AIContextScope = 'global' | 'teaching' | 'classes' | 'schedule' | 'income' | 'spending' | 'travel' | 'health' | 'general';
 
 export interface ContextScopeOption {
   id: AIContextScope;
@@ -44,9 +45,16 @@ export const CONTEXT_SCOPE_OPTIONS: ContextScopeOption[] = [
     id: 'global',
     label: 'Toàn bộ dữ liệu (AI Agent Đa Phân Hệ)',
     shortLabel: 'Toàn bộ dữ liệu',
-    description: 'Truy cập 100% dữ liệu: TKB trường, Lớp học, Học sinh, Lịch tự do, Thu nhập, Chi tiêu & Du lịch',
+    description: 'Truy cập 100% dữ liệu: TKB trường, Lớp học, Học sinh, Lịch tự do, Thu nhập, Chi tiêu, Sức khỏe & Du lịch',
     iconName: 'Globe',
     badge: 'Khuyên Dùng',
+  },
+  {
+    id: 'health',
+    label: 'Sức khoẻ & Thể chất',
+    shortLabel: 'Sức khoẻ & Thể chất',
+    description: 'Chỉ số sinh học, xét nghiệm máu, nước tiểu, huyết áp, cân nặng, hồ sơ bệnh viện',
+    iconName: 'HeartPulse',
   },
   {
     id: 'teaching',
@@ -118,6 +126,9 @@ export interface GlobalAppContextData {
   expenses?: ExpenseItem[];
   customCategories?: CategoryMeta[];
   monthlyBudget?: MonthlyBudget | null;
+  healthRecords?: HealthRecordDocument[];
+  healthMetrics?: HealthMetricValue[];
+  checkupSessions?: HealthCheckupSession[];
 }
 
 /**
@@ -459,6 +470,62 @@ ${recentTxRows.length > 0 ? recentTxRows.join('\n') : '  (Chưa có giao dịch 
   }
 
   // =========================================================================
+  // 7. PHÂN HỆ SỨC KHỎE & CHỈ SỐ SINH HỌC (HEALTH & BIOMETRICS)
+  // =========================================================================
+  if (
+    (scope === 'global' || scope === 'health') &&
+    (data.healthMetrics?.length || data.healthRecords?.length || data.checkupSessions?.length)
+  ) {
+    const metrics = data.healthMetrics || [];
+    const records = data.healthRecords || [];
+    const checkups = data.checkupSessions || [];
+
+    // Danh sách các đợt khám sức khỏe
+    const checkupsList = checkups.map((c) => {
+      const parts = [`  - **${c.title}** (${c.checkupDate}) tại **${c.hospitalName}**`];
+      if (c.healthClassification) parts.push(`Phân loại: **${c.healthClassification}**`);
+      if (c.doctorName) parts.push(`Bác sĩ: ${c.doctorName}`);
+      if (c.familyHistory) parts.push(`Tiền sử gia đình: ⚠️ *${c.familyHistory}*`);
+      if (c.clinicalConclusion) parts.push(`Kết luận: "${c.clinicalConclusion}"`);
+      if (c.specialtiesSummary) {
+        const specDetails: string[] = [];
+        if (c.specialtiesSummary.surgery) specDetails.push(`Ngoại: ${c.specialtiesSummary.surgery}`);
+        if (c.specialtiesSummary.ophthalmology) specDetails.push(`Mắt: ${c.specialtiesSummary.ophthalmology}`);
+        if (c.specialtiesSummary.dental) specDetails.push(`Răng: ${c.specialtiesSummary.dental}`);
+        if (c.specialtiesSummary.ent) specDetails.push(`Tai Mũi Họng: ${c.specialtiesSummary.ent}`);
+        if (c.specialtiesSummary.internalMedicine) specDetails.push(`Nội: ${c.specialtiesSummary.internalMedicine}`);
+        if (c.specialtiesSummary.dermatology) specDetails.push(`Da: ${c.specialtiesSummary.dermatology}`);
+        if (specDetails.length > 0) parts.push(`Chuyên khoa: [${specDetails.join(' | ')}]`);
+      }
+      return parts.join(' | ');
+    });
+
+    // Nhóm chỉ số mới nhất theo code/tên
+    const latestMap = new Map<string, HealthMetricValue>();
+    metrics.forEach((m) => {
+      const key = m.metricCode || m.metricName;
+      if (!latestMap.has(key)) latestMap.set(key, m);
+    });
+
+    const vitalsList = Array.from(latestMap.values())
+      .filter((m) => m.category === 'vitals')
+      .map((m) => `  - ${m.metricName}: **${m.value} ${m.unit}** (Đo ngày ${m.measuredAt || 'gần đây'}${m.status && m.status !== 'normal' ? ` | Trạng thái: ${m.status}` : ''})`);
+
+    const abnormalList = Array.from(latestMap.values())
+      .filter((m) => m.status === 'high' || m.status === 'low' || m.status === 'abnormal' || m.status === 'warning')
+      .map((m) => `  - ⚠️ ${m.metricName} (${m.metricCode || ''}): **${m.value} ${m.unit || ''}** (Trạng thái: ${m.status === 'high' ? 'CAO' : m.status === 'low' ? 'THẤP' : 'BẤT THƯỜNG'} | Tham chiếu: ${m.referenceRange || 'N/A'})`);
+
+    const recentRecordsList = records.slice(0, 4).map((r) => `  - Hồ sơ "${r.title}" tại ${r.hospitalName || 'Viện'} ngày ${r.recordDate || ''}: ${r.summaryDiagnosis ? `Chẩn đoán: ${r.summaryDiagnosis}` : `${r.metrics?.length || 0} chỉ số`}`);
+
+    sections.push(`### 7. SỨC KHỎE, ĐỢT KHÁM & CHỈ SỐ SINH HỌC CỦA NGƯỜI DÙNG:
+- **TỔNG SỐ ĐỢT KHÁM SỨC KHỎE**: **${checkups.length} đợt khám** (Từ ${records.length} hồ sơ y tế bệnh viện & ${metrics.length} chỉ số đo).
+${checkupsList.length > 0 ? `- **Danh sách đợt khám sức khỏe**:\n${checkupsList.join('\n')}` : '- Chưa có đợt khám sức khỏe được phân nhóm.'}
+${vitalsList.length > 0 ? `- **Chỉ số sinh tồn mới nhất**:\n${vitalsList.join('\n')}` : '- Chưa có dữ liệu sinh tồn (cân nặng, huyết áp, nhịp tim...)'}
+${abnormalList.length > 0 ? `- **Các chỉ số cần chú ý (bất thường)**:\n${abnormalList.join('\n')}` : '- Tất cả chỉ số xét nghiệm hiện tại đều trong ngưỡng an toàn bình thường.'}
+${recentRecordsList.length > 0 ? `- **Các tài liệu/hồ sơ xét nghiệm chi tiết**:\n${recentRecordsList.join('\n')}` : ''}`);
+  }
+
+  // =========================================================================
   // SYSTEM INSTRUCTIONS DÀNH CHO AI AGENT THÔNG MINH
   // =========================================================================
   return `Bạn là "AI AGENT CỐ VẤN TOÀN NĂNG SỔ TAY BÉO" - Trợ lý thông minh cao cấp dành riêng cho giáo viên và người dạy học.
@@ -568,10 +635,43 @@ QUY TẮC SUY LUẬN & TRẢ LỜI CỦA AI AGENT:
 { "action": "SET_MY_TEACHER", "params": { "teacherName": "Tên giáo viên" } }
 \`\`\`
 
-   * 6. SỨC KHOẺ & THỂ CHẤT, GIA ĐÌNH, GIÁO DỤC (ĐÃ KHỞI TẠO SẴN HÀM THỰC THI):
+   * 6. SỨC KHOẺ & THỂ CHẤT (HEALTH & BIOMETRICS - TỰ ĐỘNG IMPORT, CHỈNH SỬA & XÓA CHỈ SỐ):
+      - Bạn có TOÀN QUYỀN ghi nhận, cập nhật sửa chữa, xóa hoặc import toàn bộ hồ sơ xét nghiệm bệnh viện khi người dùng nhắn tin, gửi ảnh hoặc đính kèm tài liệu y tế!
+      - Ghi nhận 1 chỉ số đo nhanh (Cân nặng, Huyết áp, Nhịp tim, Đường huyết, BMI...):
 \`\`\`agent_action
-{ "action": "RECORD_HEALTH_METRIC", "params": { "metricType": "chay_bo", "value": 5, "unit": "km", "notes": "Chạy bộ sáng" } }
+{ "action": "RECORD_HEALTH_METRIC", "params": { "metricName": "Cân nặng", "metricCode": "WEIGHT", "value": 68.5, "unit": "kg", "measuredAt": "2026-11-06", "category": "vitals", "notes": "Cân buổi sáng" } }
 \`\`\`
+      - Chỉnh sửa / Cập nhật chỉ số sức khỏe đã ghi nhận:
+\`\`\`agent_action
+{ "action": "UPDATE_HEALTH_METRIC", "params": { "metricCode": "WEIGHT", "update": { "value": 67.5, "notes": "Sửa lại cân nặng đúng" } } }
+\`\`\`
+      - Xóa chỉ số sức khỏe:
+\`\`\`agent_action
+{ "action": "DELETE_HEALTH_METRIC", "params": { "metricCode": "WEIGHT" } }
+\`\`\`
+      - Import cả hồ sơ khám bệnh viện / Phiếu kết quả xét nghiệm tổng hợp (khi người dùng dán hoặc đính kèm kết quả xét nghiệm):
+\`\`\`agent_action
+{ "action": "IMPORT_HEALTH_RECORD", "params": { "hospitalName": "Bệnh viện Đại học Y Hà Nội", "recordDate": "2026-11-06", "diagnosis": "Sức khỏe ổn định", "metrics": [{ "metricName": "Đường huyết", "metricCode": "GLUCOSE", "value": 5.4, "unit": "mmol/L", "referenceRange": "3.9 - 6.4", "category": "biochemistry" }, { "metricName": "Men gan AST", "metricCode": "AST", "value": 28, "unit": "U/L", "referenceRange": "< 37", "category": "biochemistry" }] } }
+\`\`\`
+      - Quản lý đợt khám sức khỏe (Đợt khám tổng quát, phân loại sức khỏe, tiền sử bệnh & chuyên khoa lâm sàng):
+        + Tạo đợt khám sức khỏe mới:
+\`\`\`agent_action
+{ "action": "CREATE_CHECKUP_SESSION", "params": { "title": "Khám sức khỏe định kỳ T10/2026", "checkupDate": "2026-10-20", "hospitalName": "Bệnh viện Đại học Y Hà Nội", "doctorName": "BS. Vũ Thùy Linh", "healthClassification": "Loại 2 (Đủ sức khỏe làm việc)", "familyHistory": "Bố tiểu đường", "clinicalConclusion": "Nhân thùy phải tuyến giáp TIRADS 3, sâu răng 26 36, tật khúc xạ mắt phải", "specialtiesSummary": { "surgery": "Nhân thùy phải TIRADS 3, nang 2 thùy TIRADS 2", "ophthalmology": "Mắt phải tật khúc xạ 5/10, MT 10/10", "dental": "Sâu răng 26, 36. Cao răng viêm lợi", "ent": "Viêm mũi dị ứng - amydan mạn", "internalMedicine": "Bình thường" } } }
+\`\`\`
+        + Cập nhật thông tin đợt khám (kết luận bác sĩ, phân loại sức khỏe, tiền sử gia đình):
+\`\`\`agent_action
+{ "action": "UPDATE_CHECKUP_SESSION", "params": { "sessionId": "checkup_id", "clinicalConclusion": "Tái khám sau 6 tháng" } }
+\`\`\`
+        + Xóa đợt khám:
+\`\`\`agent_action
+{ "action": "DELETE_CHECKUP_SESSION", "params": { "sessionId": "checkup_id" } }
+\`\`\`
+      - Xóa hồ sơ khám bệnh viện:
+\`\`\`agent_action
+{ "action": "DELETE_HEALTH_RECORD", "params": { "hospitalName": "Bệnh viện Đại học Y Hà Nội" } }
+\`\`\`
+
+   * 7. GIA ĐÌNH & GIÁO DỤC:
 \`\`\`agent_action
 { "action": "ADD_FAMILY_EVENT", "params": { "title": "Sinh nhật con", "date": "2026-12-15", "notes": "Chuẩn bị quà" } }
 \`\`\`
