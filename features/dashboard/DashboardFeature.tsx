@@ -33,6 +33,10 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
   // 2. Thời khóa biểu nhà trường
   const timetable = useTeachingScheduleStore((state) => state.timetable);
   const myTeacher = useTeachingScheduleStore((state) => state.myTeacher);
+  const selectedTeacher = useTeachingScheduleStore((state) => state.selectedTeacher);
+  const setMyTeacher = useTeachingScheduleStore((state) => state.setMyTeacher);
+  const setSelectedTeacher = useTeachingScheduleStore((state) => state.setSelectedTeacher);
+  const initTeachingStore = useTeachingScheduleStore((state) => state.initStore);
 
   // 3. Lịch tự do & Khách hàng
   const { appointments } = useScheduleManager(userId);
@@ -51,12 +55,16 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
 
   useEffect(() => {
     if (!userId) return;
-    const unsub = initSpendingStore(userId);
+    const unsubSpending = initSpendingStore(userId);
+    const unsubTeaching = initTeachingStore(userId);
     fetchTrips(userId);
     return () => {
-      unsub();
+      unsubSpending();
+      if (typeof unsubTeaching === 'function') {
+        unsubTeaching();
+      }
     };
-  }, [userId, initSpendingStore, fetchTrips]);
+  }, [userId, initSpendingStore, initTeachingStore, fetchTrips]);
 
   const nearestUpcomingTrip = useMemo(() => {
     if (!trips || trips.length === 0) return null;
@@ -81,6 +89,34 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
 
   // Ngày đang được chọn để xem lịch (mặc định là hôm nay, có thể bấm vào ngày khác trong Weekly Strip)
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+
+  // Xác định giáo viên hiện tại một cách thông minh và nhất quán
+  const activeTeacher = useMemo(() => {
+    if (!timetable || !timetable.teachers || timetable.teachers.length === 0) return '';
+
+    // 1. Ưu tiên giáo viên đã ghim làm "Giáo viên của tôi"
+    if (myTeacher && myTeacher.trim() && timetable.teachers.includes(myTeacher.trim())) {
+      return myTeacher.trim();
+    }
+
+    // 2. Giáo viên đang chọn xem trong phân hệ TKB
+    if (selectedTeacher && selectedTeacher.trim() && timetable.teachers.includes(selectedTeacher.trim())) {
+      return selectedTeacher.trim();
+    }
+
+    // 3. Khớp tự động theo tên hiển thị của tài khoản (VD: "Cô Phương" -> "Phương")
+    if (user?.displayName) {
+      const cleanUser = user.displayName.toLowerCase().replace(/^(cô|thầy)\s+/i, '').trim();
+      const matched = timetable.teachers.find((t) => {
+        const tClean = t.toLowerCase().trim();
+        return tClean.includes(cleanUser) || cleanUser.includes(tClean);
+      });
+      if (matched) return matched;
+    }
+
+    // 4. Mặc định là giáo viên đầu tiên trong danh sách TKB
+    return timetable.teachers[0] || '';
+  }, [timetable, myTeacher, selectedTeacher, user?.displayName]);
 
   // Chuyển đổi ngày YYYY-MM-DD thành DayOfWeek trong tuần
   const getDayOfWeekFromDate = (dateString: string): DayOfWeek | null => {
@@ -112,19 +148,36 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
   const selectedDateEvents = useMemo<UnifiedTimelineEvent[]>(() => {
     const list: UnifiedTimelineEvent[] = [];
     const targetDayOfWeek = getDayOfWeekFromDate(selectedDate);
+    const nowTimeStr = format(new Date(), 'HH:mm');
+    const isViewingToday = selectedDate === todayStr;
 
-    // Nguồn 1: Tiết dạy nhà trường trong ngày
-    if (timetable && targetDayOfWeek) {
+    // Nguồn 1: Tiết dạy nhà trường trong ngày (BẮT BUỘC CHỈ LỌC THEO GIÁO VIÊN HIỆN TẠI)
+    if (timetable && targetDayOfWeek && activeTeacher) {
+      const activeTeacherClean = activeTeacher.trim().toLowerCase();
       const schoolEntries = timetable.entries.filter((entry) => {
         if (entry.dayOfWeek !== targetDayOfWeek) return false;
-        if (myTeacher && myTeacher.trim()) {
-          return entry.teacher.toLowerCase().includes(myTeacher.toLowerCase().trim());
-        }
-        return true;
+        const entryTeacherClean = (entry.teacher || '').trim().toLowerCase();
+        return (
+          entryTeacherClean === activeTeacherClean ||
+          entryTeacherClean.includes(activeTeacherClean)
+        );
       });
 
       schoolEntries.forEach((entry) => {
         const time = getEntryTime(entry);
+
+        // Tính toán trạng thái động theo thời gian thực
+        let status: 'upcoming' | 'ongoing' | 'completed' = 'upcoming';
+        if (isViewingToday && time.start) {
+          const start = time.start;
+          const end = time.end || '23:59';
+          if (nowTimeStr >= start && nowTimeStr <= end) {
+            status = 'ongoing';
+          } else if (nowTimeStr > end) {
+            status = 'completed';
+          }
+        }
+
         list.push({
           id: `school_${entry.id}`,
           title: `Tiết ${entry.period}: ${entry.subject || 'Dạy học'} - ${entry.className}`,
@@ -132,7 +185,7 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
           timeStart: time.start,
           timeEnd: time.end,
           type: 'school',
-          status: 'upcoming',
+          status,
           location: entry.room ? `Phòng ${entry.room}` : undefined,
           rawDate: selectedDate,
         });
@@ -178,7 +231,7 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
 
     // Sắp xếp theo giờ bắt đầu tăng dần
     return list.sort((a, b) => a.timeStart.localeCompare(b.timeStart));
-  }, [timetable, selectedDate, myTeacher, sessions, classes, appointments]);
+  }, [timetable, selectedDate, activeTeacher, sessions, classes, appointments]);
 
   // Tổng hợp chỉ số KPI điều hành
   const stats = useMemo<ExecutiveStats>(() => {
@@ -247,7 +300,7 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
         incomeTransactions={incomeTransactions}
         sessions={sessions}
         timetable={timetable}
-        myTeacher={myTeacher}
+        myTeacher={activeTeacher}
         selectedMonth={currentMonthStr}
         onNavigateTab={onNavigateTab}
       />
@@ -259,6 +312,17 @@ export const DashboardFeature: React.FC<DashboardFeatureProps> = ({ onNavigateTa
           <TodayUnifiedTimeline
             events={selectedDateEvents}
             selectedDate={selectedDate}
+            activeTeacher={activeTeacher}
+            teachers={timetable?.teachers || []}
+            isMyTeacher={Boolean(myTeacher && myTeacher === activeTeacher)}
+            onSelectTeacher={(t) => setSelectedTeacher(t)}
+            onToggleMyTeacher={() => {
+              if (myTeacher === activeTeacher) {
+                setMyTeacher('');
+              } else {
+                setMyTeacher(activeTeacher);
+              }
+            }}
             onNavigateTab={onNavigateTab}
           />
         </div>
