@@ -344,6 +344,24 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    // ==============================================================================
+    // 18. PHÂN HỆ DINH DƯỠNG & THỰC ĐƠN (NUTRITION & MEAL PLANS)
+    // ==============================================================================
+    match /nutrition_profiles/{profileId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
+    match /meal_plans/{planId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
+    match /daily_nutrition_logs/{logId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
     match /family_events/{eventId} {
       allow read, write: if isAuthenticated();
     }

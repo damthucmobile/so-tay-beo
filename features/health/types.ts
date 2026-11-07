@@ -107,3 +107,97 @@ export interface MetricDefinition {
   clinicalSignificance?: string; // Ý nghĩa lâm sàng
   isCommonVital?: boolean; // Hiển thị ở thẻ chỉ số sinh tồn chính
 }
+
+// ==============================================================================
+// ĐỊNH NGHĨA PHÂN HỆ DINH DƯỠNG & THỰC ĐƠN (NUTRITION & MEAL PLANNER)
+// ==============================================================================
+
+export type NutritionGoal =
+  | 'weight_loss' // Giảm cân, thâm hụt calo lành mạnh
+  | 'maintain' // Duy trì cân nặng & sức khỏe toàn diện
+  | 'muscle_gain' // Tăng cơ, giàu đạm nạc
+  | 'lower_glucose' // Hạ đường huyết / Kiểm soát đái tháo đường (Low-GI)
+  | 'lower_cholesterol' // Hạ mỡ máu / Giảm LDL & Triglyceride
+  | 'lower_uric_acid' // Hạ Axit Uric / Phòng ngừa Gout (Low-Purine)
+  | 'liver_detox' // Hạ men gan / Giảm tải thải độc gan
+  | 'heart_health'; // Huyết áp ổn định / Chế độ ăn DASH giảm muối
+
+export type DietaryPreference =
+  | 'traditional_vn' // Món cơm nhà truyền thống Việt Nam
+  | 'eat_clean' // Eat Clean (nguyên bản, hấp/luộc, ít gia vị)
+  | 'low_carb' // Ít tinh bột nhanh
+  | 'vegetarian' // Ăn chay linh hoạt (rau củ, đậu nành, nấm)
+  | 'mediterranean'; // Địa Trung Hải (cá béo, dầu oliu, hạt)
+
+export interface MealItem {
+  id: string;
+  name: string; // VD: "Ức gà xào ớt chuông", "Canh mồng tơi nấu tôm tươi"
+  portion: string; // VD: "1 bát con (150g)", "1 đĩa nhỏ"
+  calories: number; // kcal
+  carbs: number; // gam
+  protein: number; // gam
+  fat: number; // gam
+  healthBenefit: string; // Lý do y khoa: "Giàu chất xơ hòa tan giúp giảm cholesterol"
+  recipeTips?: string; // Gợi ý chế biến: "Hấp hoặc luộc, không nêm thêm bột ngọt"
+}
+
+export interface DailyMealPlan {
+  dayOfWeek: number; // 1 (Thứ 2) -> 7 (Chủ nhật)
+  dayName: string; // "Thứ Hai", "Thứ Ba"...
+  breakfast: MealItem[];
+  lunch: MealItem[];
+  dinner: MealItem[];
+  snacks?: MealItem[];
+  dayCalories: number;
+}
+
+export interface MealPlan {
+  id: string;
+  userId: string;
+  title: string; // VD: "Thực đơn 7 ngày Hạ Axit Uric & Giảm mỡ máu"
+  checkupSessionId?: string; // Liên kết đợt khám sức khỏe đã truyền cảm hứng
+  goal: NutritionGoal;
+  preference: DietaryPreference;
+  targetCalories: number;
+  targetWaterMl: number;
+  macroRatio: {
+    carbsPct: number;
+    proteinPct: number;
+    fatPct: number;
+  };
+  days: DailyMealPlan[];
+  dosAndDonts: {
+    recommendedFoods: string[]; // Thực phẩm vàng nên ăn
+    avoidFoods: string[]; // Vùng cấm cần tránh
+    medicalAdvice: string[]; // Khuyên dùng từ chuyên gia dinh dưỡng lâm sàng
+  };
+  aiAnalysisSummary: string; // Đoạn tóm tắt nhận định của AI
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NutritionProfile {
+  userId: string;
+  heightCm?: number;
+  weightKg?: number;
+  bmi?: number;
+  tdee?: number; // Total Daily Energy Expenditure
+  bmr?: number; // Basal Metabolic Rate
+  primaryGoal: NutritionGoal;
+  preference: DietaryPreference;
+  allergies?: string[];
+  excludedFoods?: string[];
+  targetCalories: number;
+  targetWaterMl: number;
+  updatedAt: string;
+}
+
+export interface DailyWaterLog {
+  id: string;
+  userId: string;
+  date: string; // YYYY-MM-DD
+  amountMl: number;
+  targetMl: number;
+  updatedAt: string;
+}
+

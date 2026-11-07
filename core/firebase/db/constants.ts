@@ -131,6 +131,18 @@ export const COLLECTIONS = {
 
   /** Các đợt khám sức khỏe định kỳ & tổng thể */
   HEALTH_CHECKUPS: 'health_checkups',
+
+  // ============================================================================
+  // PHÂN HỆ DINH DƯỠNG & THỰC ĐƠN (NUTRITION & MEAL PLANNER MODULE)
+  // ============================================================================
+  /** Hồ sơ dinh dưỡng cá nhân & mục tiêu calo/macro */
+  NUTRITION_PROFILES: 'nutrition_profiles',
+
+  /** Kế hoạch thực đơn cá nhân hóa theo tuần/ngày */
+  MEAL_PLANS: 'meal_plans',
+
+  /** Nhật ký nước uống và ăn uống hàng ngày */
+  DAILY_NUTRITION_LOGS: 'daily_nutrition_logs',
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

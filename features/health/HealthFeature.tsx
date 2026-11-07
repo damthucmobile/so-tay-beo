@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/core/firebase';
 import { useHealthStore, HealthSubTab } from './stores/useHealthStore';
 import { BiometricsView } from './components/BiometricsView';
+import { NutritionView } from './components/NutritionView';
 import { AiMedicalImportModal } from './components/AiMedicalImportModal';
 
 interface HealthFeatureProps {
@@ -43,9 +44,13 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
     return <BiometricsView onBackToOverview={() => setActiveSubTab('overview')} />;
   }
 
-  // Màn con Workouts & Nutrition (Giữ cấu trúc sẵn sàng)
-  if (activeSubTab === 'workouts' || activeSubTab === 'nutrition') {
-    const isWorkout = activeSubTab === 'workouts';
+  // Nếu đang ở màn con "Dinh dưỡng & Thực đơn"
+  if (activeSubTab === 'nutrition') {
+    return <NutritionView onBackToOverview={() => setActiveSubTab('overview')} />;
+  }
+
+  // Màn con Workouts (Giữ cấu trúc sẵn sàng)
+  if (activeSubTab === 'workouts') {
     return (
       <div className="w-full space-y-6">
         <button
@@ -59,18 +64,18 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
 
         <div className="p-10 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 text-center space-y-3 bg-white dark:bg-slate-900">
           <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
-            {isWorkout ? <Dumbbell className="w-7 h-7" /> : <Apple className="w-7 h-7" />}
+            <Dumbbell className="w-7 h-7" />
           </div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            {isWorkout ? 'Tính năng Lịch Tập & Workout' : 'Tính năng Dinh Dưỡng & Thực Đơn'}
+            Tính năng Lịch Tập & Workout
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Module đang được hoàn thiện. Hãy trải nghiệm phân hệ <strong>Chỉ số sinh học & AI Quét tài liệu y tế</strong> trước.
+            Module đang được hoàn thiện. Hãy trải nghiệm phân hệ <strong>Chỉ số sinh học</strong> hoặc <strong>Dinh dưỡng & Thực đơn</strong> trước.
           </p>
           <button
             type="button"
             onClick={() => setActiveSubTab('biometrics')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs shadow-md transition"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs shadow-md transition cursor-pointer"
           >
             <span>Mở Bảng Chỉ Số Sinh Học</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -91,18 +96,18 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
       isReady: true,
     },
     {
+      id: 'nutrition' as HealthSubTab,
+      icon: Apple,
+      title: 'Dinh Dưỡng & Thực Đơn',
+      description: 'Thực đơn 7 ngày cá nhân hóa theo chỉ số xét nghiệm, theo dõi nước uống & calo mục tiêu.',
+      tag: 'Sẵn sàng • AI Lập thực đơn',
+      isReady: true,
+    },
+    {
       id: 'workouts' as HealthSubTab,
       icon: Dumbbell,
       title: 'Lịch Tập & Workout',
       description: 'Lên lịch tập gym, chạy bộ, cardio theo tuần và ghi nhận số calo tiêu hao.',
-      tag: 'Gợi ý',
-      isReady: false,
-    },
-    {
-      id: 'nutrition' as HealthSubTab,
-      icon: Apple,
-      title: 'Dinh Dưỡng & Thực Đơn',
-      description: 'Theo dõi khẩu phần bữa ăn, lượng nước uống hàng ngày và mục tiêu calo nạp vào.',
       tag: 'Gợi ý',
       isReady: false,
     },
@@ -128,7 +133,7 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
                 </span>
                 <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500">• Không gian cá nhân</span>
               </div>
-              <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
+              <h1 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                 Nhật Ký & Theo Dõi Sức Khỏe
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed line-clamp-2 sm:line-clamp-none">
