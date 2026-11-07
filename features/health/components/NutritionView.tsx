@@ -1,7 +1,7 @@
 // features/health/components/NutritionView.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Sparkles,
@@ -54,11 +54,17 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
   const metrics = useHealthStore((state) => state.metrics);
   const checkupSessions = useHealthStore((state) => state.checkupSessions);
 
-  // Local state & subscriptions
+  // 0 = Thứ Hai, ..., 5 = Thứ Bảy, 6 = Chủ Nhật
+  const getTodayDayIndex = (): number => {
+    const day = new Date().getDay();
+    return day === 0 ? 6 : day - 1;
+  };
+
   const [profile, setProfile] = useState<NutritionProfile | null>(null);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-  const [activeDayIndex, setActiveDayIndex] = useState<number>(0); // 0 = Thứ 2, 6 = Chủ nhật
+  const [activeDayIndex, setActiveDayIndex] = useState<number>(getTodayDayIndex);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
   // Water tracking for today
   const todayStr = new Date().toISOString().split('T')[0];
@@ -122,6 +128,17 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
 
   // Current active day of meals
   const activeDay = activePlan?.days?.[activeDayIndex] || activePlan?.days?.[0] || null;
+
+  // Tự động cuộn tab ngày đang chọn (hoặc ngày hôm nay) vào giữa màn hình trên mobile
+  useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      });
+    }
+  }, [activeDayIndex, activePlan?.id]);
 
   // Thống kê các chỉ số sức khỏe quan trọng liên quan đến dinh dưỡng (loại trừ trùng lặp)
   const healthAlerts = React.useMemo(() => {
@@ -345,7 +362,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
                   className={`group relative p-3 rounded-2xl border bg-white/90 dark:bg-slate-900/90 shadow-xs space-y-2 transition-all ${theme.itemBorder}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h5 className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-snug">
+                    <h5 className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-snug min-w-0 flex-1 break-words">
                       {m.name}
                     </h5>
 
@@ -390,8 +407,9 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
                     <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                       {m.portion}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-lg font-mono font-bold ${theme.badgeBg}`}>
-                      🔥 {m.calories} kcal
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-mono font-bold ${theme.badgeBg}`}>
+                      <Flame className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span>{m.calories} kcal</span>
                     </span>
 
                     {(m.carbs > 0 || m.protein > 0 || m.fat > 0) && (
@@ -528,7 +546,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
             <button
               type="button"
               onClick={() => setIsGenerateModalOpen(true)}
-              className="flex-2 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer text-center"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer text-center"
             >
               <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span className="truncate">1-Click Lập Thực Đơn</span>
@@ -647,13 +665,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
         <div className="space-y-4 sm:space-y-5">
           {/* Menu Switcher & Plan Info Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-            <div className="flex items-start sm:items-center gap-3">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                 <Salad className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white leading-snug">
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white leading-snug break-words">
                     {activePlan.title}
                   </h3>
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 shrink-0">
@@ -666,40 +684,44 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-auto">
+            <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto min-w-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/80">
               {mealPlans.length > 1 && (
-                <select
-                  value={selectedPlanId}
-                  onChange={(e) => setSelectedPlanId(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
-                >
-                  {mealPlans.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1 sm:flex-initial min-w-0 sm:w-64 max-w-full">
+                  <select
+                    value={selectedPlanId}
+                    onChange={(e) => setSelectedPlanId(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer truncate"
+                  >
+                    {mealPlans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
 
-              {/* Sửa thông tin chung thực đơn */}
-              <button
-                type="button"
-                onClick={() => setIsEditPlanMetaOpen(true)}
-                className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
-                title="Sửa thông tin thực đơn"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
+                {/* Sửa thông tin chung thực đơn */}
+                <button
+                  type="button"
+                  onClick={() => setIsEditPlanMetaOpen(true)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
+                  title="Sửa thông tin thực đơn"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
 
-              {/* Xóa thực đơn */}
-              <button
-                type="button"
-                onClick={() => handleDeletePlan(activePlan.id)}
-                className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
-                title="Xóa thực đơn này"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                {/* Xóa thực đơn */}
+                <button
+                  type="button"
+                  onClick={() => handleDeletePlan(activePlan.id)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                  title="Xóa thực đơn này"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -730,9 +752,11 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
           <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 -mx-1 px-1 no-scrollbar snap-x snap-mandatory">
             {activePlan.days?.map((day, idx) => {
               const isActive = activeDayIndex === idx;
+              const isToday = getTodayDayIndex() === idx;
               return (
                 <button
                   key={day.dayOfWeek || idx}
+                  ref={isActive ? activeTabRef : null}
                   type="button"
                   onClick={() => setActiveDayIndex(idx)}
                   className={`px-3.5 py-2 rounded-2xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border snap-start ${
@@ -743,6 +767,17 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
                 >
                   <Calendar className="w-3.5 h-3.5 shrink-0" />
                   <span>{day.dayName || `Ngày ${idx + 1}`}</span>
+                  {isToday && (
+                    <span
+                      className={`px-1 py-0.2 rounded text-[9px] font-bold ${
+                        isActive
+                          ? 'bg-white/25 text-white'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      }`}
+                    >
+                      Hôm nay
+                    </span>
+                  )}
                   <span
                     className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono font-medium ${
                       isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
@@ -916,7 +951,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
             profile={profile}
             onPlanCreated={(planId) => {
               setSelectedPlanId(planId);
-              setActiveDayIndex(0);
+              setActiveDayIndex(getTodayDayIndex());
             }}
           />
 

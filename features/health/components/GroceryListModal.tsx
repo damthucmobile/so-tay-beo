@@ -129,12 +129,12 @@ export const GroceryListModal: React.FC<GroceryListModalProps> = ({
   const handleCopyText = () => {
     if (!mealPlan) return;
     const textLines: string[] = [
-      `🛒 DANH SÁCH ĐI CHỢ CHO THỰC ĐƠN: ${mealPlan.title}`,
+      `DANH SÁCH ĐI CHỢ CHO THỰC ĐƠN: ${mealPlan.title}`,
       `Mục tiêu: ${mealPlan.goal} • Calo: ${mealPlan.targetCalories} kcal/ngày\n`,
     ];
 
     categories.forEach((cat) => {
-      textLines.push(`📌 ${cat.title}:`);
+      textLines.push(`[${cat.title}]`);
       cat.items.forEach((item) => {
         textLines.push(`  - [ ] ${item}`);
       });

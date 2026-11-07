@@ -143,6 +143,18 @@ export const COLLECTIONS = {
 
   /** Nhật ký nước uống và ăn uống hàng ngày */
   DAILY_NUTRITION_LOGS: 'daily_nutrition_logs',
+
+  // ============================================================================
+  // PHÂN HỆ LỊCH TẬP THỂ CHẤT & WORKOUT (WORKOUT & FITNESS MODULE)
+  // ============================================================================
+  /** Hồ sơ thể lực, thói quen & mục tiêu tập luyện */
+  WORKOUT_PROFILES: 'workout_profiles',
+
+  /** Kế hoạch lịch tập tuần cá nhân hóa */
+  WORKOUT_PLANS: 'workout_plans',
+
+  /** Nhật ký hoàn thành buổi tập hàng ngày */
+  DAILY_WORKOUT_LOGS: 'daily_workout_logs',
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

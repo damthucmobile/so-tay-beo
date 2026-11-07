@@ -15,11 +15,13 @@ import {
   Activity,
   ArrowLeft,
   FileText,
+  Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '@/core/firebase';
 import { useHealthStore, HealthSubTab } from './stores/useHealthStore';
 import { BiometricsView } from './components/BiometricsView';
 import { NutritionView } from './components/NutritionView';
+import { WorkoutView } from './components/WorkoutView';
 import { AiMedicalImportModal } from './components/AiMedicalImportModal';
 
 interface HealthFeatureProps {
@@ -49,40 +51,9 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
     return <NutritionView onBackToOverview={() => setActiveSubTab('overview')} />;
   }
 
-  // Màn con Workouts (Giữ cấu trúc sẵn sàng)
+  // Nếu đang ở màn con "Lịch tập & Workout"
   if (activeSubTab === 'workouts') {
-    return (
-      <div className="w-full space-y-6">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('overview')}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 transition cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Quay lại trang Sức Khỏe & Thể Chất</span>
-        </button>
-
-        <div className="p-10 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 text-center space-y-3 bg-white dark:bg-slate-900">
-          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
-            <Dumbbell className="w-7 h-7" />
-          </div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            Tính năng Lịch Tập & Workout
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Module đang được hoàn thiện. Hãy trải nghiệm phân hệ <strong>Chỉ số sinh học</strong> hoặc <strong>Dinh dưỡng & Thực đơn</strong> trước.
-          </p>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('biometrics')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs shadow-md transition cursor-pointer"
-          >
-            <span>Mở Bảng Chỉ Số Sinh Học</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-    );
+    return <WorkoutView onBackToOverview={() => setActiveSubTab('overview')} />;
   }
 
   // MÀN HÌNH CHÍNH TỔNG QUAN (GIỮ NGUYÊN GIAO DIỆN HIỆN TẠI THEO YÊU CẦU CỦA USER)
@@ -107,9 +78,9 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
       id: 'workouts' as HealthSubTab,
       icon: Dumbbell,
       title: 'Lịch Tập & Workout',
-      description: 'Lên lịch tập gym, chạy bộ, cardio theo tuần và ghi nhận số calo tiêu hao.',
-      tag: 'Gợi ý',
-      isReady: false,
+      description: 'Lịch tập thể chất 7 ngày theo chỉ số sức khỏe, hướng dẫn động tác & bấm giờ nghỉ.',
+      tag: 'Sẵn sàng • AI Lập lịch tập',
+      isReady: true,
     },
   ];
 
@@ -232,8 +203,9 @@ export const HealthFeature: React.FC<HealthFeatureProps> = ({ onNavigateTab }) =
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               Không gian toàn diện giúp bạn ghi chép chỉ số thể chất (BMI, cân nặng, huyết áp), nhật ký tập luyện thể thao, kế hoạch ăn uống healthy và lịch nhắc khám sức khỏe định kỳ.
             </p>
-            <p className="text-xs text-rose-600 dark:text-rose-400 font-medium italic pt-1">
-              💡 Sức khỏe là tài sản quý giá nhất. Hãy bắt đầu ghi chép ngày hôm nay!
+            <p className="inline-flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium italic pt-1">
+              <Lightbulb className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+              <span>Sức khỏe là tài sản quý giá nhất. Hãy bắt đầu ghi chép ngày hôm nay!</span>
             </p>
           </div>
 

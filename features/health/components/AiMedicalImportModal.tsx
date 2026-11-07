@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Check,
   Image as ImageIcon,
+  ChevronRight,
 } from 'lucide-react';
 import { HealthRecordDocument, HealthMetricValue } from '../types';
 import { useAuth } from '@/core/firebase';
@@ -596,8 +597,9 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                             {img.description}
                           </p>
                         )}
-                        <div className="font-bold text-rose-600 dark:text-rose-400 pt-0.5">
-                          👉 Kết luận: {img.conclusion}
+                        <div className="font-bold text-rose-600 dark:text-rose-400 pt-0.5 flex items-center gap-1">
+                          <ChevronRight className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>Kết luận: {img.conclusion}</span>
                         </div>
                       </div>
                     ))}

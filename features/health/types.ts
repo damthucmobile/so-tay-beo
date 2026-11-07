@@ -201,3 +201,93 @@ export interface DailyWaterLog {
   updatedAt: string;
 }
 
+// ============================================================================
+// PHÂN HỆ LỊCH TẬP THỂ CHẤT & WORKOUT (WORKOUT & FITNESS MODULE)
+// ============================================================================
+
+export type WorkoutGoal =
+  | 'fat_loss' // Giảm mỡ & Hạ mỡ máu / Giảm BMI
+  | 'muscle_gain' // Tăng cơ, gia tăng khối lượng cơ xương
+  | 'heart_health' // Tăng cường sức khỏe tim mạch & Ổn định huyết áp
+  | 'mobility' // Dưỡng sinh, tăng độ linh hoạt khớp & phục hồi
+  | 'general_fitness'; // Thể lực toàn diện & duy trì năng lượng
+
+export type FitnessLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export type EquipmentType =
+  | 'bodyweight' // Tập tự do bằng trọng lượng cơ thể (Calisthenics)
+  | 'dumbbells' // Tạ đơn tại nhà
+  | 'resistance_bands' // Dây kháng lực (Mini band / Power band)
+  | 'gym_machines' // Phòng gym đầy đủ thiết bị
+  | 'outdoors'; // Đi bộ, chạy bộ, đạp xe ngoài trời
+
+export type ExerciseCategory = 'warmup' | 'main' | 'cooldown';
+
+export interface ExerciseItem {
+  id: string;
+  name: string;
+  category: ExerciseCategory;
+  targetMuscle: string;
+  sets: number;
+  reps?: number;
+  durationSeconds?: number;
+  restSeconds: number;
+  weightKg?: number;
+  formCues: string; // Hướng dẫn kỹ thuật
+  medicalNotice?: string; // Cảnh báo / lưu ý an toàn y tế
+}
+
+export interface DailyWorkoutPlan {
+  dayOfWeek: number; // 0..6 (Thứ 2..Chủ Nhật)
+  dayName: string; // "Thứ Hai"
+  sessionTitle: string; // VD: "Kháng Lực Thân Trên & Cardio Zone 2"
+  focusMuscle: string;
+  estimatedMinutes: number;
+  estimatedCalories: number;
+  intensity: 'low' | 'moderate' | 'high';
+  exercises: ExerciseItem[];
+  isRestDay?: boolean;
+  recoveryTips?: string;
+}
+
+export interface WorkoutPlan {
+  id: string;
+  userId: string;
+  title: string;
+  checkupSessionId?: string;
+  goal: WorkoutGoal;
+  fitnessLevel: FitnessLevel;
+  equipment: EquipmentType[];
+  weeklyTargetCalories: number;
+  days: DailyWorkoutPlan[];
+  aiAnalysisSummary: string;
+  safetyPrecautions: string[]; // Lưu ý an toàn y tế từ AI
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkoutProfile {
+  userId: string;
+  fitnessLevel: FitnessLevel;
+  primaryGoal: WorkoutGoal;
+  equipment: EquipmentType[];
+  preferredDaysPerWeek: number;
+  sessionDurationMinutes: number;
+  physicalLimitations?: string[];
+  updatedAt: string;
+}
+
+export interface DailyWorkoutLog {
+  id: string;
+  userId: string;
+  date: string; // YYYY-MM-DD
+  planId: string;
+  dayIndex: number;
+  durationMinutes: number;
+  caloriesBurned: number;
+  completedExercises: string[]; // id các bài tập đã tick
+  rpe?: number; // Cảm nhận độ mệt 1-10
+  notes?: string;
+  updatedAt: string;
+}
+

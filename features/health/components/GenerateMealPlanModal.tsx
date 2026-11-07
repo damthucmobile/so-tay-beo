@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Salad,
   Info,
+  Droplets,
+  Activity,
 } from 'lucide-react';
 import {
   HealthMetricValue,
@@ -35,48 +37,55 @@ interface GenerateMealPlanModalProps {
   onPlanCreated: (planId: string) => void;
 }
 
-const GOAL_OPTIONS: { id: NutritionGoal; label: string; desc: string; icon: string }[] = [
+const GOAL_OPTIONS: { id: NutritionGoal; label: string; desc: string; icon: any; iconColor: string }[] = [
   {
     id: 'lower_uric_acid',
     label: 'Hạ Axit Uric / Phòng ngừa Gout',
     desc: 'Ưu tiên đạm trắng (ức gà, cá quả), nhiều rau xanh, hạn chế purin và thịt đỏ',
-    icon: '💧',
+    icon: Droplets,
+    iconColor: 'text-sky-500 bg-sky-500/10',
   },
   {
     id: 'lower_cholesterol',
     label: 'Hạ Mỡ Máu (Cholesterol & Triglyceride)',
     desc: 'Bổ sung omega-3, chất xơ hòa tan, triệt tiêu mỡ bão hòa và đồ chiên rán',
-    icon: '🫀',
+    icon: HeartPulse,
+    iconColor: 'text-rose-500 bg-rose-500/10',
   },
   {
     id: 'lower_glucose',
     label: 'Kiểm Soát Đường Huyết (Low-GI)',
     desc: 'Tinh bột chuyển hóa chậm (gạo lứt, yến mạch), không đường tinh luyện',
-    icon: '🩸',
+    icon: Activity,
+    iconColor: 'text-indigo-500 bg-indigo-500/10',
   },
   {
     id: 'liver_detox',
     label: 'Thanh Lọc Gan & Hạ Men Gan',
     desc: 'Giảm tải cho gan, giàu chất chống oxy hóa (bông cải xanh, atiso, trà xanh)',
-    icon: '🍃',
+    icon: ShieldCheck,
+    iconColor: 'text-emerald-500 bg-emerald-500/10',
   },
   {
     id: 'weight_loss',
     label: 'Giảm Cân & Thon Gọn Lành Mạnh',
     desc: 'Thâm hụt 300-500 kcal, tăng cường đạm nạc và rau củ tạo cảm giác no lâu',
-    icon: '🔥',
+    icon: Flame,
+    iconColor: 'text-amber-500 bg-amber-500/10',
   },
   {
     id: 'heart_health',
     label: 'Tốt Cho Tim Mạch & Huyết Áp (DASH)',
     desc: 'Chế độ ăn giảm muối (<5g/ngày), giàu Kali và Magie từ rau củ tự nhiên',
-    icon: '❤️',
+    icon: HeartPulse,
+    iconColor: 'text-red-500 bg-red-500/10',
   },
   {
     id: 'maintain',
     label: 'Duy Trì Vóc Dáng & Sức Khỏe Toàn Diện',
     desc: 'Cân bằng vi chất, năng lượng vừa đủ và tăng cường đề kháng',
-    icon: '🥗',
+    icon: Apple,
+    iconColor: 'text-teal-500 bg-teal-500/10',
   },
 ];
 
@@ -348,7 +357,9 @@ export const GenerateMealPlanModal: React.FC<GenerateMealPlanModalProps> = ({
                         : 'border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
-                    <span className="text-xl shrink-0 mt-0.5">{opt.icon}</span>
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${opt.iconColor}`}>
+                      <opt.icon className="w-4 h-4" />
+                    </div>
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         <span>{opt.label}</span>
@@ -447,7 +458,7 @@ export const GenerateMealPlanModal: React.FC<GenerateMealPlanModalProps> = ({
               type="button"
               onClick={handleGenerate}
               disabled={isGenerating}
-              className="flex-2 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer disabled:opacity-50 text-center"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer disabled:opacity-50 text-center"
             >
               {isGenerating ? (
                 <>

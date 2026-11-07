@@ -362,6 +362,24 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    // ==============================================================================
+    // 19. PHÂN HỆ LỊCH TẬP THỂ CHẤT & WORKOUT (WORKOUT PLANS & LOGS)
+    // ==============================================================================
+    match /workout_profiles/{profileId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
+    match /workout_plans/{planId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
+    match /daily_workout_logs/{logId} {
+      allow read: if isAuthenticated() || true;
+      allow write: if isAuthenticated();
+    }
+
     match /family_events/{eventId} {
       allow read, write: if isAuthenticated();
     }
