@@ -4,6 +4,8 @@ import { getGeminiServerClient } from '@/core/ai/geminiServer';
 import { DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODELS } from '@/core/ai/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Cho phép phân tích OCR tài liệu y tế tối đa 60 giây
 
 const SYSTEM_PROMPT = `Bạn là Trợ lý Y tế & Chuyên gia Phân tích Dữ liệu Xét nghiệm Y khoa hàng đầu.
 Nhiệm vụ của bạn là đọc và phân tích kỹ lưỡng tài liệu y tế (phiếu kết quả xét nghiệm máu, nước tiểu, sinh hóa, siêu âm, X-quang, điện tim, nội soi...) từ bất kỳ bệnh viện hay phòng khám nào tại Việt Nam hoặc quốc tế.
@@ -49,14 +51,71 @@ Yêu cầu xuất ra định dạng JSON CHÍNH XÁC theo cấu trúc sau (khôn
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { fileBase64, mimeType, fileName, rawText, files } = body;
-
+    const contentType = req.headers.get('content-type') || '';
+    let rawText = '';
     const fileList: Array<{ fileBase64: string; mimeType: string; fileName?: string }> = [];
-    if (Array.isArray(files) && files.length > 0) {
-      fileList.push(...files);
-    } else if (fileBase64 && mimeType) {
-      fileList.push({ fileBase64, mimeType, fileName });
+
+    // 1. ƯU TIÊN: Xử lý dạng multipart/form-data (Binary stream, không bị phình 33% Base64)
+    if (contentType.includes('multipart/form-data')) {
+      try {
+        const formData = await req.formData();
+        rawText = (formData.get('rawText') as string) || '';
+
+        const formFiles = formData.getAll('files') as (File | string)[];
+        const singleFile = formData.get('file') as File | null;
+        const allFiles: File[] = [];
+
+        for (const item of formFiles) {
+          if (item instanceof File && item.size > 0) {
+            allFiles.push(item);
+          }
+        }
+        if (singleFile instanceof File && singleFile.size > 0 && !allFiles.some((f) => f.name === singleFile.name && f.size === singleFile.size)) {
+          allFiles.push(singleFile);
+        }
+
+        for (const file of allFiles) {
+          const arrayBuffer = await file.arrayBuffer();
+          const base64 = Buffer.from(arrayBuffer).toString('base64');
+          fileList.push({
+            fileBase64: base64,
+            mimeType: file.type || 'image/jpeg',
+            fileName: file.name,
+          });
+        }
+      } catch (formErr: any) {
+        console.error('Lỗi phân giải FormData:', formErr);
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Dung lượng tệp vượt quá giới hạn hoặc định dạng FormData không hợp lệ.',
+          },
+          { status: 413 }
+        );
+      }
+    } else {
+      // 2. FALLBACK: Xử lý dạng JSON
+      let body: any;
+      try {
+        body = await req.json();
+      } catch (parseErr: any) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Dung lượng yêu cầu quá lớn (413 Payload Too Large) hoặc cấu trúc dữ liệu không hợp lệ. Vui lòng tải từng ảnh hoặc giảm bớt số trang tài liệu.',
+          },
+          { status: 413 }
+        );
+      }
+
+      const { fileBase64, mimeType, fileName, rawText: jsonRawText, files } = body || {};
+      rawText = jsonRawText || '';
+
+      if (Array.isArray(files) && files.length > 0) {
+        fileList.push(...files);
+      } else if (fileBase64 && mimeType) {
+        fileList.push({ fileBase64, mimeType, fileName });
+      }
     }
 
     if (fileList.length === 0 && !rawText) {
@@ -161,11 +220,12 @@ export async function POST(req: NextRequest) {
     }
 
     const parsedData = JSON.parse(cleanJson);
+    const combinedFileNames = fileList.map((f) => f.fileName).filter(Boolean).join(', ');
 
     return NextResponse.json({
       success: true,
       data: parsedData,
-      fileName,
+      fileName: combinedFileNames || undefined,
     });
   } catch (error: any) {
     console.error('Error in /api/health/parse-document:', error);

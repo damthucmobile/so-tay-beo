@@ -23,13 +23,17 @@ import {
 import { HealthRecordDocument, HealthMetricValue } from '../types';
 import { useAuth } from '@/core/firebase';
 import { useHealthStore } from '../stores/useHealthStore';
+import { processFileForAi, formatBytes } from '@/core/utils/imageCompressor';
 
 interface UploadedFileItem {
   id: string;
   name: string;
   size: number;
+  originalSize?: number;
   type: string;
-  base64: string;
+  blob: Blob | File;
+  previewUrl?: string;
+  isCompressed?: boolean;
 }
 
 interface AiMedicalImportModalProps {
@@ -61,8 +65,19 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
     }
   }, [defaultCheckupId]);
 
+  // Giải phóng preview URLs khi component unmount
+  React.useEffect(() => {
+    return () => {
+      uploadedFiles.forEach((f) => {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      });
+    };
+  }, []);
+
   const [rawText, setRawText] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCompressingFiles, setIsCompressingFiles] = useState(false);
+  const [compressingProgress, setCompressingProgress] = useState<{ current: number; total: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   // Parsed Result to Review
@@ -71,35 +86,74 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
   if (!isOpen) return null;
 
   // Xử lý khi chọn một hoặc nhiều file từ máy tính / điện thoại
-  const handleFilesSelect = (files: FileList | null) => {
+  const handleFilesSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setErrorMsg('');
 
     const fileList = Array.from(files);
-    fileList.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const b64 = reader.result as string;
-        setUploadedFiles((prev) => [
-          ...prev,
-          {
-            id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            name: file.name,
-            size: file.size,
-            type: file.type || 'application/octet-stream',
-            base64: b64,
-          },
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setIsCompressingFiles(true);
+    setCompressingProgress({ current: 0, total: fileList.length });
+
+    try {
+      const newItems: UploadedFileItem[] = [];
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setCompressingProgress({ current: i + 1, total: fileList.length });
+
+        // Cảnh báo nếu PDF vượt quá 4MB
+        if (file.type === 'application/pdf' && file.size > 4 * 1024 * 1024) {
+          setErrorMsg(
+            `Tệp PDF "${file.name}" có dung lượng lớn (${formatBytes(file.size)}). Vui lòng nén PDF hoặc tải ảnh từng trang để AI quét tối ưu.`
+          );
+          continue;
+        }
+
+        const processed = await processFileForAi(file, {
+          maxDimension: 1920,
+          quality: 0.82,
+        });
+
+        newItems.push({
+          id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          name: file.name,
+          size: processed.size,
+          originalSize: processed.originalSize,
+          type: processed.mimeType,
+          blob: processed.blob,
+          previewUrl: processed.previewUrl,
+          isCompressed: processed.isCompressed,
+        });
+      }
+
+      setUploadedFiles((prev) => [...prev, ...newItems]);
+    } catch (err: any) {
+      console.error('Lỗi khi nén/đọc tệp:', err);
+      setErrorMsg(err?.message || 'Có lỗi khi đọc và tối ưu hóa tệp.');
+    } finally {
+      setIsCompressingFiles(false);
+      setCompressingProgress(null);
+    }
   };
 
   const handleRemoveFile = (id: string) => {
-    setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
+    setUploadedFiles((prev) => {
+      const target = prev.find((f) => f.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((f) => f.id !== id);
+    });
   };
 
-  // Gửi toàn bộ các file đã chọn đến AI để bóc tách dữ liệu
+  const handleClearAllFiles = () => {
+    uploadedFiles.forEach((f) => {
+      if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+    });
+    setUploadedFiles([]);
+  };
+
+  // Gửi toàn bộ các file đã chọn đến AI để bóc tách dữ liệu thông qua FormData
   const triggerAiParse = async () => {
     if (uploadedFiles.length === 0 && !rawText) return;
     setIsProcessing(true);
@@ -107,26 +161,46 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
     setErrorMsg('');
 
     try {
-      const payload: any = {
-        rawText,
-      };
+      const totalBinaryBytes = uploadedFiles.reduce((acc, f) => acc + f.size, 0);
+      const MAX_PAYLOAD_LIMIT = 4.2 * 1024 * 1024; // 4.2 MB nhị phân thuần túy
 
-      if (uploadedFiles.length > 0) {
-        payload.files = uploadedFiles.map((f) => ({
-          fileBase64: f.base64,
-          mimeType: f.type,
-          fileName: f.name,
-        }));
-        payload.fileBase64 = uploadedFiles[0].base64;
-        payload.mimeType = uploadedFiles[0].type;
-        payload.fileName = uploadedFiles.map((f) => f.name).join(', ');
+      if (totalBinaryBytes > MAX_PAYLOAD_LIMIT) {
+        throw new Error(
+          `Tổng dung lượng tệp (${formatBytes(totalBinaryBytes)}) vượt quá giới hạn 4.5MB của hệ thống. Vui lòng giảm bớt số lượng ảnh hoặc chia nhỏ lần quét để AI bóc tách tốt nhất.`
+        );
       }
+
+      const formData = new FormData();
+      if (rawText) {
+        formData.append('rawText', rawText);
+      }
+
+      uploadedFiles.forEach((item, index) => {
+        const fileName = item.name || `medical_doc_${index + 1}.jpg`;
+        formData.append('files', item.blob, fileName);
+      });
 
       const res = await fetch('/api/health/parse-document', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: formData,
       });
+
+      if (res.status === 413) {
+        throw new Error(
+          'Dung lượng tệp vượt quá giới hạn xử lý của máy chủ (413 Payload Too Large). Vui lòng bớt số lượng ảnh hoặc tải từng trang.'
+        );
+      }
+
+      if (!res.ok) {
+        let errMessage = '';
+        try {
+          const errJson = await res.json();
+          errMessage = errJson.error || errJson.message;
+        } catch {
+          errMessage = await res.text();
+        }
+        throw new Error(errMessage || `Máy chủ phản hồi lỗi (${res.status})`);
+      }
 
       const json = await res.json();
 
@@ -287,19 +361,28 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                     handleFilesSelect(e.target.files);
                     e.target.value = '';
                   }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  disabled={isCompressingFiles || isProcessing}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                 />
 
                 <div className="w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Upload className="w-7 h-7" />
+                  {isCompressingFiles ? (
+                    <Loader2 className="w-7 h-7 animate-spin text-rose-600" />
+                  ) : (
+                    <Upload className="w-7 h-7" />
+                  )}
                 </div>
 
                 <div className="mt-3 space-y-1">
                   <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                    {uploadedFiles.length > 0 ? 'Nhấn hoặc kéo thả để thêm tệp' : 'Kéo thả hoặc chọn tệp kết quả khám bệnh'}
+                    {isCompressingFiles
+                      ? `Đang tự động nén & tối ưu hóa ảnh (${compressingProgress?.current || 1}/${compressingProgress?.total || 1})...`
+                      : uploadedFiles.length > 0
+                      ? 'Nhấn hoặc kéo thả để thêm tệp'
+                      : 'Kéo thả hoặc chọn tệp kết quả khám bệnh'}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                    Hỗ trợ chọn <strong>cùng lúc nhiều tệp</strong>: ảnh chụp từng trang (<strong>JPG, PNG</strong>), phiếu siêu âm, xét nghiệm hoặc tệp <strong>PDF</strong>.
+                    Hỗ trợ chọn <strong>cùng lúc nhiều tệp</strong>: ảnh chụp từng trang (<strong>JPG, PNG</strong>), phiếu siêu âm, xét nghiệm hoặc tệp <strong>PDF</strong>. Hệ thống tự động nén giữ trọn độ nét cho AI, tránh lỗi quá tải 413.
                   </p>
                 </div>
               </div>
@@ -323,12 +406,13 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                             handleFilesSelect(e.target.files);
                             e.target.value = '';
                           }}
+                          disabled={isCompressingFiles || isProcessing}
                           className="hidden"
                         />
                       </label>
                       <button
                         type="button"
-                        onClick={() => setUploadedFiles([])}
+                        onClick={handleClearAllFiles}
                         className="text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
                       >
                         Xóa tất cả
@@ -343,8 +427,14 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                         className="flex items-center justify-between p-2.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-xs gap-2"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                            {file.type.startsWith('image/') ? (
+                          <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 overflow-hidden border border-slate-200/70 dark:border-slate-700/70">
+                            {file.previewUrl ? (
+                              <img
+                                src={file.previewUrl}
+                                alt={file.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : file.type.startsWith('image/') ? (
                               <ImageIcon className="w-4 h-4" />
                             ) : (
                               <FileText className="w-4 h-4" />
@@ -355,7 +445,12 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                               {file.name}
                             </p>
                             <p className="text-[10px] text-slate-400">
-                              {(file.size / 1024).toFixed(0)} KB • Trang/Ảnh #{idx + 1}
+                              {formatBytes(file.size)} • Trang/Ảnh #{idx + 1}
+                              {file.isCompressed && file.originalSize && file.originalSize > file.size && (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold ml-1.5">
+                                  (giảm {Math.round(((file.originalSize - file.size) / file.originalSize) * 100)}%)
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -371,26 +466,54 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                     ))}
                   </div>
 
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={triggerAiParse}
-                      disabled={isProcessing}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Đang phân tích {uploadedFiles.length} tệp...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4" />
-                          <span>Bắt đầu quét AI ({uploadedFiles.length} tệp)</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  {/* Thanh tổng dung lượng & nút kích hoạt */}
+                  {(() => {
+                    const totalFilesSizeBytes = uploadedFiles.reduce((acc, f) => acc + f.size, 0);
+                    const isTotalOversized = totalFilesSizeBytes > 4.2 * 1024 * 1024;
+
+                    return (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 w-full sm:w-auto">
+                          <span>Tổng dung lượng:</span>
+                          <strong className={isTotalOversized ? 'text-rose-600 font-bold' : 'text-slate-700 dark:text-slate-300 font-semibold'}>
+                            {formatBytes(totalFilesSizeBytes)}
+                          </strong>
+                          <span className="text-slate-400">/ 4.2 MB</span>
+                          {isTotalOversized && (
+                            <span className="text-rose-600 font-bold ml-1.5 flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5" /> Quá giới hạn Vercel
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={triggerAiParse}
+                            disabled={isProcessing || isCompressingFiles || isTotalOversized}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Đang phân tích {uploadedFiles.length} tệp...</span>
+                              </>
+                            ) : isCompressingFiles ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Đang tối ưu tệp ({compressingProgress?.current}/{compressingProgress?.total})...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4" />
+                                <span>Bắt đầu quét AI ({uploadedFiles.length} tệp)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
