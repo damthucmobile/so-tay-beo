@@ -29,6 +29,7 @@ import {
   Sun,
   Moon,
   Cookie,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/core/firebase';
 import { useHealthStore } from '../stores/useHealthStore';
@@ -39,10 +40,12 @@ import {
   DailyWaterLog,
 } from '../types';
 import { NutritionService } from '../services/nutritionService';
+import { HealthReminderService } from '../services/healthReminderService';
 import { GenerateMealPlanModal } from './GenerateMealPlanModal';
 import { NutritionProfileModal } from './NutritionProfileModal';
 import { GroceryListModal } from './GroceryListModal';
 import { EditMealItemModal } from './EditMealItemModal';
+import { HealthReminderModal } from './HealthReminderModal';
 import { EditMealPlanMetaModal } from './EditMealPlanMetaModal';
 
 interface NutritionViewProps {
@@ -74,6 +77,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isGroceryModalOpen, setIsGroceryModalOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
 
   // Edit Dish Modal state
   const [editingMealTarget, setEditingMealTarget] = useState<{
@@ -207,6 +211,9 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
     try {
       const updated = await NutritionService.addWaterIntake(user.uid, todayStr, deltaMl, target);
       setWaterLog(updated);
+      if (deltaMl > 0) {
+        HealthReminderService.recordWaterIntakeAction();
+      }
     } catch (err) {
       console.error('Lỗi cập nhật nước uống:', err);
     }
@@ -501,15 +508,27 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
           <span className="sm:hidden">Quay lại Sức Khỏe</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setIsProfileModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 hover:border-teal-500 transition cursor-pointer shadow-xs shrink-0"
-        >
-          <Sliders className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-          <span className="hidden sm:inline">Hồ sơ thể trạng & Calo</span>
-          <span className="sm:hidden">Hồ sơ & Calo</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsReminderModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-sky-500 transition cursor-pointer shadow-xs shrink-0"
+            title="Cài đặt nhắc nhở uống nước & lịch tập"
+          >
+            <Bell className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+            <span className="hidden sm:inline">Nhắc nhở</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsProfileModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 hover:border-teal-500 transition cursor-pointer shadow-xs shrink-0"
+          >
+            <Sliders className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <span className="hidden sm:inline">Hồ sơ thể trạng & Calo</span>
+            <span className="sm:hidden">Hồ sơ & Calo</span>
+          </button>
+        </div>
       </div>
 
       {/* Top Banner Dashboard (Tối ưu responsive Mobile) */}
@@ -981,6 +1000,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({ onBackToOverview }
               onDelete={handleDeleteMealItem}
             />
           )}
+
+          {/* Modal Cài đặt nhắc nhở sức khỏe */}
+          <HealthReminderModal
+            isOpen={isReminderModalOpen}
+            onClose={() => setIsReminderModalOpen(false)}
+            userId={user.uid}
+          />
 
           {/* Modal Sửa thông tin chung thực đơn */}
           <EditMealPlanMetaModal

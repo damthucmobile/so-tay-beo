@@ -20,6 +20,7 @@ import { useThemeStore } from '../stores/useThemeStore';
 import { useTeachingScheduleStore } from '../features/teaching-schedule/stores/useTeachingScheduleStore';
 import { DashboardFeature } from '../features/dashboard';
 import { HealthFeature } from '../features/health/HealthFeature';
+import { useHealthStore } from '../features/health/stores/useHealthStore';
 import { AIAssistantPage } from '../components/ai/AIAssistantPage';
 import { AIFloatingButton } from '../components/ai/AIFloatingButton';
 import {
@@ -168,6 +169,9 @@ export default function HomePage() {
           useTeachingScheduleStore.getState().setSelectedTeacher(detail.teacher);
           useTeachingScheduleStore.getState().setViewMode('teacher');
         }
+        if (detail.tab === 'health' && detail.subtab) {
+          useHealthStore.getState().setActiveSubTab(detail.subtab);
+        }
       }
     };
 
@@ -181,6 +185,9 @@ export default function HomePage() {
           if (data?.teacher && tab === 'teaching_schedule') {
             useTeachingScheduleStore.getState().setSelectedTeacher(data.teacher);
             useTeachingScheduleStore.getState().setViewMode('teacher');
+          }
+          if (tab === 'health' && data?.subtab) {
+            useHealthStore.getState().setActiveSubTab(data.subtab);
           }
         }
       }

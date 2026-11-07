@@ -25,6 +25,7 @@ import {
   Zap,
   Target,
   Lightbulb,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/core/firebase';
 import { useHealthStore } from '../stores/useHealthStore';
@@ -41,6 +42,7 @@ import { GenerateWorkoutPlanModal } from './GenerateWorkoutPlanModal';
 import { EditExerciseModal } from './EditExerciseModal';
 import { EditWorkoutPlanMetaModal } from './EditWorkoutPlanMetaModal';
 import { LiveWorkoutSessionModal } from './LiveWorkoutSessionModal';
+import { HealthReminderModal } from './HealthReminderModal';
 
 interface WorkoutViewProps {
   onBackToOverview: () => void;
@@ -72,6 +74,7 @@ export const WorkoutView: React.FC<WorkoutViewProps> = ({ onBackToOverview }) =>
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [isEditPlanMetaOpen, setIsEditPlanMetaOpen] = useState(false);
   const [isLiveSessionOpen, setIsLiveSessionOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [editingExerciseTarget, setEditingExerciseTarget] = useState<{
     dayIndex: number;
     item: ExerciseItem | null;
@@ -287,9 +290,20 @@ export const WorkoutView: React.FC<WorkoutViewProps> = ({ onBackToOverview }) =>
           {todayLog && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Đã tập hôm nay ({todayLog.caloriesBurned} kcal)</span>
+              <span className="hidden sm:inline">Đã tập hôm nay ({todayLog.caloriesBurned} kcal)</span>
+              <span className="sm:hidden">Đã tập</span>
             </span>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsReminderModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-rose-500 transition cursor-pointer shadow-xs shrink-0"
+            title="Cài đặt nhắc nhở lịch tập & uống nước"
+          >
+            <Bell className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <span className="hidden sm:inline">Nhắc nhở</span>
+          </button>
         </div>
       </div>
 
@@ -847,6 +861,12 @@ export const WorkoutView: React.FC<WorkoutViewProps> = ({ onBackToOverview }) =>
               onDelete={handleDeleteExercise}
             />
           )}
+
+          <HealthReminderModal
+            isOpen={isReminderModalOpen}
+            onClose={() => setIsReminderModalOpen(false)}
+            userId={user.uid}
+          />
 
           <EditWorkoutPlanMetaModal
             isOpen={isEditPlanMetaOpen}

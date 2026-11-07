@@ -291,3 +291,36 @@ export interface DailyWorkoutLog {
   updatedAt: string;
 }
 
+// ============================================================================
+// HỆ THỐNG THÔNG BÁO & NHẮC NHỞ SỨC KHỎE (HEALTH REMINDER SETTINGS)
+// ============================================================================
+
+export interface HealthReminderSettings {
+  id?: string;
+  userId?: string;
+  enabled: boolean;
+  soundEnabled: boolean;
+
+  // 💧 1. Nhắc uống nước định kỳ
+  waterReminder: {
+    enabled: boolean;
+    intervalMinutes: number; // 45, 60, 90, 120
+    startTime: string; // '08:00'
+    endTime: string; // '21:00'
+    cupSizeMl: number; // 200, 250, 300
+    soundEnabled: boolean;
+  };
+
+  // 🏋️ 2. Nhắc lịch tập thể chất
+  workoutReminder: {
+    enabled: boolean;
+    notifyMorningBrief: boolean; // Bản tin sáng
+    morningBriefTime: string; // '07:00'
+    notifyBeforeWorkout: boolean; // Nhắc trước giờ tập
+    preferredWorkoutTime: string; // '17:30'
+    minutesBefore: number; // 15, 30, 45
+    soundEnabled: boolean;
+  };
+
+  updatedAt?: any;
+}

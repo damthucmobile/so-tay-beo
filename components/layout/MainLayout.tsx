@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar, NavTabId } from './Sidebar';
 import { TopHeader } from './TopHeader';
 import { RecentViewItem } from '@/core/firebase';
-import { Bell, X, ArrowRight, Calendar } from 'lucide-react';
+import { Bell, X, ArrowRight, Calendar, Droplets, Dumbbell, HeartPulse } from 'lucide-react';
 import { useTeachingScheduleStore } from '@/features/teaching-schedule/stores/useTeachingScheduleStore';
+import { useHealthStore } from '@/features/health/stores/useHealthStore';
 
 interface MainLayoutProps {
   currentTab: NavTabId;
@@ -72,8 +73,64 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       useTeachingScheduleStore.getState().setViewMode('teacher');
     }
 
+    if (targetTab === 'health' && activeNotification.data?.subtab) {
+      useHealthStore.getState().setActiveSubTab(activeNotification.data.subtab);
+    }
+
     setActiveNotification(null);
   };
+
+  const isHealth = activeNotification?.data?.tab === 'health';
+  const isWater = activeNotification?.data?.category === 'WATER';
+  const isWorkout = activeNotification?.data?.category === 'WORKOUT';
+
+  const badgeText = isWater
+    ? 'NHẮC UỐNG NƯỚC'
+    : isWorkout
+    ? 'LỊCH TẬP THỂ CHẤT'
+    : isHealth
+    ? 'SỨC KHỎE & THỂ CHẤT'
+    : 'THÔNG BÁO LỊCH DẠY';
+
+  const actionText = isWater
+    ? 'Bấm để ghi nhận nước uống'
+    : isWorkout
+    ? 'Bấm để xem lịch tập ngay'
+    : isHealth
+    ? 'Bấm để mở theo dõi sức khỏe'
+    : 'Bấm vào đây để mở lịch dạy';
+
+  const borderClass = isWater
+    ? 'border-sky-500/80 shadow-sky-900/50 hover:border-sky-400'
+    : isWorkout
+    ? 'border-rose-500/80 shadow-rose-900/50 hover:border-rose-400'
+    : isHealth
+    ? 'border-emerald-500/80 shadow-emerald-900/50 hover:border-emerald-400'
+    : 'border-blue-500/80 shadow-blue-900/50 hover:border-blue-400';
+
+  const badgeClass = isWater
+    ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+    : isWorkout
+    ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+    : isHealth
+    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+    : 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+
+  const iconBgClass = isWater
+    ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+    : isWorkout
+    ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+    : isHealth
+    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+    : 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+
+  const actionTextColor = isWater
+    ? 'text-sky-400 group-hover:text-sky-300'
+    : isWorkout
+    ? 'text-rose-400 group-hover:text-rose-300'
+    : isHealth
+    ? 'text-emerald-400 group-hover:text-emerald-300'
+    : 'text-blue-400 group-hover:text-blue-300';
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30 selection:text-blue-600 dark:selection:text-blue-200 transition-colors duration-200">
@@ -83,16 +140,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           <div
             role="alert"
             onClick={handleNotificationClick}
-            className="pointer-events-auto w-full max-w-md bg-slate-900/95 text-white backdrop-blur-xl border-2 border-blue-500/80 rounded-2xl p-3.5 sm:p-4 shadow-2xl shadow-blue-900/50 flex items-start gap-3 cursor-pointer hover:border-blue-400 transition-all group ring-1 ring-white/10"
+            className={`pointer-events-auto w-full max-w-md bg-slate-900/95 text-white backdrop-blur-xl border-2 rounded-2xl p-3.5 sm:p-4 shadow-2xl flex items-start gap-3 cursor-pointer transition-all group ring-1 ring-white/10 ${borderClass}`}
           >
-            <div className="p-2 sm:p-2.5 rounded-xl bg-blue-500/20 text-blue-400 shrink-0 mt-0.5 border border-blue-500/30 group-hover:scale-105 transition-transform">
-              <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 animate-bounce" />
+            <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 mt-0.5 border group-hover:scale-105 transition-transform ${iconBgClass}`}>
+              {isWater ? (
+                <Droplets className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
+              ) : isWorkout ? (
+                <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
+              ) : isHealth ? (
+                <HeartPulse className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
+              ) : (
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
+              )}
             </div>
 
             <div className="flex-1 min-w-0 pr-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
-                  THÔNG BÁO LỊCH DẠY
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold border shrink-0 ${badgeClass}`}>
+                  {badgeText}
                 </span>
                 <h4 className="text-xs sm:text-sm font-bold text-white truncate max-w-full">
                   {activeNotification.title}
@@ -101,8 +166,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
                 {activeNotification.body}
               </p>
-              <div className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
-                <span>Bấm vào đây để mở lịch dạy</span>
+              <div className={`mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold transition-colors ${actionTextColor}`}>
+                <span>{actionText}</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
