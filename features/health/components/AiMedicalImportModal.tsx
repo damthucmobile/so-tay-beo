@@ -648,12 +648,25 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                                 Bất thường
                               </span>
                             );
+                          } else if (m.status === 'warning') {
+                            statusBadge = (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                Cần theo dõi
+                              </span>
+                            );
                           }
 
                           return (
                             <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                               <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">
-                                {m.metricName}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{m.metricName}</span>
+                                  {m.category === 'imaging_functional' && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                      CĐHA & Thăm dò
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="block text-[10px] text-slate-400 font-mono">
                                   {m.metricCode}
                                 </span>
@@ -663,7 +676,7 @@ export const AiMedicalImportModal: React.FC<AiMedicalImportModalProps> = ({
                                   type="text"
                                   value={m.value}
                                   onChange={(e) => handleUpdateMetric(idx, 'value', e.target.value)}
-                                  className="w-24 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 font-bold font-mono text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:outline-none focus:border-rose-500"
+                                  className={`px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:outline-none focus:border-rose-500 ${m.category === 'imaging_functional' ? 'w-full min-w-[140px] max-w-xs font-sans' : 'w-24 font-mono'}`}
                                 />
                               </td>
                               <td className="py-2 px-3 text-slate-500 font-mono">

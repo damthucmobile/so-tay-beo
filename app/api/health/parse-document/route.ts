@@ -23,17 +23,17 @@ Yêu cầu xuất ra định dạng JSON CHÍNH XÁC theo cấu trúc sau (khôn
   "summaryDiagnosis": "Chẩn đoán lâm sàng hoặc kết luận tóm tắt chính của đợt khám",
   "metrics": [
     {
-      "metricCode": "Mã chuẩn hóa (VD: GLUCOSE, RBC, HGB, HCT, MCV, MCH, MCHC, WBC, NEUT_PCT, LYM_PCT, PLT, UREA, CREATININE, EGFR, URIC_ACID, CHOLESTEROL, TRIGLYCERIDE, HDL_C, LDL_C, AST_GOT, ALT_GPT, GGT, ION_NA, ION_K, FT4, TSH, URI_PH, URI_SG, URI_PRO...)",
-      "metricName": "Tên đầy đủ của chỉ số (VD: Định lượng Glucose [Máu], Số lượng hồng cầu (RBC))",
-      "category": "blood_count" | "biochemistry" | "urinalysis" | "vitals" | "custom",
-      "value": "Giá trị đo được dạng chuỗi (VD: '4.5', '2.15', '103', 'Âm tính')",
+      "metricCode": "Mã chuẩn hóa (VD: GLUCOSE, RBC, HGB, HCT, MCV, MCH, MCHC, WBC, NEUT_PCT, LYM_PCT, PLT, UREA, CREATININE, EGFR, URIC_ACID, CHOLESTEROL, TRIGLYCERIDE, HDL_C, LDL_C, AST_GOT, ALT_GPT, GGT, ION_NA, ION_K, FT4, TSH, URI_PH, URI_SG, URI_PRO, US_ABDOMEN, US_THYROID, XRAY_CHEST, ECG_RHYTHM, ENT_ENDOSCOPY, US_CARDIAC...)",
+      "metricName": "Tên đầy đủ của chỉ số hoặc dịch vụ (VD: Định lượng Glucose [Máu], Số lượng hồng cầu (RBC), Siêu âm ổ bụng tổng quát, Điện tâm đồ ECG, Chụp X-quang ngực thẳng, Nội soi tai mũi họng)",
+      "category": "blood_count" | "biochemistry" | "urinalysis" | "imaging_functional" | "vitals" | "custom",
+      "value": "Giá trị đo được dạng chuỗi (VD: '4.5', '2.15', '103', 'Âm tính', 'Hình ảnh siêu âm ổ bụng không thấy bất thường', 'Nhịp xoang đều 72 ck/p')",
       "numericValue": 4.5,
-      "unit": "Đơn vị (VD: 'mmol/L', 'µmol/L', 'T/L', 'g/L', 'U/L', '%')",
-      "referenceRange": "Khoảng tham chiếu chuẩn ghi trong phiếu (VD: '4.1 - 5.6', '< 5.2', 'Âm tính')",
+      "unit": "Đơn vị (VD: 'mmol/L', 'µmol/L', 'T/L', 'g/L', 'U/L', '%', 'kết luận')",
+      "referenceRange": "Khoảng tham chiếu chuẩn ghi trong phiếu (VD: '4.1 - 5.6', '< 5.2', 'Âm tính', 'Bình thường / Chưa thấy tổn thương')",
       "minNormal": 4.1,
       "maxNormal": 5.6,
-      "status": "normal" | "low" | "high" | "abnormal",
-      "notes": "Ghi chú thêm nếu chỉ số vượt ngưỡng hoặc có khuyến nghị"
+      "status": "normal" | "low" | "high" | "abnormal" | "warning",
+      "notes": "Ghi chú thêm nếu chỉ số vượt ngưỡng hoặc mô tả tổn thương"
     }
   ],
   "imagingFindings": [
@@ -47,7 +47,12 @@ Yêu cầu xuất ra định dạng JSON CHÍNH XÁC theo cấu trúc sau (khôn
     }
   ],
   "aiAnalysisNotes": "Đoạn văn ngắn (2-3 câu) tóm lược sức khỏe của người bệnh: các chỉ số nào đẹp/bình thường, chỉ số nào cần lưu ý hoặc điều chỉnh chế độ ăn uống sinh hoạt."
-}`;
+}
+LƯU Ý CỰC KỲ QUAN TRỌNG:
+1. Nếu tài liệu là hoặc có bao gồm kết quả Siêu âm, X-quang, Điện tim (ECG), Nội soi, CT, MRI...:
+   - Hãy điền chi tiết vào mảng imagingFindings
+   - ĐỒNG THỜI tạo các phần tử tương ứng trong mảng metrics với category: 'imaging_functional' (value là kết luận của bác sĩ, unit là 'kết luận', referenceRange là 'Bình thường / Chưa thấy tổn thương', status là 'normal' hoặc 'warning' nếu phát hiện nang/nhân/sỏi/viêm/u/dày/tổn thương).
+   - Tuyệt đối KHÔNG bỏ sót các kết quả CĐHA & Thăm dò chức năng.`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -220,6 +225,55 @@ export async function POST(req: NextRequest) {
     }
 
     const parsedData = JSON.parse(cleanJson);
+
+    // Đảm bảo mọi kết quả CĐHA & Thăm dò trong imagingFindings luôn được đồng bộ vào metrics với category imaging_functional
+    if (Array.isArray(parsedData.imagingFindings) && parsedData.imagingFindings.length > 0) {
+      if (!Array.isArray(parsedData.metrics)) {
+        parsedData.metrics = [];
+      }
+      parsedData.imagingFindings.forEach((img: any) => {
+        const serviceName = (img.serviceName || '').trim();
+        const exists = parsedData.metrics.some(
+          (m: any) =>
+            m.category === 'imaging_functional' &&
+            (m.metricName || '').toLowerCase() === serviceName.toLowerCase()
+        );
+        if (!exists && serviceName) {
+          let code = 'IMAGING_FINDING';
+          const nameLower = serviceName.toLowerCase();
+          if (nameLower.includes('ổ bụng') || nameLower.includes('bung')) code = 'US_ABDOMEN';
+          else if (nameLower.includes('tuyến giáp') || nameLower.includes('giáp')) code = 'US_THYROID';
+          else if (nameLower.includes('tai') || nameLower.includes('mũi') || nameLower.includes('họng') || nameLower.includes('tmh')) code = 'ENT_ENDOSCOPY';
+          else if (nameLower.includes('xquang') || nameLower.includes('x-quang') || nameLower.includes('xq') || nameLower.includes('tim phổi') || nameLower.includes('ngực')) code = 'XRAY_CHEST';
+          else if (nameLower.includes('điện tim') || nameLower.includes('điện tâm đồ') || nameLower.includes('ecg')) code = 'ECG_RHYTHM';
+          else if (nameLower.includes('tim') && nameLower.includes('siêu âm')) code = 'US_CARDIAC';
+          else if (nameLower.includes('nội soi')) code = 'ENDOSCOPY_EXAM';
+          else if (nameLower.includes('siêu âm')) code = 'ULTRASOUND_EXAM';
+
+          const conLower = (img.conclusion || img.description || '').toLowerCase();
+          const hasAbnormal =
+            conLower.includes('bất thường') ||
+            conLower.includes('viêm') ||
+            conLower.includes('sỏi') ||
+            conLower.includes('nang') ||
+            conLower.includes('nhân') ||
+            conLower.includes('u ') ||
+            conLower.includes('khối');
+
+          parsedData.metrics.push({
+            metricCode: code,
+            metricName: serviceName,
+            category: 'imaging_functional',
+            value: img.conclusion || img.description || 'Đã thực hiện',
+            unit: 'kết luận',
+            referenceRange: 'Bình thường / Chưa thấy tổn thương',
+            status: hasAbnormal ? 'warning' : 'normal',
+            notes: img.description || (img.classification ? `Phân loại: ${img.classification}` : undefined),
+          });
+        }
+      });
+    }
+
     const combinedFileNames = fileList.map((f) => f.fileName).filter(Boolean).join(', ');
 
     return NextResponse.json({

@@ -38,6 +38,7 @@ import {
 import { HealthCategory, HealthMetricValue, HealthRecordDocument, HealthCheckupSession } from '../types';
 import { useHealthStore } from '../stores/useHealthStore';
 import { useAuth } from '@/core/firebase';
+import { imagingFindingToMetric } from '../services/healthService';
 import { HealthService, parseDateToTimestamp } from '../services/healthService';
 import { AiMedicalImportModal } from './AiMedicalImportModal';
 import { ManualMetricModal } from './ManualMetricModal';
@@ -119,15 +120,50 @@ export const BiometricsView: React.FC<BiometricsViewProps> = ({ onBackToOverview
     return map;
   }, [sortedCheckupSessions]);
 
-  // Lọc danh sách chỉ số theo đúng đợt khám đang chọn
+  // Lọc danh sách chỉ số theo đúng đợt khám đang chọn (kèm tự động tổng hợp CĐHA & Thăm dò từ records)
   const metricsInCurrentSession = useMemo(() => {
-    if (selectedCheckupId === 'all') {
-      return metrics;
-    }
-    return metrics.filter((m) => {
-      const sessId = getMetricCheckupId(m);
-      return sessId === selectedCheckupId;
+    const baseMetrics =
+      selectedCheckupId === 'all'
+        ? metrics
+        : metrics.filter((m) => {
+            const sessId = getMetricCheckupId(m);
+            return sessId === selectedCheckupId;
+          });
+
+    // Tự động tổng hợp kết quả CĐHA & Thăm dò chức năng từ records (phục vụ dữ liệu cũ hoặc khi chưa lưu sang health_metrics)
+    const recordsInScope =
+      selectedCheckupId === 'all'
+        ? records
+        : records.filter((r) => r.checkupSessionId === selectedCheckupId);
+
+    const syntheticImagingMetrics: HealthMetricValue[] = [];
+    recordsInScope.forEach((r) => {
+      if (r.imagingFindings && Array.isArray(r.imagingFindings)) {
+        r.imagingFindings.forEach((f) => {
+          const serviceName = (f.serviceName || '').trim();
+          const exists = baseMetrics.some(
+            (m) =>
+              m.category === 'imaging_functional' &&
+              (m.sourceDocId === r.id ||
+                (m.metricName || '').toLowerCase() === serviceName.toLowerCase() ||
+                m.value === f.conclusion)
+          );
+          if (!exists && serviceName) {
+            syntheticImagingMetrics.push(
+              imagingFindingToMetric(f, {
+                recordId: r.id,
+                checkupSessionId: r.checkupSessionId,
+                hospitalName: r.hospitalName,
+                doctorName: r.doctorName,
+                measuredAt: r.recordDate,
+              })
+            );
+          }
+        });
+      }
     });
+
+    return [...baseMetrics, ...syntheticImagingMetrics];
   }, [metrics, selectedCheckupId, records]);
 
   // Nhóm các chỉ số theo code để lấy kết quả mới nhất cho mỗi chỉ số trong phạm vi đợt khám
@@ -808,7 +844,13 @@ export const BiometricsView: React.FC<BiometricsViewProps> = ({ onBackToOverview
                   } else if (m.status === 'abnormal') {
                     statusBadge = (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
-                        <AlertTriangle className="w-3 h-3 text-purple-600 dark:text-purple-400" /> Cần chú ý
+                        <AlertTriangle className="w-3 h-3 text-purple-600 dark:text-purple-400" /> Bất thường
+                      </span>
+                    );
+                  } else if (m.status === 'warning') {
+                    statusBadge = (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+                        <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" /> Cần theo dõi
                       </span>
                     );
                   }
@@ -821,18 +863,28 @@ export const BiometricsView: React.FC<BiometricsViewProps> = ({ onBackToOverview
                       className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
                     >
                       <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900 dark:text-white">
-                          {m.metricName}
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                          <span>{m.metricName}</span>
+                          {m.category === 'imaging_functional' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                              CĐHA & Thăm dò
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] font-mono text-slate-400">
                           {m.metricCode}
                         </div>
                       </td>
 
-                      <td className="py-3 px-4">
-                        <span className="font-extrabold font-mono text-sm text-slate-900 dark:text-white">
+                      <td className="py-3 px-4 max-w-sm">
+                        <div className={`font-extrabold text-sm text-slate-900 dark:text-white leading-relaxed ${m.category === 'imaging_functional' ? 'font-sans' : 'font-mono'}`}>
                           {m.value}
-                        </span>
+                        </div>
+                        {m.notes && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-2" title={m.notes}>
+                            {m.notes}
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3 px-4 font-mono text-slate-500">
