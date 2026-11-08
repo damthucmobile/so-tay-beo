@@ -222,7 +222,7 @@ export async function chatServer(
 ): Promise<AIResponse<string>> {
   try {
     // Chuẩn hóa lịch sử hội thoại cho SDK bao gồm hình ảnh và tệp đính kèm
-    const contents = options.messages.map((m) => {
+    const rawContents = options.messages.map((m) => {
       const parts: any[] = [];
 
       // 1. Xử lý tệp đính kèm nếu có (ảnh, PDF, tài liệu, file code)
@@ -293,6 +293,32 @@ export async function chatServer(
         parts,
       };
     });
+
+    // SDK Google Gemini bắt buộc nội dung phải bắt đầu bằng 'user' và luân phiên 'user' -> 'model'
+    // Tự động gộp các lượt cùng role liên tiếp để không bị lỗi 400 Bad Request
+    const contents: any[] = [];
+    for (const item of rawContents) {
+      if (!item.parts || item.parts.length === 0) continue;
+      if (contents.length === 0) {
+        if (item.role === 'user') {
+          contents.push(item);
+        }
+        continue;
+      }
+      const last = contents[contents.length - 1];
+      if (last.role === item.role) {
+        last.parts.push(...item.parts);
+      } else {
+        contents.push(item);
+      }
+    }
+
+    if (contents.length === 0) {
+      return {
+        success: false,
+        error: 'Nội dung tin nhắn không hợp lệ hoặc rỗng.',
+      };
+    }
 
     const { result: response, modelUsed } = await executeWithModelFallback(
       options.model,

@@ -83,6 +83,25 @@ async function callGeminiApi<T = any>(
       body: JSON.stringify(finalPayload),
     });
 
+    if (res.status === 413) {
+      return {
+        success: false,
+        error: 'Dung lượng tệp hoặc tin nhắn quá lớn (vượt quá giới hạn 4.5MB của máy chủ). Vui lòng gửi ảnh dung lượng nhỏ hơn hoặc giảm bớt số lượng ảnh.',
+      };
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const rawText = await res.text().catch(() => '');
+      console.warn(`[GeminiClient] Server returned non-JSON response (${res.status}):`, rawText.slice(0, 200));
+      return {
+        success: false,
+        error: res.status === 504
+          ? 'Máy chủ AI xử lý quá thời gian chờ (timeout). Vui lòng thử lại.'
+          : `Máy chủ AI phản hồi không hợp lệ (mã lỗi: ${res.status}). Vui lòng thử lại sau ít giây.`,
+      };
+    }
+
     const data: AIResponse<T> = await res.json();
     return data;
   } catch (err: any) {

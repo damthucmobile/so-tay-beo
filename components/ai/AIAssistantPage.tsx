@@ -579,6 +579,12 @@ export const AIAssistantPage: React.FC<AIAssistantPageProps> = ({ onNavigateTab 
       setSessions((prev) =>
         prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
       );
+    } else {
+      // Khôi phục lại nội dung nhập và tệp đính kèm để người dùng không phải gõ hoặc chọn lại ảnh
+      setInputText(text);
+      if (currentAttachments.length > 0) {
+        setAttachments(currentAttachments);
+      }
     }
   };
 

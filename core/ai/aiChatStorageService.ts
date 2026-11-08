@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { getDb, COLLECTIONS, cleanUndefinedFields } from '@/core/firebase';
 import { AIChatSession, ChatAttachment, ChatMessage } from './types';
+import { compressImageToDataUrl } from '@/core/utils/imageCompressor';
 
 export const CHAT_SESSIONS_STORAGE_KEY = 'so_tay_beo_gemini_chat_sessions_v1';
 export const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024; // 25MB (Cloudflare R2 hỗ trợ upload lớn)
@@ -128,9 +129,18 @@ export async function uploadFileToCloudStorage(
     body: formData,
   });
 
-  const json = await res.json();
-  if (!res.ok || !json.success) {
-    throw new Error(json.error || 'Không thể tải tệp lên Cloudflare R2.');
+  let json: any = null;
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      json = await res.json();
+    } catch {
+      json = null;
+    }
+  }
+
+  if (!res.ok || !json?.success) {
+    throw new Error(json?.error || `Không thể tải tệp lên Cloudflare R2 (mã lỗi: ${res.status}).`);
   }
 
   return {
@@ -168,24 +178,41 @@ export async function processChatFileAttachment(
     file.name.endsWith('.css') ||
     file.name.endsWith('.py');
 
-  // Đọc nội dung cục bộ trước để AI xử lý tức thì
-  const localDataPromise = new Promise<{
+  // Đọc nội dung cục bộ trước để AI xử lý tức thì (Tự động nén ảnh để tránh lỗi 4.5MB Vercel)
+  const localDataPromise = (async (): Promise<{
     data: string;
     previewUrl?: string;
     textContent?: string;
-  }>((resolve, reject) => {
-    const reader = new FileReader();
+  }> => {
     if (isText) {
-      reader.onload = () => {
-        const textContent = reader.result as string;
-        resolve({
-          data: textContent,
-          textContent,
-        });
-      };
-      reader.onerror = () => reject(new Error(`Không thể đọc tệp "${file.name}"`));
-      reader.readAsText(file);
-    } else {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const textContent = reader.result as string;
+          resolve({
+            data: textContent,
+            textContent,
+          });
+        };
+        reader.onerror = () => reject(new Error(`Không thể đọc tệp "${file.name}"`));
+        reader.readAsText(file);
+      });
+    }
+
+    if (isImage) {
+      try {
+        const compressed = await compressImageToDataUrl(file, 1600, 0.8);
+        return {
+          data: compressed.dataUrl,
+          previewUrl: compressed.dataUrl,
+        };
+      } catch (imgErr) {
+        console.warn('Lỗi khi nén ảnh trên canvas, dùng fallback FileReader:', imgErr);
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
         resolve({
@@ -195,8 +222,8 @@ export async function processChatFileAttachment(
       };
       reader.onerror = () => reject(new Error(`Không thể đọc tệp "${file.name}"`));
       reader.readAsDataURL(file);
-    }
-  });
+    });
+  })();
 
   // Tải file lên Cloudflare R2 đồng thời
   const cloudUploadPromise = uploadFileToCloudStorage(file, userId).catch((err) => {

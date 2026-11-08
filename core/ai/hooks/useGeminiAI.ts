@@ -101,13 +101,30 @@ export function useGeminiAI(defaultOptions: UseGeminiAIOptions = {}) {
         attachments: attachments.length > 0 ? attachments : undefined,
       };
 
-      const updatedHistory = [...chatMessages, newUserMsg];
+      const prevMessages = chatMessages;
+      const updatedHistory = [...prevMessages, newUserMsg];
       setChatMessages(updatedHistory);
       setIsLoading(true);
       setError(null);
 
+      // Tối ưu hóa dung lượng lịch sử trước khi gửi qua API:
+      // Các tin nhắn cũ trong lịch sử không cần gửi lại toàn bộ Base64 data (chỉ cần giữ ảnh ở tin nhắn mới nhất)
+      const sanitizedHistory = updatedHistory.map((msg, idx) => {
+        const isLatestMessage = idx === updatedHistory.length - 1;
+        if (isLatestMessage || !msg.attachments || msg.attachments.length === 0) {
+          return msg;
+        }
+        return {
+          ...msg,
+          attachments: msg.attachments.map((att) => ({
+            ...att,
+            data: '', // Không gửi lại Base64 cũ để tránh vượt 4.5MB Vercel
+          })),
+        };
+      });
+
       try {
-        const res = await gemini.chat(updatedHistory, {
+        const res = await gemini.chat(sanitizedHistory, {
           ...defaultOptions,
           ...overrideOptions,
         });
@@ -122,11 +139,15 @@ export function useGeminiAI(defaultOptions: UseGeminiAIOptions = {}) {
           setChatMessages((prev) => [...prev, newModelMsg]);
           return res.data;
         } else {
+          // Lỗi từ AI: Rollback tin nhắn người dùng chưa được phản hồi để tránh làm hỏng cấu trúc luân phiên user/model
+          setChatMessages(prevMessages);
           const err = res.error || 'AI không thể phản hồi.';
           setError(err);
           return null;
         }
       } catch (e: any) {
+        // Rollback nếu gặp ngoại lệ mạng
+        setChatMessages(prevMessages);
         const err = e?.message || 'Lỗi kết nối AI chat.';
         setError(err);
         return null;
